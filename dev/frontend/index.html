@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Counter</title>
+    <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+</head>
+<body>
+<h1>Demo App backed by flask + postgres</h1>
+<div id="hits-container">
+    <p>Number of clicks: <span id="hits-count">?</span></p>
+</div>
+<button hx-get="/api/status" hx-target="#hits-count" hx-swap="innerHTML">
+    Update Clicks
+</button>
+</body>
+</html>

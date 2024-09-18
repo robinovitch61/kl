@@ -1,0 +1,155 @@
+version: 2
+
+project_name: kl
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - binary: kl
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - freebsd
+      - linux
+      - windows
+
+archives:
+  - format_overrides:
+      - goos: windows
+        format: zip
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_
+      {{- if eq .Os "darwin" }}Darwin
+      {{- else if eq .Os "linux" }}Linux
+      {{- else if eq .Os "windows" }}Windows
+      {{- else }}{{ .Os }}{{ end }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+
+universal_binaries:
+  - replace: true
+
+release:
+  github:
+    owner: robinovitch61
+    name: kl
+
+brews:
+  - name: kl
+    homepage: https://github.com/robinovitch61/kl
+    description: "An interactive Kubernetes log viewer for your terminal."
+    directory: Formula
+    commit_author:
+      name: "Leo Robinovitch"
+      email: "leorobinovitch@gmail.com"
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
+    repository:
+      owner: robinovitch61
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+
+aurs:
+  - name: "kl-bin"
+    homepage: "https://github.com/robinovitch61/kl"
+    description: "An interactive Kubernetes log viewer for your terminal."
+    maintainers:
+      - "Leo Robinovitch <leorobinovitch@gmail.com>"
+    license: "MIT"
+    private_key: "{{ .Env.AUR_KEY }}"
+    git_url: "ssh://aur@aur.archlinux.org/kl-bin.git"
+    depends:
+      - "glibc"
+    commit_author:
+      name: "Leo Robinovitch"
+      email: "leorobinovitch@gmail.com"
+    skip_upload: auto
+
+nix:
+  - name: kl
+    commit_author:
+      name: "Leo Robinovitch"
+      email: "leorobinovitch@gmail.com"
+    homepage: "https://github.com/robinovitch61/kl"
+    description: "An interactive Kubernetes log viewer for your terminal."
+    license: "mit"  # must be lowercase
+    skip_upload: auto
+    repository:
+      owner: robinovitch61
+      name: nur-packages
+      branch: main
+      token: "{{ .Env.NUR_PACKAGES_GITHUB_TOKEN }}"
+
+winget:
+  - name: kl
+    publisher: robinovitch61
+    license: MIT
+    copyright: "Leo Robinovitch"
+    homepage: https://github.com/robinovitch61/kl
+    short_description: "An interactive Kubernetes log viewer for your terminal."
+    package_identifier: "robinovitch61.kl"
+    repository:
+      owner: "robinovitch61"
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+      name: winget-pkgs
+      branch: "{{.ProjectName}}-{{.Version}}"
+      pull_request:
+        enabled: true
+        draft: false
+        base:
+          owner: microsoft
+          name: winget-pkgs
+          branch: master
+
+scoops:
+  - repository:
+      owner: "robinovitch61"
+      name: scoop-bucket
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_author:
+      name: goreleaserbot
+      email: goreleaserbot@theleo.zone
+    homepage: https://github.com/robinovitch61/kl
+    description: "An interactive Kubernetes log viewer for your terminal."
+    license: MIT
+
+chocolateys:
+  - owners: "Leo Robinovitch"
+    authors: "Leo Robinovitch"
+    project_url: https://github.com/robinovitch61/kl
+    url_template: "https://github.com/robinovitch61/kl/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    license_url: https://github.com/robinovitch61/kl/blob/main/LICENSE
+    require_license_acceptance: false
+    project_source_url: https://github.com/robinovitch61/kl
+    docs_url: https://github.com/robinovitch61/kl/blob/main/README.md
+    bug_tracker_url: https://github.com/robinovitch61/kl/issues
+    tags: "kl kubernetes k9s kubectl"
+    summary: "An interactive Kubernetes log viewer for your terminal."
+    description: |
+      # An interactive Kubernetes log viewer for your terminal.
+
+      https://github.com/robinovitch61/kl for installation and usage.
+    release_notes: "https://github.com/robinovitch61/kl/releases/tag/v{{ .Version }}"
+    api_key: "{{ .Env.CHOCOLATEY_API_KEY }}"
+    source_repo: "https://push.chocolatey.org/"
+    skip_publish: false
+
+gomod:
+  proxy: true

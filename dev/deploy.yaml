@@ -1,0 +1,213 @@
+---
+# PostgreSQL Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      terminationGracePeriodSeconds: 10
+      securityContext:
+        fsGroup: 999
+      initContainers:
+        - name: set-permissions
+          image: busybox
+          command: ['sh', '-c', 'chown -R 999:999 /var/lib/postgresql/data']
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+      containers:
+        - name: postgres
+          image: lrobinovitch/postgres-kl:latest
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: "flaskdb"
+            - name: POSTGRES_USER
+              value: "flaskuser"
+            - name: POSTGRES_PASSWORD
+              value: "flaskpassword"
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+
+---
+# PostgreSQL Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+spec:
+  selector:
+    app: postgres
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+
+---
+# Flask Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: flask
+  template:
+    metadata:
+      labels:
+        app: flask
+    spec:
+      terminationGracePeriodSeconds: 10
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox
+          command: ['sh', '-c', 'until nc -z postgres-service 5432; do echo waiting for postgres; sleep 2; done;']
+      containers:
+        - name: flask-1
+          image: lrobinovitch/flask-kl:latest
+          ports:
+            - containerPort: 5000
+          env:
+            - name: PORT
+              value: "5000"
+            - name: POSTGRES_DB
+              value: "flaskdb"
+            - name: POSTGRES_USER
+              value: "flaskuser"
+            - name: POSTGRES_PASSWORD
+              value: "flaskpassword"
+            - name: POSTGRES_HOST
+              value: "postgres-service"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+        - name: flask-2
+          image: lrobinovitch/flask-kl:latest
+          ports:
+            - containerPort: 5001
+          env:
+            - name: PORT
+              value: "5001"
+            - name: POSTGRES_DB
+              value: "flaskdb"
+            - name: POSTGRES_USER
+              value: "flaskuser"
+            - name: POSTGRES_PASSWORD
+              value: "flaskpassword"
+            - name: POSTGRES_HOST
+              value: "postgres-service"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+        - name: flask-3
+          image: lrobinovitch/flask-kl:latest
+          ports:
+            - containerPort: 5002
+          env:
+            - name: PORT
+              value: "5002"
+            - name: POSTGRES_DB
+              value: "flaskdb"
+            - name: POSTGRES_USER
+              value: "flaskuser"
+            - name: POSTGRES_PASSWORD
+              value: "flaskpassword"
+            - name: POSTGRES_HOST
+              value: "postgres-service"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5002
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+---
+# Flask Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: flask-service
+spec:
+  selector:
+    app: flask
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+
+---
+# Frontend HTMX Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: frontend
+          image: lrobinovitch/frontend-kl:latest
+          ports:
+            - containerPort: 80
+
+---
+# Frontend HTMX Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+spec:
+  selector:
+    app: frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+      nodePort: 30080
+  type: NodePort
+
+---
+# Persistent Volume Claim for PostgreSQL
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

@@ -1,0 +1,22 @@
+repos:
+  - repo: local
+    hooks:
+      - id: golangci-lint
+        name: Lint Go Code
+        entry: golangci-lint
+        args: [run]
+        language: system
+        pass_filenames: false  # run on the entire project, not just staged files
+
+      - id: go-build
+        name: Build Go Code
+        entry: go build ./...
+        language: golang
+        pass_filenames: false  # run on the entire project, not just staged files
+
+      - id: go-test
+        name: Test Go Code
+        entry: go test ./...
+        language: golang
+        pass_filenames: false  # run on the entire project, not just staged files
+
