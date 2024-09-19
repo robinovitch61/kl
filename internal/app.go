@@ -214,12 +214,8 @@ func (m Model) View() string {
 	}
 	topBar := m.topBar()
 	if m.helpText != "" {
-		centeredHelp := style.Regular.Copy().Width(m.width).Height(m.height - m.topBarHeight).Render(
-			lipgloss.Place(m.width, m.height-m.topBarHeight, lipgloss.Center, lipgloss.Center, m.helpText),
-		)
-		return style.Regular.Copy().Width(m.width).Height(m.height).Render(
-			lipgloss.JoinVertical(lipgloss.Left, topBar, centeredHelp),
-		)
+		centeredHelp := lipgloss.Place(m.width, m.height-m.topBarHeight, lipgloss.Center, lipgloss.Center, m.helpText)
+		return lipgloss.JoinVertical(lipgloss.Left, topBar, centeredHelp)
 	}
 	if m.prompt.Visible {
 		return lipgloss.JoinVertical(lipgloss.Left, topBar, m.prompt.View())
@@ -231,7 +227,7 @@ func (m Model) View() string {
 		viewLines = viewLines[:len(viewLines)-toastHeight]
 		viewLines = append(viewLines, strings.Split(m.toast.View(), "\n")...)
 	}
-	return style.Regular.Copy().Width(m.width).Height(m.height).Render(strings.Join(viewLines, "\n"))
+	return strings.Join(viewLines, "\n")
 }
 
 func (m Model) topBar() string {
@@ -273,9 +269,7 @@ func (m Model) topBar() string {
 	} else {
 		toJoin = append(toJoin, strings.Repeat(" ", len(right)))
 	}
-	return style.Regular.Copy().Width(m.width).Height(m.topBarHeight).Render(
-		util.JoinWithEqualSpacing(m.width, toJoin...),
-	)
+	return util.JoinWithEqualSpacing(m.width, toJoin...)
 }
 
 // startup, shutdown, & bubble tea builtin messages
@@ -284,7 +278,6 @@ func (m Model) initialize() (Model, tea.Cmd) {
 	dev.Debug("initializing")
 	defer dev.Debug("done initializing")
 	dev.Debug("------------")
-	style.DebugColors()
 
 	// disable kubernetes client warning/logging
 	klog.InitFlags(nil)
@@ -660,7 +653,7 @@ func (m Model) promptToConfirmSelectionActions(selected model.Entity, selectionA
 	topLine = fmt.Sprintf("%s for %s", topLine, selected.Type())
 	bottomLine := fmt.Sprintf("%s?", selected.Container.HumanReadable())
 	text := []string{topLine, bottomLine}
-	m.prompt = prompt.New(true, m.width, m.height-m.topBarHeight, text, style.ModalOptionStyle, style.ModalSelectedStyle)
+	m.prompt = prompt.New(true, m.width, m.height-m.topBarHeight, text)
 	m.whenPromptConfirm = func() (Model, tea.Cmd) { return m.doSelectionActions(selectionActions) }
 	return m, nil
 }

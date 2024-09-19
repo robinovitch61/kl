@@ -37,13 +37,9 @@ func NewFilterableViewport[T viewport.RenderableComparable](
 	f.SetFilteringWithContext(filterWithContext)
 
 	var vp = viewport.New[T](width, height-f.ViewHeight())
-	vp.BackgroundStyle = style.ViewportBackgroundStyle
-	vp.HeaderStyle = style.ViewportHeaderStyle
-	vp.SelectedContentStyle = style.ViewportSelectedRowStyle
-	vp.HighlightStyle = style.ViewportHighlightStyle
-	vp.HighlightStyleIfSelected = style.ViewportHighlightIfSelectedStyle
-	vp.ContentStyle = style.ContentStyle
-	vp.FooterStyle = style.ViewportFooterStyle
+	vp.FooterStyle = style.Bold
+	vp.SelectedContentStyle = style.Inverse
+	vp.HighlightStyle = style.Inverse
 
 	vp.SetSelectionEnabled(selectionEnabled)
 
@@ -136,7 +132,7 @@ func (p FilterableViewport[T]) View() string {
 	} else {
 		viewportView = p.viewport.View()
 	}
-	return style.Regular.Render(lipgloss.JoinVertical(lipgloss.Left, p.Filter.View(), viewportView))
+	return lipgloss.JoinVertical(lipgloss.Left, p.Filter.View(), viewportView)
 }
 
 func (p FilterableViewport[T]) HighjackingInput() bool {
