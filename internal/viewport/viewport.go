@@ -10,23 +10,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-const (
-	black = lipgloss.Color("#000000")
-	blue  = lipgloss.Color("6")
-	pink  = lipgloss.Color("#E760FC")
-	grey  = lipgloss.Color("#737373")
-)
-
-var (
-	regular                         = lipgloss.NewStyle()
-	bold                            = regular.Copy().Bold(true)
-	defaultViewportHeaderStyle      = bold.Copy()
-	defaultViewportSelectedRowStyle = regular.Copy().Foreground(black).Background(blue)
-	defaultViewportHighlightStyle   = regular.Copy().Foreground(black).Background(pink)
-	defaultContentStyle             = regular.Copy()
-	defaultViewportFooterStyle      = regular.Copy().Foreground(grey)
-)
-
 // Model represents a viewport component
 type Model[T RenderableComparable] struct {
 	KeyMap                    KeyMap
@@ -93,13 +76,6 @@ func New[T RenderableComparable](width, height int) (m Model[T]) {
 	m.KeyMap = DefaultKeyMap()
 	m.LineContinuationIndicator = "..."
 	m.lenLineContinuationIndicator = stringWidth(m.LineContinuationIndicator)
-	m.BackgroundStyle = regular
-	m.HeaderStyle = defaultViewportHeaderStyle
-	m.SelectedContentStyle = defaultViewportSelectedRowStyle
-	m.HighlightStyle = defaultViewportHighlightStyle
-	m.HighlightStyleIfSelected = defaultViewportHighlightStyle
-	m.ContentStyle = defaultContentStyle
-	m.FooterStyle = defaultViewportFooterStyle
 	return m
 }
 

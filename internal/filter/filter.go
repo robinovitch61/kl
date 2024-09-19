@@ -80,10 +80,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m Model) View() string {
 	if m.textinput.Focused() {
-		m.textinput.PromptStyle = style.FilterEditing
-		m.textinput.TextStyle = style.FilterEditing
-		m.textinput.Cursor.Style = style.FilterCursor
-		m.textinput.Cursor.TextStyle = style.FilterEditing
+		m.textinput.PromptStyle = style.Inverse
+		m.textinput.TextStyle = style.Inverse
+		m.textinput.Cursor.Style = lipgloss.NewStyle()
+		m.textinput.Cursor.TextStyle = lipgloss.NewStyle()
 		if len(m.textinput.Value()) > 0 {
 			// editing existing filter
 			if m.isRegex {
@@ -100,9 +100,9 @@ func (m Model) View() string {
 			m.SetSuffix("")
 			m.textinput.Cursor.SetMode(cursor.CursorHide)
 			if m.isRegex {
-				m.textinput.SetValue("type to regex filter")
+				m.textinput.SetValue("type to regex filter ")
 			} else {
-				m.textinput.SetValue("type to filter")
+				m.textinput.SetValue("type to filter ")
 			}
 		}
 	} else {
@@ -116,17 +116,13 @@ func (m Model) View() string {
 			} else {
 				m.textinput.Prompt = "filter: "
 			}
-			m.textinput.PromptStyle = style.FilterApplied
-			m.textinput.TextStyle = style.FilterApplied
-			m.textinput.Cursor.Style = style.FilterApplied
-			m.textinput.Cursor.TextStyle = style.FilterApplied
+			m.textinput.PromptStyle = style.AltInverse
+			m.textinput.TextStyle = style.AltInverse
+			m.textinput.Cursor.Style = style.AltInverse
+			m.textinput.Cursor.TextStyle = style.AltInverse
 		} else {
 			// no filter, not editing
 			m.textinput.Prompt = ""
-			m.textinput.PromptStyle = style.Regular
-			m.textinput.TextStyle = style.Regular
-			m.textinput.Cursor.Style = style.Regular
-			m.textinput.Cursor.TextStyle = style.Regular
 			m.textinput.SetValue(fmt.Sprintf("'%s' or '%s' to filter", m.KeyMap.Filter.Help().Key, m.KeyMap.FilterRegex.Help().Key))
 			m.SetSuffix("")
 		}
@@ -135,10 +131,10 @@ func (m Model) View() string {
 	filterString := m.textinput.View()
 	filterStringStyle := m.textinput.TextStyle.Copy().PaddingLeft(1)
 
-	view := style.FilterPrefix.Copy().PaddingRight(1).Underline(true).Render(m.label) + filterStringStyle.Render(filterString)
+	view := style.BoldUnderline.Render(m.label) + " " + filterStringStyle.Render(filterString)
 	widthView := lipgloss.Width(view)
 	if widthView < m.width {
-		view += style.Regular.Render(strings.Repeat(" ", m.width-widthView))
+		view += strings.Repeat(" ", m.width-widthView)
 	}
 	return view
 }

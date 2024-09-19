@@ -4,6 +4,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/robinovitch61/kl/internal/dev"
+	"github.com/robinovitch61/kl/internal/style"
 )
 
 type Model struct {
@@ -11,18 +12,14 @@ type Model struct {
 	proceedIsSelected bool
 	width, height     int
 	text              []string
-	optionStyle       lipgloss.Style
-	selectedStyle     lipgloss.Style
 }
 
-func New(visible bool, width, height int, text []string, optionStyle, selectedStyle lipgloss.Style) Model {
+func New(visible bool, width, height int, text []string) Model {
 	return Model{
-		Visible:       visible,
-		width:         width,
-		height:        height,
-		text:          text,
-		optionStyle:   optionStyle,
-		selectedStyle: selectedStyle,
+		Visible: visible,
+		width:   width,
+		height:  height,
+		text:    text,
 	}
 }
 
@@ -40,20 +37,19 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m Model) View() string {
 	if m.Visible {
-		cancel := "NO, CANCEL"
-		proceed := "YES, PROCEED"
+		// intentionally padded
+		cancel := " NO, CANCEL "
+		proceed := " YES, PROCEED "
 		if m.proceedIsSelected {
-			proceed = m.selectedStyle.Render(proceed)
-			cancel = m.optionStyle.Render(cancel)
+			proceed = style.Inverse.Render(proceed)
 		} else {
-			proceed = m.optionStyle.Render(proceed)
-			cancel = m.selectedStyle.Render(cancel)
+			cancel = style.Inverse.Render(cancel)
 		}
 		view := lipgloss.JoinVertical(
 			lipgloss.Center,
 			lipgloss.JoinVertical(lipgloss.Center, m.text...),
 			"\n",
-			lipgloss.JoinHorizontal(lipgloss.Center, cancel, proceed),
+			lipgloss.JoinHorizontal(lipgloss.Center, cancel, "   ", proceed),
 		)
 		view = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).Padding(1, 1).Render(view)
 		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, view)
