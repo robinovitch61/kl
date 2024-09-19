@@ -129,7 +129,7 @@ func (m Model) View() string {
 	}
 	m.textinput.SetValue(m.textinput.Value() + m.suffix)
 	filterString := m.textinput.View()
-	filterStringStyle := m.textinput.TextStyle.Copy().PaddingLeft(1)
+	filterStringStyle := m.textinput.TextStyle.PaddingLeft(1)
 
 	view := style.BoldUnderline.Render(m.label) + " " + filterStringStyle.Render(filterString)
 	widthView := lipgloss.Width(view)
