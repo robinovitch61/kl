@@ -12,7 +12,7 @@ func makePageHelp(pageName string, globalBindings, pageBindings []key.Binding) s
 
 	pageHelp := lipgloss.JoinVertical(
 		lipgloss.Center,
-		style.UnderlineStyle.Render("Current View: "+pageName),
+		style.Underline.Render("Current View: "+pageName),
 		"",
 		formatKeyBindings(pageBindings, rowsPerCol),
 	)
@@ -20,7 +20,7 @@ func makePageHelp(pageName string, globalBindings, pageBindings []key.Binding) s
 	generalHelp := lipgloss.JoinVertical(
 		lipgloss.Center,
 		"",
-		style.UnderlineStyle.Render("Anywhere in Application"),
+		style.Underline.Render("Anywhere in Application"),
 		"",
 		formatKeyBindings(globalBindings, rowsPerCol),
 	)
@@ -78,7 +78,7 @@ func formatColumn(bindings []key.Binding) string {
 			help = append(help, "")
 		}
 	}
-	keyCol := style.KeyHelpStyle.Render(lipgloss.JoinVertical(lipgloss.Right, keys...))
+	keyCol := style.InverseUnderline.Render(lipgloss.JoinVertical(lipgloss.Right, keys...))
 	helpCol := lipgloss.JoinVertical(lipgloss.Left, help...)
 	return lipgloss.JoinHorizontal(lipgloss.Left, keyCol, helpCol)
 }
