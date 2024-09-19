@@ -32,7 +32,7 @@ Comparable to:
 
 * [k9s](https://k9scli.io/) but focused on logs
 * [kubectl logs](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_logs/) supercharged
-* [kail](https://github.com/boz/kail) with an interactive interface
+* [stern](https://github.com/stern/stern) & [kail](https://github.com/boz/kail) but multi-cluster and an interactive interface
 
 ## Usage
 
@@ -82,7 +82,7 @@ nix-shell -p nur.repos.robinovitch61.kl
 nix run github:robinovitch61/nur-packages#kl
 
 # arch linux
-# PKGBUILD available at https://aur.archlinux.org/packages/kl
+# PKGBUILD available at https://aur.archlinux.org/packages/kl-bin
 yay -S kl-bin
 
 # with go (https://go.dev/doc/install)
