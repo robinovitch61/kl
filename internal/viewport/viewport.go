@@ -694,25 +694,11 @@ func (m Model[T]) getFooter() (string, int) {
 	if totalNumLines >= m.height-len(m.getHeader()) {
 		percentScrolled := percent(numerator, denominator)
 		footerString := fmt.Sprintf("%d%% (%d/%d)", percentScrolled, numerator, denominator)
-		renderedFooterString := m.FooterStyle.Copy().MaxWidth(m.width).Render(footerString)
+		renderedFooterString := m.FooterStyle.MaxWidth(m.width).Render(footerString)
 		footerHeight := lipgloss.Height(renderedFooterString)
 		return renderedFooterString, footerHeight
 	}
 	return "", 0
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 func percent(a, b int) int {
