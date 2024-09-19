@@ -276,9 +276,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	// TODO LEO: this isn't working on my terminal
-	case tea.ForegroundColorMsg:
-		dev.Debug("LEO HERE")
-		m.backgroundColorHex = msg.String()
+	case tea.ForegroundColorMsg, tea.BackgroundColorMsg:
+		if msg, ok := msg.(tea.ForegroundColorMsg); ok {
+			dev.Debug(fmt.Sprintf("FOREGROUND: %s", msg.String()))
+			m.foregroundColorHex = msg.String()
+		} else {
+			dev.Debug(fmt.Sprintf("BACKGROUND: %s", msg.String()))
+			m.backgroundColorHex = msg.String()
+		}
 		if m.foregroundColorHex != "" && m.backgroundColorHex != "" {
 			dev.Debug(fmt.Sprintf("foreground: %s, background: %s", m.foregroundColorHex, m.backgroundColorHex))
 			m.styles = style.NewStyles(m.foregroundColorHex, m.backgroundColorHex)
