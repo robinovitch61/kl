@@ -29,9 +29,10 @@ type Model struct {
 	label                 string
 	textinput             textinput.Model
 	suffix                string
+	styles                style.Styles
 }
 
-func New(label string, width int, km keymap.KeyMap) Model {
+func New(label string, width int, km keymap.KeyMap, styles style.Styles) Model {
 	ti := textinput.New()
 	ti.Prompt = ""
 	ti.Cursor.SetMode(cursor.CursorHide)
@@ -50,6 +51,7 @@ func New(label string, width int, km keymap.KeyMap) Model {
 		width:     width,
 		label:     label,
 		textinput: ti,
+		styles:    styles,
 	}
 }
 
@@ -80,8 +82,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m Model) View() string {
 	if m.textinput.Focused() {
-		m.textinput.PromptStyle = style.Inverse
-		m.textinput.TextStyle = style.Inverse
+		m.textinput.PromptStyle = m.styles.Inverse
+		m.textinput.TextStyle = m.styles.Inverse
 		m.textinput.Cursor.Style = lipgloss.NewStyle()
 		m.textinput.Cursor.TextStyle = lipgloss.NewStyle()
 		if len(m.textinput.Value()) > 0 {
@@ -116,10 +118,10 @@ func (m Model) View() string {
 			} else {
 				m.textinput.Prompt = "filter: "
 			}
-			m.textinput.PromptStyle = style.AltInverse
-			m.textinput.TextStyle = style.AltInverse
-			m.textinput.Cursor.Style = style.AltInverse
-			m.textinput.Cursor.TextStyle = style.AltInverse
+			m.textinput.PromptStyle = m.styles.AltInverse
+			m.textinput.TextStyle = m.styles.AltInverse
+			m.textinput.Cursor.Style = m.styles.AltInverse
+			m.textinput.Cursor.TextStyle = m.styles.AltInverse
 		} else {
 			// no filter, not editing
 			m.textinput.Prompt = ""
@@ -131,7 +133,7 @@ func (m Model) View() string {
 	filterString := m.textinput.View()
 	filterStringStyle := m.textinput.TextStyle.Copy().PaddingLeft(1)
 
-	view := style.BoldUnderline.Render(m.label) + " " + filterStringStyle.Render(filterString)
+	view := m.styles.BoldUnderline.Render(m.label) + " " + filterStringStyle.Render(filterString)
 	widthView := lipgloss.Width(view)
 	if widthView < m.width {
 		view += strings.Repeat(" ", m.width-widthView)

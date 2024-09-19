@@ -6,23 +6,23 @@ import (
 	"github.com/robinovitch61/kl/internal/style"
 )
 
-func makePageHelp(pageName string, globalBindings, pageBindings []key.Binding) string {
+func makePageHelp(pageName string, globalBindings, pageBindings []key.Binding, styles style.Styles) string {
 	title := lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1).Render("Help (press any key to hide)")
 	rowsPerCol := 6
 
 	pageHelp := lipgloss.JoinVertical(
 		lipgloss.Center,
-		style.Underline.Render("Current View: "+pageName),
+		styles.Underline.Render("Current View: "+pageName),
 		"",
-		formatKeyBindings(pageBindings, rowsPerCol),
+		formatKeyBindings(pageBindings, rowsPerCol, styles),
 	)
 
 	generalHelp := lipgloss.JoinVertical(
 		lipgloss.Center,
 		"",
-		style.Underline.Render("Anywhere in Application"),
+		styles.Underline.Render("Anywhere in Application"),
 		"",
-		formatKeyBindings(globalBindings, rowsPerCol),
+		formatKeyBindings(globalBindings, rowsPerCol, styles),
 	)
 
 	res := lipgloss.JoinVertical(
@@ -34,7 +34,7 @@ func makePageHelp(pageName string, globalBindings, pageBindings []key.Binding) s
 	return res
 }
 
-func formatKeyBindings(bindings []key.Binding, maxRowsPerCol int) string {
+func formatKeyBindings(bindings []key.Binding, maxRowsPerCol int, styles style.Styles) string {
 	if len(bindings) == 0 {
 		return ""
 	}
@@ -50,7 +50,7 @@ func formatKeyBindings(bindings []key.Binding, maxRowsPerCol int) string {
 	}
 	var formattedCols []string
 	for i, col := range columns {
-		formattedCol := formatColumn(col)
+		formattedCol := formatColumn(col, styles)
 		if i != len(columns)-1 {
 			formattedCol = formattedCol + "   "
 		}
@@ -60,7 +60,7 @@ func formatKeyBindings(bindings []key.Binding, maxRowsPerCol int) string {
 	return lipgloss.JoinHorizontal(lipgloss.Left, formattedCols...)
 }
 
-func formatColumn(bindings []key.Binding) string {
+func formatColumn(bindings []key.Binding, styles style.Styles) string {
 	var keys []string
 	var help []string
 	for _, b := range bindings {
@@ -78,7 +78,7 @@ func formatColumn(bindings []key.Binding) string {
 			help = append(help, "")
 		}
 	}
-	keyCol := style.InverseUnderline.Render(lipgloss.JoinVertical(lipgloss.Right, keys...))
+	keyCol := styles.InverseUnderline.Render(lipgloss.JoinVertical(lipgloss.Right, keys...))
 	helpCol := lipgloss.JoinVertical(lipgloss.Left, help...)
 	return lipgloss.JoinHorizontal(lipgloss.Left, keyCol, helpCol)
 }

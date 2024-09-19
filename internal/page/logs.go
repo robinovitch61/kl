@@ -9,6 +9,7 @@ import (
 	"github.com/robinovitch61/kl/internal/filterable_viewport"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/model"
+	"github.com/robinovitch61/kl/internal/style"
 )
 
 var (
@@ -27,7 +28,7 @@ type LogsPage struct {
 // assert LogsPage implements GenericPage
 var _ GenericPage = LogsPage{}
 
-func NewLogsPage(keyMap keymap.KeyMap, width, height int, descending bool) LogsPage {
+func NewLogsPage(keyMap keymap.KeyMap, width, height int, descending bool, styles style.Styles) LogsPage {
 	lc := model.NewPageLogContainer(!descending)
 	filterableViewport := filterable_viewport.NewFilterableViewport[model.PageLog](
 		"", // set by updateFilterLabel below
@@ -40,6 +41,7 @@ func NewLogsPage(keyMap keymap.KeyMap, width, height int, descending bool) LogsP
 		func(log model.PageLog, filter filter.Model) bool {
 			return filter.Matches(log)
 		},
+		styles,
 		"No logs yet",
 	)
 	filterableViewport.SetMaintainSelection(true)
@@ -134,7 +136,12 @@ func (p LogsPage) WithDimensions(width, height int) GenericPage {
 	return p
 }
 
-func (p LogsPage) Help() string {
+func (p LogsPage) WithStyles(styles style.Styles) GenericPage {
+	p.filterableViewport = p.filterableViewport.WithStyles(styles)
+	return p
+}
+
+func (p LogsPage) Help(styles style.Styles) string {
 	local := []key.Binding{
 		keymap.WithDesc(p.keyMap.Enter, "zoom on log"),
 		p.keyMap.Context,
@@ -147,6 +154,7 @@ func (p LogsPage) Help() string {
 		"Logs",
 		keymap.GlobalKeyBindings(p.keyMap),
 		local,
+		styles,
 	)
 }
 

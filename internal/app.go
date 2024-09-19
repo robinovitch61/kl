@@ -55,6 +55,9 @@ type Model struct {
 	pauseState           bool
 	helpText             string
 	topBarHeight         int // assumed constant
+	foregroundColorHex   string
+	backgroundColorHex   string
+	styles               style.Styles
 }
 
 func InitialModel(c Config) Model {
@@ -232,9 +235,9 @@ func (m Model) Init() (tea.Model, tea.Cmd) {
 
 	m.topBarHeight = lipgloss.Height(m.topBar())
 	contentHeight := m.height - m.topBarHeight
-	m.pages[page.EntitiesPageType] = page.NewEntitiesPage(m.keyMap, m.width, contentHeight, m.entityTree)
-	m.pages[page.LogsPageType] = page.NewLogsPage(m.keyMap, m.width, contentHeight, m.config.Descending)
-	m.pages[page.SingleLogPageType] = page.NewSingleLogPage(m.keyMap, m.width, contentHeight)
+	m.pages[page.EntitiesPageType] = page.NewEntitiesPage(m.keyMap, m.width, contentHeight, m.entityTree, m.styles)
+	m.pages[page.LogsPageType] = page.NewLogsPage(m.keyMap, m.width, contentHeight, m.config.Descending, m.styles)
+	m.pages[page.SingleLogPageType] = page.NewSingleLogPage(m.keyMap, m.width, contentHeight, m.styles)
 
 	// #1: For each namespace in each cluster, subscribe to pod changes that are mapped into container deltas and
 	// returned to the app. This builds the initial state of the entity tree and keeps it in sync with cluster states.
@@ -255,6 +258,9 @@ func (m Model) Init() (tea.Model, tea.Cmd) {
 	cmds = append(cmds, tea.Tick(constants.BatchUpdateLogsInterval, func(t time.Time) tea.Msg { return message.BatchUpdateLogsMsg{} }))
 	cmds = append(cmds, tea.Tick(constants.AttemptMaintainEntitySelectionAfterStartup, func(t time.Time) tea.Msg { return message.StartMaintainEntitySelectionMsg{} }))
 
+	cmds = append(cmds, tea.BackgroundColor)
+	cmds = append(cmds, tea.ForegroundColor)
+
 	return m, tea.Batch(cmds...)
 }
 
@@ -268,6 +274,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case message.CleanupCompleteMsg:
 		return m, tea.Quit
+
+	// TODO LEO: this isn't working on my terminal
+	case tea.ForegroundColorMsg:
+		dev.Debug("LEO HERE")
+		m.backgroundColorHex = msg.String()
+		if m.foregroundColorHex != "" && m.backgroundColorHex != "" {
+			dev.Debug(fmt.Sprintf("foreground: %s, background: %s", m.foregroundColorHex, m.backgroundColorHex))
+			m.styles = style.NewStyles(m.foregroundColorHex, m.backgroundColorHex)
+			for i := range m.pages {
+				m.pages[i] = m.pages[i].WithStyles(m.styles)
+			}
+		}
+		return m, nil
 
 	// #5: The user presses a key. The key could be global, e.g. exit, or handled by the current page. Key presses update
 	// models and can trigger commands to be run. Commands are used to perform background work, e.g. starting a log scanner.
@@ -383,7 +402,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	dev.Debug(fmt.Sprintf("App view, initialized: %t", m.initialized))
 	if m.err != nil {
 		errString := wrap.String(m.err.Error(), m.width)
 		return lipgloss.JoinVertical(
@@ -446,7 +464,7 @@ func (m Model) topBar() string {
 		len(containerEntities),
 	)
 	if m.pauseState {
-		left += padding + style.Inverse.Render("[PAUSED]")
+		left += padding + m.styles.Inverse.Render("[PAUSED]")
 	}
 
 	right := fmt.Sprintf("%s to quit / %s for help", m.keyMap.Quit.Help().Key, m.keyMap.Help.Help().Key)
@@ -576,7 +594,7 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	// show help
 	if key.Matches(msg, m.keyMap.Help) {
-		m.helpText = m.pages[m.currentPageType].Help()
+		m.helpText = m.pages[m.currentPageType].Help(m.styles)
 		return m, nil
 	}
 
@@ -646,7 +664,7 @@ func (m Model) promptToConfirmSelectionActions(selected model.Entity, selectionA
 	topLine = fmt.Sprintf("%s for %s", topLine, selected.Type())
 	bottomLine := fmt.Sprintf("%s?", selected.Container.HumanReadable())
 	text := []string{topLine, bottomLine}
-	m.prompt = prompt.New(true, m.width, m.height-m.topBarHeight, text)
+	m.prompt = prompt.New(true, m.width, m.height-m.topBarHeight, text, m.styles)
 	m.whenPromptConfirm = func() (Model, tea.Cmd) { return m.doSelectionActions(selectionActions) }
 	return m, nil
 }

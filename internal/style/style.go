@@ -3,43 +3,46 @@ package style
 import (
 	"fmt"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/termenv"
 	"github.com/robinovitch61/kl/internal/dev"
 	"strconv"
 	"strings"
 )
 
-var (
-	// TODO: these don't seem quite right. See if bubbletea 2.x gets it better
-	backgroundHex = termenv.ConvertToRGB(termenv.BackgroundColor()).Hex()
-	foregroundHex = termenv.ConvertToRGB(termenv.ForegroundColor()).Hex()
+type Styles struct {
+	Bold             lipgloss.Style
+	Inverse          lipgloss.Style
+	BoldUnderline    lipgloss.Style
+	InverseUnderline lipgloss.Style
+	AltInverse       lipgloss.Style
+	Underline        lipgloss.Style
+}
 
-	adjustment           = 30
-	lighterForegroundHex = lightenColor(foregroundHex, adjustment)
-	darkerForegroundHex  = lightenColor(foregroundHex, -adjustment)
-)
+func NewStyles(backgroundHex, foregroundHex string) Styles {
+	var adjustment = 30
+	var lighterForegroundHex = lightenColor(foregroundHex, adjustment)
+	var darkerForegroundHex = lightenColor(foregroundHex, -adjustment)
 
-var (
-	// need to specifically set the foreground color otherwise changes color on some terminals
-	Bold = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(foregroundHex))
+	return Styles{
+		// need to specifically set the foreground color otherwise changes color on some terminals
+		Bold: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(foregroundHex)),
 
-	Inverse = lipgloss.NewStyle().Reverse(true)
+		Inverse: lipgloss.NewStyle().Reverse(true),
 
-	// need to specifically set the foreground color otherwise changes color on some terminals
-	BoldUnderline = lipgloss.NewStyle().Bold(true).Underline(true).Foreground(lipgloss.Color(foregroundHex))
+		// need to specifically set the foreground color otherwise changes color on some terminals
+		BoldUnderline: lipgloss.NewStyle().Bold(true).Underline(true).Foreground(lipgloss.Color(foregroundHex)),
 
-	// don't use .Reverse(true) as that messes with Underline
-	InverseUnderline = lipgloss.NewStyle().Foreground(lipgloss.Color(backgroundHex)).Background(lipgloss.Color(foregroundHex)).Underline(true)
+		// don't use .Reverse(true) as that messes with Underline
+		InverseUnderline: lipgloss.NewStyle().Foreground(lipgloss.Color(backgroundHex)).Background(lipgloss.Color(foregroundHex)).Underline(true),
 
-	// a slightly lighter or darker background depending on the user's background color
-	AltInverse = lipgloss.NewStyle().Foreground(lipgloss.Color(backgroundHex)).Background(
-		lipgloss.AdaptiveColor{
-			Light: lighterForegroundHex,
-			Dark:  darkerForegroundHex,
-		})
-
-	Underline = lipgloss.NewStyle().Underline(true)
-)
+		// a slightly lighter or darker background depending on the user's background color
+		AltInverse: lipgloss.NewStyle().Foreground(lipgloss.Color(backgroundHex)).Background(
+			lipgloss.AdaptiveColor{
+				Light: lighterForegroundHex,
+				Dark:  darkerForegroundHex,
+			}),
+		Underline: lipgloss.NewStyle().Underline(true),
+	}
+}
 
 func lightenColor(hex string, offset int) string {
 	if strings.HasPrefix(hex, "#") {

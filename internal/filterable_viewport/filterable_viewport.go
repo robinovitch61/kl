@@ -31,15 +31,14 @@ func NewFilterableViewport[T viewport.RenderableComparable](
 	width, height int,
 	allRows []T,
 	matchesFilter func(T, filter.Model) bool,
+	styles style.Styles,
 	viewWhenEmpty string,
 ) FilterableViewport[T] {
-	f := filter.New(filterLabel, width, km)
+	f := filter.New(filterLabel, width, km, styles)
 	f.SetFilteringWithContext(filterWithContext)
 
 	var vp = viewport.New[T](width, height-f.ViewHeight())
-	vp.FooterStyle = style.Bold
-	vp.SelectedContentStyle = style.Inverse
-	vp.HighlightStyle = style.Inverse
+	vp = withStyles(vp, styles)
 
 	vp.SetSelectionEnabled(selectionEnabled)
 
@@ -158,6 +157,11 @@ func (p FilterableViewport[T]) SetSelectedContentIdx(idx int) {
 	p.viewport.SetSelectedContentIdx(idx)
 }
 
+func (p FilterableViewport[T]) WithStyles(styles style.Styles) FilterableViewport[T] {
+	*p.viewport = withStyles(*p.viewport, styles)
+	return p
+}
+
 func (p *FilterableViewport[T]) SetAllRows(allRows []T) {
 	p.allRows = allRows
 	p.updateVisibleRows()
@@ -245,4 +249,11 @@ func (p *FilterableViewport[T]) clearFilter() {
 func (p *FilterableViewport[T]) scrollViewportToContentIdx(contentIdx int) {
 	p.viewport.SetSelectedContentIdx(contentIdx)
 	p.Filter.UpdateLabelAndSuffix()
+}
+
+func withStyles[T viewport.RenderableComparable](vp viewport.Model[T], styles style.Styles) viewport.Model[T] {
+	vp.FooterStyle = styles.Bold
+	vp.SelectedContentStyle = styles.Inverse
+	vp.HighlightStyle = styles.Inverse
+	return vp
 }

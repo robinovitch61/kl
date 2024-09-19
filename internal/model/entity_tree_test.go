@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/robinovitch61/kl/internal/filter"
 	"github.com/robinovitch61/kl/internal/keymap"
+	"github.com/robinovitch61/kl/internal/style"
 	"strings"
 	"testing"
 )
@@ -598,7 +599,7 @@ func formatEntity(e Entity) string {
 }
 
 func newFilter(s string, isRegex bool) filter.Model {
-	f := filter.New("", 0, keymap.KeyMap{})
+	f := filter.New("", 0, keymap.KeyMap{}, style.Styles{})
 	f.SetValue(s)
 	f.SetIsRegex(isRegex)
 	return f

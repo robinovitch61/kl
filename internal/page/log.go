@@ -11,6 +11,7 @@ import (
 	"github.com/robinovitch61/kl/internal/filterable_viewport"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/model"
+	"github.com/robinovitch61/kl/internal/style"
 	"github.com/robinovitch61/kl/internal/viewport"
 	"strings"
 )
@@ -24,7 +25,7 @@ type SingleLogPage struct {
 // assert SingleLogPage implements GenericPage
 var _ GenericPage = SingleLogPage{}
 
-func NewSingleLogPage(keyMap keymap.KeyMap, width, height int) SingleLogPage {
+func NewSingleLogPage(keyMap keymap.KeyMap, width, height int, styles style.Styles) SingleLogPage {
 	filterableViewport := filterable_viewport.NewFilterableViewport[viewport.RenderableString](
 		"Single Log",
 		true,
@@ -36,6 +37,7 @@ func NewSingleLogPage(keyMap keymap.KeyMap, width, height int) SingleLogPage {
 		func(s viewport.RenderableString, filter filter.Model) bool {
 			return filter.Matches(s)
 		},
+		styles,
 		"",
 	)
 	filterableViewport.SetUpDownMovementWithShift()
@@ -75,7 +77,12 @@ func (p SingleLogPage) WithDimensions(width, height int) GenericPage {
 	return p
 }
 
-func (p SingleLogPage) Help() string {
+func (p SingleLogPage) WithStyles(styles style.Styles) GenericPage {
+	p.filterableViewport = p.filterableViewport.WithStyles(styles)
+	return p
+}
+
+func (p SingleLogPage) Help(styles style.Styles) string {
 	local := []key.Binding{
 		p.keyMap.Copy,
 		keymap.WithDesc(p.keyMap.Clear, "back to logs"),
@@ -88,6 +95,7 @@ func (p SingleLogPage) Help() string {
 		"Single Log",
 		keymap.GlobalKeyBindings(p.keyMap),
 		local,
+		styles,
 	)
 }
 

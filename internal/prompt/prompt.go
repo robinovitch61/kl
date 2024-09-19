@@ -12,14 +12,16 @@ type Model struct {
 	proceedIsSelected bool
 	width, height     int
 	text              []string
+	styles            style.Styles
 }
 
-func New(visible bool, width, height int, text []string) Model {
+func New(visible bool, width, height int, text []string, styles style.Styles) Model {
 	return Model{
 		Visible: visible,
 		width:   width,
 		height:  height,
 		text:    text,
+		styles:  styles,
 	}
 }
 
@@ -41,9 +43,9 @@ func (m Model) View() string {
 		cancel := " NO, CANCEL "
 		proceed := " YES, PROCEED "
 		if m.proceedIsSelected {
-			proceed = style.Inverse.Render(proceed)
+			proceed = m.styles.Inverse.Render(proceed)
 		} else {
-			cancel = style.Inverse.Render(cancel)
+			cancel = m.styles.Inverse.Render(cancel)
 		}
 		view := lipgloss.JoinVertical(
 			lipgloss.Center,

@@ -2,6 +2,7 @@ package page
 
 import (
 	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/robinovitch61/kl/internal/style"
 )
 
 type GenericPage interface {
@@ -10,7 +11,8 @@ type GenericPage interface {
 	AllContent() []string
 	HighjackingInput() bool
 	WithDimensions(width, height int) GenericPage
-	Help() string
+	WithStyles(styles style.Styles) GenericPage
+	Help(styles style.Styles) string
 }
 
 type Type int

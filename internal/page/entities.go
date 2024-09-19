@@ -8,6 +8,7 @@ import (
 	"github.com/robinovitch61/kl/internal/filterable_viewport"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/model"
+	"github.com/robinovitch61/kl/internal/style"
 	"strings"
 )
 
@@ -24,6 +25,7 @@ func NewEntitiesPage(
 	keyMap keymap.KeyMap,
 	width, height int,
 	entityTree model.EntityTree,
+	styles style.Styles,
 ) EntityPage {
 	viewWhenEmptyLines := []string{"Subscribing to updates for:"}
 	for _, cns := range entityTree.GetClusterNamespaces() {
@@ -47,6 +49,7 @@ func NewEntitiesPage(
 		height,
 		entityTree.GetEntities(),
 		entityTree.IsVisibleGivenFilter,
+		styles,
 		viewWhenEmpty,
 	)
 	return EntityPage{
@@ -94,7 +97,12 @@ func (p EntityPage) WithDimensions(width, height int) GenericPage {
 	return p
 }
 
-func (p EntityPage) Help() string {
+func (p EntityPage) WithStyles(styles style.Styles) GenericPage {
+	p.filterableViewport = p.filterableViewport.WithStyles(styles)
+	return p
+}
+
+func (p EntityPage) Help(styles style.Styles) string {
 	local := []key.Binding{
 		keymap.WithDesc(p.keyMap.Enter, "select/deselect"),
 		p.keyMap.TogglePause,
@@ -104,6 +112,7 @@ func (p EntityPage) Help() string {
 		"Selection",
 		keymap.GlobalKeyBindings(p.keyMap),
 		local,
+		styles,
 	)
 }
 
