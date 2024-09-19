@@ -1,8 +1,7 @@
 package keymap
 
 import (
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/key"
 	"github.com/robinovitch61/kl/internal/viewport"
 )
 
@@ -60,7 +59,7 @@ var DefaultKeyMap = KeyMap{
 		key.WithHelp("r", "regex filter"),
 	),
 	FilterNextRow: key.NewBinding(
-		key.WithKeys("n", tea.KeyShiftUp.String()),
+		key.WithKeys("n", "shift+up"),
 		key.WithHelp("n", "next filter match"),
 	),
 	FilterPrevRow: key.NewBinding(

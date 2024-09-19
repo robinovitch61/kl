@@ -2,8 +2,8 @@ package page
 
 import (
 	"fmt"
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/key"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/filter"
 	"github.com/robinovitch61/kl/internal/filterable_viewport"

@@ -2,7 +2,7 @@ package command
 
 import (
 	"github.com/atotto/clipboard"
-	tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
 )
 
 type ContentCopiedToClipboardMsg struct {

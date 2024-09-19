@@ -1,7 +1,7 @@
 package page
 
 import (
-	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/v2/key"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/robinovitch61/kl/internal/style"
 )

@@ -6,8 +6,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/key"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/wrap"
 	"github.com/robinovitch61/kl/internal/command"
@@ -64,217 +64,9 @@ func InitialModel(c Config) Model {
 	}
 }
 
-func (m Model) Init() tea.Cmd {
-	return tea.Batch(
-		tea.Tick(constants.BatchUpdateLogsInterval, func(t time.Time) tea.Msg { return message.BatchUpdateLogsMsg{} }),
-		tea.Tick(constants.AttemptMaintainEntitySelectionAfterStartup, func(t time.Time) tea.Msg { return message.StartMaintainEntitySelectionMsg{} }),
-	)
-}
-
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	dev.DebugMsg("App", msg)
-	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
-	)
-
-	switch msg := msg.(type) {
-	case message.CleanupCompleteMsg:
-		return m, tea.Quit
-
-	// #5: The user presses a key. The key could be global, e.g. exit, or handled by the current page. Key presses update
-	// models and can trigger commands to be run. Commands are used to perform background work, e.g. starting a log scanner.
-	case tea.KeyMsg:
-		return m.handleKeyMsg(msg)
-
-	case message.ErrMsg:
-		m.err = msg.Err
-
-	// WindowSizeMsg arrives once on startup, then again every time the window is resized
-	case tea.WindowSizeMsg:
-		m.width, m.height = msg.Width, msg.Height
-		if !m.initialized {
-			m, cmd = m.initialize()
-			cmds = append(cmds, cmd)
-		}
-		m, cmd = m.handleWindowSizeMsg(msg.Width, msg.Height)
-		cmds = append(cmds, cmd)
-		return m, tea.Batch(cmds...)
-
-	case message.AttemptUpdateSinceTimeMsg:
-		m, cmd = m.attemptUpdateSinceTime()
-		cmds = append(cmds, cmd)
-		return m, tea.Batch(cmds...)
-
-	case command.GetContainerListenerMsg:
-		m, cmd = m.handleContainerListenerMsg(msg)
-		cmds = append(cmds, cmd)
-		return m, tea.Batch(cmds...)
-
-	// #3: Receive a batch of container deltas and update the tree accordingly
-	case command.GetContainerDeltasMsg:
-		m, cmd = m.handleContainerDeltasMsg(msg)
-		cmds = append(cmds, cmd)
-		return m, tea.Batch(cmds...)
-
-	// #4: By now, the entity tree should be populated and the user is oriented on the entities page with the selected
-	// (highlighted) entity at the top. From now on, when new entities are added to or removed from the tree, the
-	// selected entity will be maintained so that the user doesn't press enter on the wrong entity. If the selected
-	// entity is removed, the selection will be moved to the next entity in the tree.
-	case message.StartMaintainEntitySelectionMsg:
-		if m.pages[page.EntitiesPageType] != nil {
-			m.pages[page.EntitiesPageType] = m.pages[page.EntitiesPageType].(page.EntityPage).WithMaintainSelection(true)
-		}
-		return m, nil
-
-	// #7: Receive a log scanner for a container. At this point:
-	// - the entity representing the container in the tree will still be pending
-	// - a goroutine will be running that is scanning for container logs and sending them to the scanner's logs chan
-	case command.StartedLogScannerMsg:
-		m, cmd = m.handleStartedLogScannerMsg(msg)
-		cmds = append(cmds, cmd)
-		return m, tea.Batch(cmds...)
-
-	// #8: Receive new logs from a log scanner. Add them to the page log buffer and collect more logs
-	case command.GetNewLogsMsg:
-		m, cmd = m.handleNewLogsMsg(msg)
-		cmds = append(cmds, cmd)
-		return m, tea.Batch(cmds...)
-
-	// #9: Time to update the logs page with the buffered logs and empty the buffer. If paused, no-op
-	case message.BatchUpdateLogsMsg:
-		if len(m.pageLogBuffer) > 0 && !m.pauseState {
-			m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithAppendedLogs(m.pageLogBuffer)
-			m.pageLogBuffer = nil
-		}
-		return m, tea.Tick(constants.BatchUpdateLogsInterval, func(t time.Time) tea.Msg { return message.BatchUpdateLogsMsg{} })
-
-	case command.LogScannersStoppedMsg:
-		m, cmd = m.handleLogScannersStoppedMsg(msg)
-		cmds = append(cmds, cmd)
-		return m, tea.Batch(cmds...)
-
-	case fileio.SaveCompleteMsg:
-		toastMsg := msg.SuccessMessage
-		if toastMsg == "" {
-			toastMsg = msg.ErrMessage
-		}
-		newToast := toast.New(toastMsg)
-		m.toast = newToast
-		cmds = append(cmds, tea.Tick(time.Second*5, func(t time.Time) tea.Msg { return toast.TimeoutMsg{ID: newToast.ID} }))
-		return m, tea.Batch(cmds...)
-
-	case command.ContentCopiedToClipboardMsg:
-		toastMsg := "Copied to clipboard"
-		if msg.Err != nil {
-			toastMsg = fmt.Sprintf("Error copying to clipboard: %s", msg.Err.Error())
-		}
-		newToast := toast.New(toastMsg)
-		m.toast = newToast
-		cmds = append(cmds, tea.Tick(time.Second*5, func(t time.Time) tea.Msg { return toast.TimeoutMsg{ID: newToast.ID} }))
-		return m, tea.Batch(cmds...)
-
-	case message.UpdateSinceTimeTextMsg:
-		if m.sinceTime.Time.IsZero() {
-			return m, nil
-		}
-		cmd = tea.Tick(
-			m.sinceTime.TimeToNextUpdate(),
-			func(t time.Time) tea.Msg { return message.UpdateSinceTimeTextMsg{UUID: m.sinceTime.UUID} },
-		)
-		cmds = append(cmds, cmd)
-		return m, tea.Batch(cmds...)
-
-	case toast.TimeoutMsg:
-		m.toast, cmd = m.toast.Update(msg)
-		cmds = append(cmds, cmd)
-		return m, tea.Batch(cmds...)
-	}
-
-	m.pages[m.currentPageType], cmd = m.pages[m.currentPageType].Update(msg)
-	cmds = append(cmds, cmd)
-	return m, tea.Batch(cmds...)
-}
-
-func (m Model) View() string {
-	if m.err != nil {
-		errString := wrap.String(m.err.Error(), m.width)
-		return lipgloss.JoinVertical(
-			lipgloss.Left,
-			"Error - if this seems wrong, consider opening an issue",
-			"https://github.com/robino61/kl/issues/new",
-			"",
-			"ctrl+c to quit",
-			"",
-			errString,
-		)
-	}
-	if !m.initialized {
-		return ""
-	}
-	topBar := m.topBar()
-	if m.helpText != "" {
-		centeredHelp := lipgloss.Place(m.width, m.height-m.topBarHeight, lipgloss.Center, lipgloss.Center, m.helpText)
-		return lipgloss.JoinVertical(lipgloss.Left, topBar, centeredHelp)
-	}
-	if m.prompt.Visible {
-		return lipgloss.JoinVertical(lipgloss.Left, topBar, m.prompt.View())
-	}
-	viewLines := strings.Split(m.topBar(), "\n")
-	pageView := m.pages[m.currentPageType].View()
-	viewLines = append(viewLines, strings.Split(pageView, "\n")...)
-	if toastHeight := m.toast.ViewHeight(); m.toast.Visible && toastHeight > 0 {
-		viewLines = viewLines[:len(viewLines)-toastHeight]
-		viewLines = append(viewLines, strings.Split(m.toast.View(), "\n")...)
-	}
-	return strings.Join(viewLines, "\n")
-}
-
-func (m Model) topBar() string {
-	padding := "   "
-
-	sinceTimeText := fmt.Sprintf("Logs for the Last %s", util.TimeSince(m.sinceTime.Time))
-	if m.sinceTime.Time.IsZero() {
-		sinceTimeText = "Logs for All Time"
-	}
-
-	var numPending, numSelected int
-	containerEntities := m.entityTree.GetContainerEntities()
-	for _, e := range containerEntities {
-		if e.LogScannerPending {
-			numPending++
-		}
-		if e.IsSelected() {
-			numSelected++
-		}
-	}
-	left := fmt.Sprintf(
-		"kl %s%s%s%s%d/%d/%d Pending/Selected/Total",
-		m.config.Version,
-		padding,
-		sinceTimeText,
-		padding,
-		numPending,
-		numSelected,
-		len(containerEntities),
-	)
-	if m.pauseState {
-		left += padding + style.Inverse.Render("[PAUSED]")
-	}
-
-	right := fmt.Sprintf("%s to quit / %s for help", m.keyMap.Quit.Help().Key, m.keyMap.Help.Help().Key)
-	toJoin := []string{left}
-	if len(left)+len(padding)+len(right) < m.width {
-		toJoin = append(toJoin, right)
-	} else {
-		toJoin = append(toJoin, strings.Repeat(" ", len(right)))
-	}
-	return util.JoinWithEqualSpacing(m.width, toJoin...)
-}
-
-// startup, shutdown, & bubble tea builtin messages
-// ---
-func (m Model) initialize() (Model, tea.Cmd) {
+func (m Model) Init() (tea.Model, tea.Cmd) {
+	// startup, shutdown, & bubble tea builtin messages
+	// ---
 	dev.Debug("initializing")
 	defer dev.Debug("done initializing")
 	dev.Debug("------------")
@@ -444,8 +236,6 @@ func (m Model) initialize() (Model, tea.Cmd) {
 	m.pages[page.LogsPageType] = page.NewLogsPage(m.keyMap, m.width, contentHeight, m.config.Descending)
 	m.pages[page.SingleLogPageType] = page.NewSingleLogPage(m.keyMap, m.width, contentHeight)
 
-	m.initialized = true
-
 	// #1: For each namespace in each cluster, subscribe to pod changes that are mapped into container deltas and
 	// returned to the app. This builds the initial state of the entity tree and keeps it in sync with cluster states.
 	var cmds []tea.Cmd
@@ -462,7 +252,211 @@ func (m Model) initialize() (Model, tea.Cmd) {
 	)
 	cmds = append(cmds, updateSinceTimeTextCmd)
 
+	cmds = append(cmds, tea.Tick(constants.BatchUpdateLogsInterval, func(t time.Time) tea.Msg { return message.BatchUpdateLogsMsg{} }))
+	cmds = append(cmds, tea.Tick(constants.AttemptMaintainEntitySelectionAfterStartup, func(t time.Time) tea.Msg { return message.StartMaintainEntitySelectionMsg{} }))
+
 	return m, tea.Batch(cmds...)
+}
+
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	dev.DebugMsg("App", msg)
+	var (
+		cmd  tea.Cmd
+		cmds []tea.Cmd
+	)
+
+	switch msg := msg.(type) {
+	case message.CleanupCompleteMsg:
+		return m, tea.Quit
+
+	// #5: The user presses a key. The key could be global, e.g. exit, or handled by the current page. Key presses update
+	// models and can trigger commands to be run. Commands are used to perform background work, e.g. starting a log scanner.
+	case tea.KeyMsg:
+		return m.handleKeyMsg(msg)
+
+	case message.ErrMsg:
+		m.err = msg.Err
+
+	// WindowSizeMsg arrives once on startup, then again every time the window is resized
+	case tea.WindowSizeMsg:
+		m.width, m.height = msg.Width, msg.Height
+		if !m.initialized {
+			m.initialized = true
+		}
+		m, cmd = m.handleWindowSizeMsg(msg.Width, msg.Height)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+
+	case message.AttemptUpdateSinceTimeMsg:
+		m, cmd = m.attemptUpdateSinceTime()
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+
+	case command.GetContainerListenerMsg:
+		m, cmd = m.handleContainerListenerMsg(msg)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+
+	// #3: Receive a batch of container deltas and update the tree accordingly
+	case command.GetContainerDeltasMsg:
+		m, cmd = m.handleContainerDeltasMsg(msg)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+
+	// #4: By now, the entity tree should be populated and the user is oriented on the entities page with the selected
+	// (highlighted) entity at the top. From now on, when new entities are added to or removed from the tree, the
+	// selected entity will be maintained so that the user doesn't press enter on the wrong entity. If the selected
+	// entity is removed, the selection will be moved to the next entity in the tree.
+	case message.StartMaintainEntitySelectionMsg:
+		if m.pages[page.EntitiesPageType] != nil {
+			m.pages[page.EntitiesPageType] = m.pages[page.EntitiesPageType].(page.EntityPage).WithMaintainSelection(true)
+		}
+		return m, nil
+
+	// #7: Receive a log scanner for a container. At this point:
+	// - the entity representing the container in the tree will still be pending
+	// - a goroutine will be running that is scanning for container logs and sending them to the scanner's logs chan
+	case command.StartedLogScannerMsg:
+		m, cmd = m.handleStartedLogScannerMsg(msg)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+
+	// #8: Receive new logs from a log scanner. Add them to the page log buffer and collect more logs
+	case command.GetNewLogsMsg:
+		m, cmd = m.handleNewLogsMsg(msg)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+
+	// #9: Time to update the logs page with the buffered logs and empty the buffer. If paused, no-op
+	case message.BatchUpdateLogsMsg:
+		if len(m.pageLogBuffer) > 0 && !m.pauseState {
+			m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithAppendedLogs(m.pageLogBuffer)
+			m.pageLogBuffer = nil
+		}
+		return m, tea.Tick(constants.BatchUpdateLogsInterval, func(t time.Time) tea.Msg { return message.BatchUpdateLogsMsg{} })
+
+	case command.LogScannersStoppedMsg:
+		m, cmd = m.handleLogScannersStoppedMsg(msg)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+
+	case fileio.SaveCompleteMsg:
+		toastMsg := msg.SuccessMessage
+		if toastMsg == "" {
+			toastMsg = msg.ErrMessage
+		}
+		newToast := toast.New(toastMsg)
+		m.toast = newToast
+		cmds = append(cmds, tea.Tick(time.Second*5, func(t time.Time) tea.Msg { return toast.TimeoutMsg{ID: newToast.ID} }))
+		return m, tea.Batch(cmds...)
+
+	case command.ContentCopiedToClipboardMsg:
+		toastMsg := "Copied to clipboard"
+		if msg.Err != nil {
+			toastMsg = fmt.Sprintf("Error copying to clipboard: %s", msg.Err.Error())
+		}
+		newToast := toast.New(toastMsg)
+		m.toast = newToast
+		cmds = append(cmds, tea.Tick(time.Second*5, func(t time.Time) tea.Msg { return toast.TimeoutMsg{ID: newToast.ID} }))
+		return m, tea.Batch(cmds...)
+
+	case message.UpdateSinceTimeTextMsg:
+		if m.sinceTime.Time.IsZero() {
+			return m, nil
+		}
+		cmd = tea.Tick(
+			m.sinceTime.TimeToNextUpdate(),
+			func(t time.Time) tea.Msg { return message.UpdateSinceTimeTextMsg{UUID: m.sinceTime.UUID} },
+		)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+
+	case toast.TimeoutMsg:
+		m.toast, cmd = m.toast.Update(msg)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+	}
+
+	m.pages[m.currentPageType], cmd = m.pages[m.currentPageType].Update(msg)
+	cmds = append(cmds, cmd)
+	return m, tea.Batch(cmds...)
+}
+
+func (m Model) View() string {
+	dev.Debug(fmt.Sprintf("App view, initialized: %t", m.initialized))
+	if m.err != nil {
+		errString := wrap.String(m.err.Error(), m.width)
+		return lipgloss.JoinVertical(
+			lipgloss.Left,
+			"Error - if this seems wrong, consider opening an issue",
+			"https://github.com/robino61/kl/issues/new",
+			"",
+			"ctrl+c to quit",
+			"",
+			errString,
+		)
+	}
+	if !m.initialized {
+		return ""
+	}
+	topBar := m.topBar()
+	if m.helpText != "" {
+		centeredHelp := lipgloss.Place(m.width, m.height-m.topBarHeight, lipgloss.Center, lipgloss.Center, m.helpText)
+		return lipgloss.JoinVertical(lipgloss.Left, topBar, centeredHelp)
+	}
+	if m.prompt.Visible {
+		return lipgloss.JoinVertical(lipgloss.Left, topBar, m.prompt.View())
+	}
+	viewLines := strings.Split(m.topBar(), "\n")
+	pageView := m.pages[m.currentPageType].View()
+	viewLines = append(viewLines, strings.Split(pageView, "\n")...)
+	if toastHeight := m.toast.ViewHeight(); m.toast.Visible && toastHeight > 0 {
+		viewLines = viewLines[:len(viewLines)-toastHeight]
+		viewLines = append(viewLines, strings.Split(m.toast.View(), "\n")...)
+	}
+	return strings.Join(viewLines, "\n")
+}
+
+func (m Model) topBar() string {
+	padding := "   "
+
+	sinceTimeText := fmt.Sprintf("Logs for the Last %s", util.TimeSince(m.sinceTime.Time))
+	if m.sinceTime.Time.IsZero() {
+		sinceTimeText = "Logs for All Time"
+	}
+
+	var numPending, numSelected int
+	containerEntities := m.entityTree.GetContainerEntities()
+	for _, e := range containerEntities {
+		if e.LogScannerPending {
+			numPending++
+		}
+		if e.IsSelected() {
+			numSelected++
+		}
+	}
+	left := fmt.Sprintf(
+		"kl %s%s%s%s%d/%d/%d Pending/Selected/Total",
+		m.config.Version,
+		padding,
+		sinceTimeText,
+		padding,
+		numPending,
+		numSelected,
+		len(containerEntities),
+	)
+	if m.pauseState {
+		left += padding + style.Inverse.Render("[PAUSED]")
+	}
+
+	right := fmt.Sprintf("%s to quit / %s for help", m.keyMap.Quit.Help().Key, m.keyMap.Help.Help().Key)
+	toJoin := []string{left}
+	if len(left)+len(padding)+len(right) < m.width {
+		toJoin = append(toJoin, right)
+	} else {
+		toJoin = append(toJoin, strings.Repeat(" ", len(right)))
+	}
+	return util.JoinWithEqualSpacing(m.width, toJoin...)
 }
 
 func (m Model) handleWindowSizeMsg(width, height int) (Model, tea.Cmd) {
@@ -542,8 +536,7 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// adjust for buffered input from held keys, e.g "kk" or "jjj"
-	msg.Runes = normalizeRunes(msg)
+	// TODO LEO: check if under high load, jjj kkk come in buffered now that v2 can't set the Runes
 
 	// if prompt is visible, only allow prompt actions
 	if m.prompt.Visible {
@@ -1160,21 +1153,6 @@ func (m *Model) markContainerLogsTerminatedInBuffer(container model.Container) {
 			m.pageLogBuffer[i].Terminated = true
 		}
 	}
-}
-
-// normalizeRunes adjusts for buffered key presses
-// under high log/update conditions, bubble tea will buffer key presses, so KeyMsg's arrive as e.g. "jjj" or
-// "kk" if the user is holding those keys down. This doesn't seem to happen for up/down keys
-func normalizeRunes(msg tea.KeyMsg) []rune {
-	if len(msg.Runes) > 1 {
-		if strings.Trim(msg.String(), "j") == "" {
-			return []rune{'j'}
-		}
-		if strings.Trim(msg.String(), "k") == "" {
-			return []rune{'k'}
-		}
-	}
-	return msg.Runes
 }
 
 func getLookbackMins(keyString string) int {

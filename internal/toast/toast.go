@@ -1,7 +1,7 @@
 package toast
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/robinovitch61/kl/internal/dev"
 	"sync"

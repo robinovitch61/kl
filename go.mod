@@ -6,8 +6,9 @@ require (
 	github.com/atotto/clipboard v0.1.4
 	github.com/carlmjohnson/versioninfo v0.22.5
 	github.com/charmbracelet/bubbles v0.18.0
-	github.com/charmbracelet/bubbletea v0.25.0
-	github.com/charmbracelet/lipgloss v0.10.0
+	github.com/charmbracelet/bubbles/v2 v2.0.0-alpha.1
+	github.com/charmbracelet/bubbletea/v2 v2.0.0-alpha.1
+	github.com/charmbracelet/lipgloss v0.13.0
 	github.com/emirpasic/gods v1.18.1
 	github.com/google/uuid v1.4.0
 	github.com/muesli/reflow v0.3.0
@@ -23,6 +24,10 @@ require (
 
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
+	github.com/charmbracelet/bubbletea v0.25.0 // indirect
+	github.com/charmbracelet/x/ansi v0.3.2 // indirect
+	github.com/charmbracelet/x/term v0.2.0 // indirect
+	github.com/charmbracelet/x/windows v0.2.0 // indirect
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
@@ -46,11 +51,11 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
-	github.com/mattn/go-runewidth v0.0.15 // indirect
+	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	github.com/muesli/ansi v0.0.0-20211018074035-2e021307bc4b // indirect
+	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
@@ -62,13 +67,14 @@ require (
 	github.com/spf13/cast v1.6.0 // indirect
 	github.com/stretchr/testify v1.9.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
+	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
 	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/oauth2 v0.15.0 // indirect
-	golang.org/x/sync v0.6.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/sync v0.8.0 // indirect
+	golang.org/x/sys v0.25.0 // indirect
 	golang.org/x/term v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect

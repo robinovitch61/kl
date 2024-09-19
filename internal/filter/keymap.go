@@ -1,7 +1,7 @@
 package filter
 
 import (
-	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/v2/key"
 )
 
 type filterKeyMap struct {

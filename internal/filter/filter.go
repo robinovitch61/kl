@@ -2,10 +2,10 @@ package filter
 
 import (
 	"fmt"
-	"github.com/charmbracelet/bubbles/cursor"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/cursor"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/textinput"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/keymap"
