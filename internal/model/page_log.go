@@ -18,7 +18,7 @@ type PageLogTimestamps struct {
 
 type PageLog struct {
 	Log              Log
-	Color            string
+	Color            lipgloss.Color
 	ContainerNames   PageLogContainerNames
 	CurrentName      string
 	Timestamps       PageLogTimestamps
@@ -33,7 +33,7 @@ func (l PageLog) Render() string {
 	}
 	label := ""
 	if l.CurrentName != "" {
-		currentName := lipgloss.NewStyle().Foreground(lipgloss.Color(l.Color)).Render(l.CurrentName)
+		currentName := lipgloss.NewStyle().Foreground(l.Color).Render(l.CurrentName)
 		if ts == "" {
 			label = "|" + currentName + "|"
 		} else {

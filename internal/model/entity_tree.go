@@ -476,6 +476,7 @@ func (et *entityTreeImpl) GetEntity(container Container) *Entity {
 }
 
 func (et *entityTreeImpl) UpdatePrettyPrintPrefixes(filter filter.Model) {
+	// TODO: consider using lipgloss's tree functionality
 	allEntities := et.GetEntities()
 	var visibleEntities []Entity
 	for _, entity := range allEntities {

@@ -192,7 +192,13 @@ func (m Model[T]) View() string {
 		contentViewLine := m.getVisiblePartOfLine(line)
 
 		if isSelected && contentViewLine == "" {
+			// ensure the selected line is still visible if it's empty
 			contentViewLine = " "
+		}
+
+		// TODO LEO: remove
+		if isSelected {
+			dev.Debug(fmt.Sprintf("Selected line: %s", lineStyle.Render(contentViewLine)))
 		}
 
 		if hasNoHighlight {

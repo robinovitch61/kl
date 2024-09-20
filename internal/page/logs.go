@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/filter"
 	"github.com/robinovitch61/kl/internal/filterable_viewport"
@@ -178,7 +179,7 @@ func (p LogsPage) WithAppendedLogs(logs []model.PageLog) LogsPage {
 	return p
 }
 
-func (p LogsPage) WithContainerColors(containerIdToColor map[string]string) LogsPage {
+func (p LogsPage) WithContainerColors(containerIdToColor map[string]lipgloss.Color) LogsPage {
 	allLogs := p.logContainer.GetOrderedLogs()
 	for i := range allLogs {
 		color, ok := containerIdToColor[allLogs[i].Log.Container.ID()]

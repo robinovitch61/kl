@@ -45,7 +45,7 @@ type Model struct {
 	err                  error
 	entityTree           model.EntityTree
 	containerToShortName func(model.Container) (string, error)
-	containerIdToColor   map[string]string
+	containerIdToColor   map[string]lipgloss.Color
 	pageLogBuffer        []model.PageLog
 	client               k8s.Client
 	cancel               context.CancelFunc
@@ -1060,7 +1060,7 @@ func (m Model) handleNewLogsMsg(msg command.GetNewLogsMsg) (Model, tea.Cmd) {
 				return m, nil
 			}
 		}
-		var color string
+		var color lipgloss.Color
 		if m.containerIdToColor != nil {
 			color = m.containerIdToColor[log.Container.ID()]
 		}
@@ -1133,9 +1133,9 @@ func (m Model) doUpdateSinceTime() (Model, tea.Cmd) {
 func (m Model) withUpdatedContainerShortNames() Model {
 	containers := m.entityTree.GetContainerEntities()
 	newColors := colorful.FastHappyPalette(len(containers))
-	m.containerIdToColor = make(map[string]string)
+	m.containerIdToColor = make(map[string]lipgloss.Color)
 	for i, containerEntity := range containers {
-		m.containerIdToColor[containerEntity.Container.ID()] = newColors[i].Hex()
+		m.containerIdToColor[containerEntity.Container.ID()] = lipgloss.Color(newColors[i].Hex())
 	}
 	m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithContainerColors(m.containerIdToColor)
 
