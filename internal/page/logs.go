@@ -178,6 +178,18 @@ func (p LogsPage) WithAppendedLogs(logs []model.PageLog) LogsPage {
 	return p
 }
 
+func (p LogsPage) WithContainerColors(containerIdToColor map[string]string) LogsPage {
+	allLogs := p.logContainer.GetOrderedLogs()
+	for i := range allLogs {
+		color, ok := containerIdToColor[allLogs[i].Log.Container.ID()]
+		if ok {
+			allLogs[i].Color = color
+		}
+	}
+	p.setLogs(allLogs)
+	return p
+}
+
 func (p LogsPage) WithUpdatedShortNames(f func(model.Container) (string, error)) (LogsPage, error) {
 	allLogs := p.logContainer.GetOrderedLogs()
 	for i := range allLogs {

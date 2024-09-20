@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lucasb-eyer/go-colorful"
 	"github.com/muesli/reflow/wrap"
 	"github.com/robinovitch61/kl/internal/command"
 	"github.com/robinovitch61/kl/internal/constants"
@@ -44,6 +45,7 @@ type Model struct {
 	err                  error
 	entityTree           model.EntityTree
 	containerToShortName func(model.Container) (string, error)
+	containerIdToColor   map[string]string
 	pageLogBuffer        []model.PageLog
 	client               k8s.Client
 	cancel               context.CancelFunc
@@ -1058,9 +1060,14 @@ func (m Model) handleNewLogsMsg(msg command.GetNewLogsMsg) (Model, tea.Cmd) {
 				return m, nil
 			}
 		}
+		var color string
+		if m.containerIdToColor != nil {
+			color = m.containerIdToColor[log.Container.ID()]
+		}
 		localTime := log.Timestamp.Local()
 		newLog := model.PageLog{
-			Log: log,
+			Log:   log,
+			Color: color,
 			ContainerNames: model.PageLogContainerNames{
 				Short: shortName,
 				Full:  log.Container.HumanReadable(),
@@ -1124,6 +1131,14 @@ func (m Model) doUpdateSinceTime() (Model, tea.Cmd) {
 // withUpdatedContainerShortNames updates the container short names in the entity tree and logs page
 // it should be called every time the set of active containers changes
 func (m Model) withUpdatedContainerShortNames() Model {
+	containers := m.entityTree.GetContainerEntities()
+	newColors := colorful.FastHappyPalette(len(containers))
+	m.containerIdToColor = make(map[string]string)
+	for i, containerEntity := range containers {
+		m.containerIdToColor[containerEntity.Container.ID()] = newColors[i].Hex()
+	}
+	m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithContainerColors(m.containerIdToColor)
+
 	m.containerToShortName = m.entityTree.ContainerToShortName(constants.MinCharsEachSideShortNames)
 	newLogsPage, err := m.pages[page.LogsPageType].(page.LogsPage).WithUpdatedShortNames(m.containerToShortName)
 	if err != nil {
