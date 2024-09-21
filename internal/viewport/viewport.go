@@ -733,5 +733,5 @@ func splitLineIntoSizedChunks(line string, chunkSize int) []string {
 // stringWidth is a function in case in the future something like utf8.RuneCountInString or lipgloss.Width is better
 func stringWidth(s string) int {
 	// NOTE: lipgloss.Width is significantly less performant than len
-	return len(s)
+	return lipgloss.Width(s)
 }
