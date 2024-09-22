@@ -12,21 +12,25 @@ import (
 
 // Model represents a viewport component
 type Model[T RenderableComparable] struct {
-	KeyMap                    KeyMap
-	LineContinuationIndicator string
-	BackgroundStyle           lipgloss.Style
-	HeaderStyle               lipgloss.Style
-	SelectedContentStyle      lipgloss.Style
-	HighlightStyle            lipgloss.Style
-	HighlightStyleIfSelected  lipgloss.Style
-	ContentStyle              lipgloss.Style
-	FooterStyle               lipgloss.Style
+	// public
+	KeyMap               KeyMap
+	FooterStyle          lipgloss.Style
+	HighlightStyle       lipgloss.Style
+	SelectedContentStyle lipgloss.Style
 
-	header                       []string
-	wrappedHeader                []string
-	content                      []T
-	wrappedContent               []string
+	header         []string
+	wrappedHeader  []string
+	content        []T
+	wrappedContent []string
+
+	lineContinuationIndicator    string
 	lenLineContinuationIndicator int
+
+	// styles
+	contentStyle             lipgloss.Style
+	headerStyle              lipgloss.Style
+	highlightStyleIfSelected lipgloss.Style
+	backgroundStyle          lipgloss.Style
 
 	// if topSticky/bottomSticky is true and selection is enabled, selection remains at top/bottom until scroll down/up
 	topSticky    bool
@@ -74,8 +78,8 @@ func New[T RenderableComparable](width, height int) (m Model[T]) {
 	m.wrapText = false
 
 	m.KeyMap = DefaultKeyMap()
-	m.LineContinuationIndicator = "..."
-	m.lenLineContinuationIndicator = stringWidth(m.LineContinuationIndicator)
+	m.lineContinuationIndicator = "..."
+	m.lenLineContinuationIndicator = stringWidth(m.lineContinuationIndicator)
 	return m
 }
 
@@ -177,7 +181,7 @@ func (m Model[T]) View() string {
 
 	for _, headerLine := range header {
 		headerViewLine := m.getVisiblePartOfLine(headerLine)
-		addLineToViewString(m.HeaderStyle.Render(headerViewLine))
+		addLineToViewString(m.headerStyle.Render(headerViewLine))
 	}
 
 	hasNoHighlight := stringWidth(m.stringToHighlight) == 0
@@ -185,7 +189,7 @@ func (m Model[T]) View() string {
 		contentIdx := m.getContentIdx(m.yOffset + idx)
 		isSelected := m.selectionEnabled && contentIdx == m.selectedContentIdx
 
-		lineStyle := m.ContentStyle
+		lineStyle := m.contentStyle
 		if isSelected {
 			lineStyle = m.SelectedContentStyle
 		}
@@ -202,7 +206,7 @@ func (m Model[T]) View() string {
 			// so only do it if something is actually highlighted
 			highlightStyle := m.HighlightStyle
 			if isSelected {
-				highlightStyle = m.HighlightStyleIfSelected
+				highlightStyle = m.highlightStyleIfSelected
 			}
 			lineChunks := strings.Split(contentViewLine, m.stringToHighlight)
 			var styledChunks []string
@@ -219,7 +223,7 @@ func (m Model[T]) View() string {
 		viewString += strings.Repeat("\n", padCount)
 		viewString += footerString
 	}
-	renderedViewString := m.BackgroundStyle.Width(m.width).Height(m.height).Render(viewString)
+	renderedViewString := m.backgroundStyle.Width(m.width).Height(m.height).Render(viewString)
 
 	return renderedViewString
 }
@@ -625,10 +629,10 @@ func (m Model[T]) getVisiblePartOfLine(line string) string {
 	line = line[start:end]
 	if m.xOffset+m.width < rightTrimmedLineLength {
 		truncate := max(0, stringWidth(line)-m.lenLineContinuationIndicator)
-		line = line[:truncate] + m.LineContinuationIndicator
+		line = line[:truncate] + m.lineContinuationIndicator
 	}
 	if m.xOffset > 0 {
-		line = m.LineContinuationIndicator + line[min(stringWidth(line), m.lenLineContinuationIndicator):]
+		line = m.lineContinuationIndicator + line[min(stringWidth(line), m.lenLineContinuationIndicator):]
 	}
 	return line
 }
