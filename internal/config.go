@@ -9,6 +9,7 @@ type Config struct {
 	KeyMap         keymap.KeyMap
 	AllNamespaces  bool
 	Descending     bool
+	ExtraOwnerRefs []string
 	KubeConfigPath string
 	LogsView       bool
 	Contexts       string

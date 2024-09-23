@@ -19,7 +19,7 @@ import (
 // Client is an interface for interacting with a Kubernetes cluster
 type Client interface {
 	// GetContainerListener returns a listener that emits container deltas for a given cluster and namespace
-	GetContainerListener(cluster, namespace string, selectors model.Selectors) (model.ContainerListener, error)
+	GetContainerListener(cluster, namespace string, selectors model.Selectors, extraOwnerRefs []string) (model.ContainerListener, error)
 
 	// CollectContainerDeltasForDuration collects container deltas from a listener for a given duration
 	CollectContainerDeltasForDuration(listener model.ContainerListener, duration time.Duration) (model.ContainerDeltaSet, error)
@@ -47,6 +47,7 @@ func (c clientImpl) GetContainerListener(
 	cluster,
 	namespace string,
 	selectors model.Selectors,
+	extraOwnerRefs []string,
 ) (model.ContainerListener, error) {
 	deltaChan := make(chan model.ContainerDelta, 100)
 	stopChan := make(chan struct{})
@@ -66,7 +67,7 @@ func (c clientImpl) GetContainerListener(
 			if !ok {
 				return
 			}
-			deltas := getContainerDeltas(pod, cluster, false, selectors)
+			deltas := getContainerDeltas(pod, cluster, false, selectors, extraOwnerRefs)
 			for _, delta := range deltas {
 				dev.Debug(fmt.Sprintf("listener add container %s, state %s", delta.Container.HumanReadable(), delta.Container.Status.State))
 				deltaChan <- delta
@@ -77,7 +78,7 @@ func (c clientImpl) GetContainerListener(
 			if !ok {
 				return
 			}
-			deltas := getContainerDeltas(pod, cluster, false, selectors)
+			deltas := getContainerDeltas(pod, cluster, false, selectors, extraOwnerRefs)
 			for _, delta := range deltas {
 				dev.Debug(fmt.Sprintf("listener update container %s, state %s", delta.Container.HumanReadable(), delta.Container.Status.State))
 				deltaChan <- delta
@@ -88,7 +89,7 @@ func (c clientImpl) GetContainerListener(
 			if !ok {
 				return
 			}
-			deltas := getContainerDeltas(pod, cluster, true, selectors)
+			deltas := getContainerDeltas(pod, cluster, true, selectors, extraOwnerRefs)
 
 			// sometimes the listener will receive a delete event for pods whose container statuses are not terminated
 			// since we keep these around for a while, manually override the status to terminated
@@ -197,13 +198,19 @@ func (c clientImpl) GetLogStream(
 	return scanner, cancel, nil
 }
 
-func getContainerDeltas(pod *corev1.Pod, cluster string, delete bool, selectors model.Selectors) []model.ContainerDelta {
+func getContainerDeltas(
+	pod *corev1.Pod,
+	cluster string,
+	delete bool,
+	selectors model.Selectors,
+	extraOwnerRefs []string,
+) []model.ContainerDelta {
 	if pod == nil {
 		return nil
 	}
 	now := time.Now()
 	var deltas []model.ContainerDelta
-	containers := getContainers(*pod, cluster)
+	containers := getContainers(*pod, cluster, extraOwnerRefs)
 	for i := range containers {
 		// calculate if the container is selected here in the async loop in case it gets expensive
 		selected := selectors.SelectContainer(containers[i])
@@ -213,10 +220,10 @@ func getContainerDeltas(pod *corev1.Pod, cluster string, delete bool, selectors 
 	return deltas
 }
 
-func getContainers(pod corev1.Pod, cluster string) []model.Container {
+func getContainers(pod corev1.Pod, cluster string, extraOwnerRefs []string) []model.Container {
 	var containers []model.Container
 
-	deploymentName := getDeploymentName(pod)
+	deploymentName := getDeploymentName(pod, extraOwnerRefs)
 	if deploymentName == "" {
 		dev.Debug(fmt.Sprintf("skipping pod %+v", pod))
 		return containers
@@ -237,15 +244,24 @@ func getContainers(pod corev1.Pod, cluster string) []model.Container {
 	return containers
 }
 
-func getDeploymentName(pod corev1.Pod) string {
-	for _, ownerRef := range pod.OwnerReferences {
-		if ownerRef.Kind == "ReplicaSet" {
+func getDeploymentName(pod corev1.Pod, extraOwnerRefs []string) string {
+	for _, ownerRef := range append([]string{"ReplicaSet"}, extraOwnerRefs...) {
+		if deploymentName := getDeploymentNameFromOwnerRef(pod, ownerRef); deploymentName != "" {
+			return deploymentName
+		}
+	}
+	return ""
+}
+
+func getDeploymentNameFromOwnerRef(pod corev1.Pod, ownerRef string) string {
+	for _, or := range pod.OwnerReferences {
+		if or.Kind == ownerRef {
 			// assume naming convention <deployment-name>-<replica-set-hash>
-			parts := strings.Split(ownerRef.Name, "-")
+			parts := strings.Split(or.Name, "-")
 			if len(parts) > 1 {
 				return strings.Join(parts[:len(parts)-1], "-")
 			}
-			return ownerRef.Name
+			return or.Name
 		}
 	}
 	return ""
