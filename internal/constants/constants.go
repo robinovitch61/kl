@@ -50,8 +50,9 @@ const NewContainerThreshold = 3 * time.Minute
 // InitialLookbackMins controls the initial number of minutes to look back in logs
 var InitialLookbackMins = 1
 
-// AttemptMaintainEntitySelectionAfterStartup controls how long to delay after startup before attempting to maintain
-// the currently selected Entity in the tree. The thinking goes that the tree may not be fully populated yet and the
-// user won't even have time to orient themselves and then the selection is somewhere in the middle of the tree. But
-// after a short amount of time, they will have actively selected something and we can try to maintain that selection
-var AttemptMaintainEntitySelectionAfterStartup = 1 * time.Second
+// AttemptMaintainEntitySelectionAfterFirstContainer controls how long to delay after the first container before
+// attempting to maintain the currently selected Entity in the tree. The thinking goes that the tree may not be fully
+// populated yet and the user won't even have time to orient themselves and then the selection is somewhere in the
+// middle of the tree. But after a short amount of time, they will have actively selected something and we can try to
+// maintain that selection
+var AttemptMaintainEntitySelectionAfterFirstContainer = 1 * time.Second

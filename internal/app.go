@@ -38,6 +38,7 @@ type Model struct {
 	allClusterNamespaces []model.ClusterNamespaces
 	width, height        int
 	initialized          bool
+	seenFirstContainer   bool
 	toast                toast.Model
 	prompt               prompt.Model
 	whenPromptConfirm    func() (Model, tea.Cmd)
@@ -67,7 +68,6 @@ func InitialModel(c Config) Model {
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		tea.Tick(constants.BatchUpdateLogsInterval, func(t time.Time) tea.Msg { return message.BatchUpdateLogsMsg{} }),
-		tea.Tick(constants.AttemptMaintainEntitySelectionAfterStartup, func(t time.Time) tea.Msg { return message.StartMaintainEntitySelectionMsg{} }),
 	)
 }
 
@@ -877,6 +877,12 @@ func (m Model) handleContainerDeltasMsg(msg command.GetContainerDeltasMsg) (Mode
 	}
 
 	existingContainerEntities := m.entityTree.GetContainerEntities()
+
+	if len(existingContainerEntities) == 0 && !m.seenFirstContainer {
+		cmds = append(cmds, tea.Tick(constants.AttemptMaintainEntitySelectionAfterFirstContainer, func(t time.Time) tea.Msg { return message.StartMaintainEntitySelectionMsg{} }))
+		m.seenFirstContainer = true
+	}
+
 	for _, delta := range msg.DeltaSet.OrderedDeltas() {
 		if delta.ToDelete {
 			// #10b: if a container delta indicates the container is deleted, remove it from the tree
