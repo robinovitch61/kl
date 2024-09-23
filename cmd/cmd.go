@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/viper"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -46,6 +47,10 @@ var (
 			cfgFileEnvVar: "desc",
 			description:   `If present, start with logs in descending order by timestamp. Default false`,
 			isBool:        true,
+		},
+		"extra-owner-refs": {
+			cfgFileEnvVar: "extra-owner-refs",
+			description:   `Comma-separated list of extra owner ref types to include. Defaults to only ReplicaSet.`,
 		},
 		"help": {
 			description: `Print usage`,
@@ -135,6 +140,7 @@ func init() {
 		"all-namespaces",
 		"context",
 		"desc",
+		"extra-owner-refs",
 		"kubeconfig",
 		"logs-view",
 		"mc",
@@ -231,6 +237,10 @@ func getDescending(cmd *cobra.Command) bool {
 	return cmd.Flags().Lookup("desc").Value.String() == "true"
 }
 
+func getExtraOwnerRefs(cmd *cobra.Command) []string {
+	return strings.Split(cmd.Flags().Lookup("extra-owner-refs").Value.String(), ",")
+}
+
 func getLogsView(cmd *cobra.Command) bool {
 	return cmd.Flags().Lookup("logs-view").Value.String() == "true"
 }
@@ -283,6 +293,7 @@ func getConfig(cmd *cobra.Command) internal.Config {
 		AllNamespaces:  getAllNamespaces(cmd),
 		Contexts:       getKubeContexts(cmd),
 		Descending:     getDescending(cmd),
+		ExtraOwnerRefs: getExtraOwnerRefs(cmd),
 		KubeConfigPath: getKubeConfigPath(cmd),
 		LogsView:       getLogsView(cmd),
 		Namespaces:     getNamespaces(cmd),

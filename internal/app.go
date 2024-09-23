@@ -451,7 +451,13 @@ func (m Model) initialize() (Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	for _, clusterNamespaces := range m.allClusterNamespaces {
 		for _, namespace := range clusterNamespaces.Namespaces {
-			cmds = append(cmds, command.GetContainerListenerCmd(m.client, clusterNamespaces.Cluster, namespace, m.config.Selectors))
+			cmds = append(cmds, command.GetContainerListenerCmd(
+				m.client,
+				clusterNamespaces.Cluster,
+				namespace,
+				m.config.Selectors,
+				m.config.ExtraOwnerRefs,
+			))
 		}
 	}
 
