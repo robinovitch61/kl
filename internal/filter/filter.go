@@ -3,7 +3,6 @@ package filter
 import (
 	"fmt"
 	"github.com/charmbracelet/bubbles/cursor"
-	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -63,17 +62,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	// update regexp based on filter text
 	m.updateRegexp()
-
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		if m.FilteringWithContext && !m.Focused() && m.HasFilterText() && len(m.indexesMatchingFilter) > 0 {
-			if key.Matches(msg, m.KeyMap.FilterNextRow) {
-				m.incrementFilteredSelectionNum()
-			} else if key.Matches(msg, m.KeyMap.FilterPrevRow) {
-				m.decrementFilteredSelectionNum()
-			}
-		}
-	}
 
 	return m, tea.Batch(cmds...)
 }
@@ -207,6 +195,13 @@ func (m *Model) SetFilteringWithContext(filteringWithContext bool) {
 	m.UpdateLabelAndSuffix()
 }
 
+func (m *Model) ResetContextualFilterMatchNum() {
+	if !m.FilteringWithContext {
+		return
+	}
+	m.currentMatchNum = 0
+}
+
 func (m *Model) SetIndexesMatchingFilter(indexes []int) {
 	m.indexesMatchingFilter = indexes
 	m.UpdateLabelAndSuffix()
@@ -243,26 +238,22 @@ func (m *Model) updateRegexp() {
 	}
 }
 
-func (m *Model) incrementFilteredSelectionNum() {
+func (m *Model) IncrementFilteredSelectionNum() {
+	m.changeFilteredSelectionNum(1)
+}
+
+func (m *Model) DecrementFilteredSelectionNum() {
+	m.changeFilteredSelectionNum(-1)
+}
+
+func (m *Model) changeFilteredSelectionNum(delta int) {
 	if len(m.indexesMatchingFilter) == 0 {
 		return
 	}
-	m.currentMatchNum++
+	m.currentMatchNum += delta
 	if m.currentMatchNum >= len(m.indexesMatchingFilter) {
 		m.currentMatchNum = 0
 	} else if m.currentMatchNum < 0 {
-		m.currentMatchNum = 0
-	}
-}
-
-func (m *Model) decrementFilteredSelectionNum() {
-	if len(m.indexesMatchingFilter) == 0 {
-		return
-	}
-	m.currentMatchNum--
-	if m.currentMatchNum < 0 {
-		m.currentMatchNum = len(m.indexesMatchingFilter) - 1
-	} else if m.currentMatchNum >= len(m.indexesMatchingFilter) {
 		m.currentMatchNum = len(m.indexesMatchingFilter) - 1
 	}
 }
