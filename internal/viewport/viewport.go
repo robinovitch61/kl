@@ -10,6 +10,22 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// Terminology:
+//
+// no wrap:
+// ```                       content index   line index
+// this is the first line    0               0
+// this is the second line   1               1
+// ```
+//
+// wrap:
+// ```           content index   line index
+// this is the   0               1
+// first line    0               2
+// this is the   1               3
+// second line   1               4
+// ```
+
 // Model represents a viewport component
 type Model[T RenderableComparable] struct {
 	// public

@@ -29,7 +29,9 @@ func pad(width, height int, lines []string) string {
 	for _, line := range lines {
 		resLine := line
 		numSpaces := width - len(line)
-		resLine += strings.Repeat(" ", numSpaces)
+		if numSpaces > 0 {
+			resLine += strings.Repeat(" ", numSpaces)
+		}
 		res = append(res, resLine)
 	}
 	numEmptyLines := height - len(lines)
@@ -43,6 +45,18 @@ func TestPad(t *testing.T) {
 	width, height := 5, 4
 	lines := []string{"a", "b", "c"}
 	expected := `a    
+b    
+c    
+     `
+	if diff := cmp.Diff(expected, pad(width, height, lines)); diff != "" {
+		t.Errorf("Mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestPad_OverflowWidth(t *testing.T) {
+	width, height := 5, 4
+	lines := []string{"123456", "b", "c"}
+	expected := `123456
 b    
 c    
      `
@@ -79,7 +93,7 @@ func TestViewport_SelectionDisabled_WrapOff_Basic(t *testing.T) {
 	})
 	expectedView := pad(w, h, []string{
 		"first line",
-		"second line",
+		"\\x1b[38;2;255;0;0msecond line",
 	})
 	if diff := cmp.Diff(expectedView, vp.View()); diff != "" {
 		t.Errorf("Mismatch (-want +got):\n%s", diff)
@@ -170,6 +184,10 @@ func TestViewport_SelectionDisabled_WrapOff_Scrolling(t *testing.T) {
 	// scrolling down past bottom is no-op
 	vp, _ = vp.Update(downKeyMsg)
 	compare(t, expectedView, vp.View())
+}
+
+func TestViewport_SelectionDisabled_WrapOff_Panning(t *testing.T) {
+	t.Errorf("TODO")
 }
 
 // # SELECTION DISABLED, WRAP ON
