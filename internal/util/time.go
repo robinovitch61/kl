@@ -6,8 +6,10 @@ import (
 )
 
 func TimeSince(t time.Time) string {
-	duration := time.Since(t)
+	return FormatDuration(time.Since(t))
+}
 
+func FormatDuration(duration time.Duration) string {
 	seconds := int(duration.Seconds())
 	minutes := seconds / 60
 	hours := minutes / 60

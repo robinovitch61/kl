@@ -19,8 +19,8 @@ func TestContainerDeltaSetAdd(t *testing.T) {
 		Container: Container{
 			Cluster: "cluster1", Namespace: "ns1", Deployment: "dep1", Pod: "pod1", Name: "container1",
 			Status: ContainerStatus{
-				State:        ContainerRunning,
-				RunningSince: now,
+				State:     ContainerRunning,
+				StartedAt: now,
 			},
 		},
 		ToDelete: false,
@@ -36,8 +36,8 @@ func TestContainerDeltaSetAdd(t *testing.T) {
 		Container: Container{
 			Cluster: "cluster1", Namespace: "ns1", Deployment: "dep1", Pod: "pod1", Name: "container2",
 			Status: ContainerStatus{
-				State:        ContainerTerminated,
-				RunningSince: now.Add(-1 * time.Hour), // Terminated 1 hour ago
+				State:     ContainerTerminated,
+				StartedAt: now.Add(-1 * time.Hour), // Terminated 1 hour ago
 			},
 		},
 		ToDelete: true,
@@ -60,8 +60,8 @@ func TestContainerDeltaSetOrderedDeltas(t *testing.T) {
 		Container: Container{
 			Cluster: "cluster1", Namespace: "ns1", Deployment: "dep1", Pod: "pod1", Name: "container1",
 			Status: ContainerStatus{
-				State:        ContainerRunning,
-				RunningSince: now,
+				State:     ContainerRunning,
+				StartedAt: now,
 			},
 		},
 		ToDelete: false,
@@ -72,8 +72,8 @@ func TestContainerDeltaSetOrderedDeltas(t *testing.T) {
 		Container: Container{
 			Cluster: "cluster1", Namespace: "ns1", Deployment: "dep1", Pod: "pod1", Name: "container1",
 			Status: ContainerStatus{
-				State:        ContainerUnknown,
-				RunningSince: time.Time{},
+				State:     ContainerUnknown,
+				StartedAt: time.Time{},
 			},
 		},
 		ToDelete: false,
@@ -83,8 +83,8 @@ func TestContainerDeltaSetOrderedDeltas(t *testing.T) {
 		Container: Container{
 			Cluster: "cluster1", Namespace: "ns1", Deployment: "dep1", Pod: "pod1", Name: "container2",
 			Status: ContainerStatus{
-				State:        ContainerWaiting,
-				RunningSince: time.Time{},
+				State:     ContainerWaiting,
+				StartedAt: time.Time{},
 			},
 		},
 		ToDelete: true,
