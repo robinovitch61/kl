@@ -95,7 +95,7 @@ func (c clientImpl) GetContainerListener(
 			// since we keep these around for a while, manually override the status to terminated
 			for i := range deltas {
 				deltas[i].Container.Status.State = model.ContainerTerminated
-				deltas[i].Container.Status.RunningSince = time.Time{}
+				deltas[i].Container.Status.StartedAt = time.Time{}
 			}
 
 			for _, delta := range deltas {
@@ -275,14 +275,25 @@ func getStatus(podContainerStatuses []v1.ContainerStatus, containerName string) 
 				return model.ContainerStatus{}, err
 			}
 
-			var runningSince time.Time
-			if state == model.ContainerRunning {
-				runningSince = status.State.Running.StartedAt.Time
+			var startedAt time.Time
+			var terminatedAt time.Time
+			var waitingFor string
+			if state == model.ContainerRunning && status.State.Running != nil {
+				startedAt = status.State.Running.StartedAt.Time
+			}
+			if state == model.ContainerTerminated && status.State.Terminated != nil {
+				startedAt = status.State.Terminated.StartedAt.Time
+				terminatedAt = status.State.Terminated.FinishedAt.Time
+			}
+			if state == model.ContainerWaiting && status.State.Waiting != nil {
+				waitingFor = status.State.Waiting.Reason
 			}
 
 			return model.ContainerStatus{
 				State:        state,
-				RunningSince: runningSince,
+				StartedAt:    startedAt,
+				TerminatedAt: terminatedAt,
+				WaitingFor:   waitingFor,
 			}, nil
 		}
 	}

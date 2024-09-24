@@ -4,7 +4,9 @@ import "time"
 
 type ContainerStatus struct {
 	State        ContainerState
-	RunningSince time.Time
+	StartedAt    time.Time
+	TerminatedAt time.Time
+	WaitingFor   string
 }
 
 type ContainerState int
