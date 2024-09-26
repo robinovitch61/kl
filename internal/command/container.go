@@ -16,11 +16,11 @@ type GetContainerListenerMsg struct {
 func GetContainerListenerCmd(
 	client k8s.Client,
 	cluster, namespace string,
-	selectors model.Selectors,
+	matchers model.Matchers,
 	extraOwnerRefs []string,
 ) tea.Cmd {
 	return func() tea.Msg {
-		listener, err := client.GetContainerListener(cluster, namespace, selectors, extraOwnerRefs)
+		listener, err := client.GetContainerListener(cluster, namespace, matchers, extraOwnerRefs)
 		if err != nil {
 			return GetContainerListenerMsg{
 				Err: fmt.Errorf("error subscribing to cluster %s, namespace %s: %v", cluster, namespace, err),

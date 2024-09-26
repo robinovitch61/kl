@@ -1,20 +1,18 @@
 package internal
 
 import (
-	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/model"
 )
 
 type Config struct {
-	KeyMap         keymap.KeyMap
 	AllNamespaces  bool
+	Contexts       string
 	Descending     bool
 	ExtraOwnerRefs []string
 	KubeConfigPath string
 	LogsView       bool
-	Contexts       string
+	Matchers       model.Matchers
 	Namespaces     string
 	SinceTime      model.SinceTime
-	Selectors      model.Selectors
 	Version        string
 }
