@@ -17,6 +17,13 @@ var (
 	red        = lipgloss.Color("#ff0000")
 )
 
+func renderer() *lipgloss.Renderer {
+	r := lipgloss.NewRenderer(io.Discard)
+	r.SetColorProfile(termenv.TrueColor)
+	r.SetHasDarkBackground(true)
+	return r
+}
+
 // pad pads the given lines to the given width and height.
 // for example, pad(5, 4, []string{"a", "b", "c"}) will be padded to:
 // "a    "
@@ -28,7 +35,7 @@ func pad(width, height int, lines []string) string {
 	var res []string
 	for _, line := range lines {
 		resLine := line
-		numSpaces := width - len(line)
+		numSpaces := width - lipgloss.Width(line)
 		if numSpaces > 0 {
 			resLine += strings.Repeat(" ", numSpaces)
 		}
@@ -65,11 +72,13 @@ c
 	}
 }
 
-func renderer() *lipgloss.Renderer {
-	r := lipgloss.NewRenderer(io.Discard)
-	r.SetColorProfile(termenv.TrueColor)
-	r.SetHasDarkBackground(true)
-	return r
+func TestPad_Ansi(t *testing.T) {
+	width, height := 5, 4
+	lines := []string{renderer().NewStyle().Foreground(red).Render("a"), "b", "c"}
+	expected := "\x1b[38;2;255;0;0ma\x1b[0m    \nb    \nc    \n     "
+	if diff := cmp.Diff(expected, pad(width, height, lines)); diff != "" {
+		t.Errorf("Mismatch (-want +got):\n%s", diff)
+	}
 }
 
 func newViewport(width, height int) Model[RenderableString] {
@@ -90,10 +99,13 @@ func TestViewport_SelectionDisabled_WrapOff_Basic(t *testing.T) {
 	vp.SetContent([]RenderableString{
 		{Content: "first line"},
 		{Content: renderer().NewStyle().Foreground(red).Render("second") + " line"},
+		{Content: renderer().NewStyle().Foreground(red).Render("a really really long line")},
+		//{Content: renderer().NewStyle().Foreground(red).Render("a") + " really really long line"},
 	})
 	expectedView := pad(w, h, []string{
 		"first line",
-		"\\x1b[38;2;255;0;0msecond line",
+		"\x1b[38;2;255;0;0msecond\x1b[0m line",
+		"\x1b[38;2;255;0;0ma really rea...\x1b[0m",
 	})
 	if diff := cmp.Diff(expectedView, vp.View()); diff != "" {
 		t.Errorf("Mismatch (-want +got):\n%s", diff)
@@ -208,6 +220,7 @@ func TestViewport_OverflowLineWrap(t *testing.T) {
 	compare(t, expectedView, vp.View())
 }
 
+// TODO:
 // adding lipgloss style to a word at the start of a line should not shorten the line's view
 // transitioning between wrap/no wrap
 // adding new content should preserve selected line

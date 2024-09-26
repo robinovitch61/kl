@@ -3,11 +3,16 @@ package viewport
 import (
 	"fmt"
 	"github.com/robinovitch61/kl/internal/dev"
+	"regexp"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+)
+
+var (
+	ansiRe = regexp.MustCompile("\x1b\\[[0-9;]*[a-zA-Z]")
 )
 
 // Terminology:
@@ -193,14 +198,13 @@ func (m Model[T]) View() string {
 	}
 
 	header := m.getHeader()
-	visibleLines := m.getVisibleLines()
-
 	for _, headerLine := range header {
 		headerViewLine := m.getVisiblePartOfLine(headerLine)
 		addLineToViewString(m.headerStyle.Render(headerViewLine))
 	}
 
-	hasNoHighlight := stringWidth(m.stringToHighlight) == 0
+	hasStringToHighlight := stringWidth(m.stringToHighlight) == 0
+	visibleLines := m.getVisibleLines()
 	for idx, line := range visibleLines {
 		contentIdx := m.getContentIdx(m.yOffset + idx)
 		isSelected := m.selectionEnabled && contentIdx == m.selectedContentIdx
@@ -209,27 +213,27 @@ func (m Model[T]) View() string {
 		if isSelected {
 			lineStyle = m.SelectedContentStyle
 		}
-		contentViewLine := m.getVisiblePartOfLine(line)
+		visiblePartOfLine := m.getVisiblePartOfLine(line)
 
-		if isSelected && contentViewLine == "" {
-			contentViewLine = " "
+		if isSelected && visiblePartOfLine == "" {
+			visiblePartOfLine = " "
 		}
 
-		if hasNoHighlight {
-			addLineToViewString(lineStyle.Render(contentViewLine))
-		} else {
+		if hasStringToHighlight {
 			// this splitting and rejoining of styled content is expensive and causes increased flickering,
 			// so only do it if something is actually highlighted
 			highlightStyle := m.HighlightStyle
 			if isSelected {
 				highlightStyle = m.highlightStyleIfSelected
 			}
-			lineChunks := strings.Split(contentViewLine, m.stringToHighlight)
+			lineChunks := strings.Split(visiblePartOfLine, m.stringToHighlight)
 			var styledChunks []string
 			for _, chunk := range lineChunks {
 				styledChunks = append(styledChunks, lineStyle.Render(chunk))
 			}
 			addLineToViewString(strings.Join(styledChunks, highlightStyle.Render(m.stringToHighlight)))
+		} else {
+			addLineToViewString(lineStyle.Render(visiblePartOfLine))
 		}
 	}
 
@@ -246,7 +250,6 @@ func (m Model[T]) View() string {
 
 // SetContent sets the content, the selectable set of lines in the viewport
 func (m *Model[T]) SetContent(content []T) {
-	// TODO: clean this up
 	dev.Debug("Setting viewport content")
 	defer dev.Debug("Done setting viewport content")
 
@@ -257,18 +260,17 @@ func (m *Model[T]) SetContent(content []T) {
 		initialTopPadding = m.numLinesBetweenSelectionAndTop()
 	}
 
-	stayAtTop := false
+	var stayAtTop, stayAtBottom bool
 	if m.topSticky && m.selectionEnabled && m.selectedContentIdx == 0 {
 		stayAtTop = true
 	}
-	stayAtBottom := false
-	if m.bottomSticky && m.selectionEnabled && m.selectedContentIdx == m.maxContentIdx() {
+	if m.bottomSticky && m.selectionEnabled && m.selectedContentIdx == m.finalContentIdx() {
 		stayAtBottom = true
 	}
 
 	m.content = content
 	if m.wrapText {
-		// ok to skip because this is updated when wrap is initially enabled
+		// ok to skip if no wrap because this is called when wrap is initially (re)enabled
 		m.updateWrappedContent()
 	}
 	m.updateForHeaderAndContent()
@@ -276,15 +278,15 @@ func (m *Model[T]) SetContent(content []T) {
 	// fix any sort of potential selection issues
 	if m.selectedContentIdx < 0 {
 		m.selectedContentIdx = 0
-	} else if m.selectedContentIdx > m.maxContentIdx() {
-		m.selectedContentIdx = m.maxContentIdx()
+	} else if finalContentIdx := m.finalContentIdx(); m.selectedContentIdx > finalContentIdx {
+		m.selectedContentIdx = finalContentIdx
 	}
 
-	// stay at top or bottom if desired
+	// stay at top, bottom, or maintain previous selection if desired
 	if stayAtTop {
 		m.selectedContentIdx = 0
 	} else if stayAtBottom {
-		m.selectedContentIdx = m.maxContentIdx()
+		m.selectedContentIdx = m.finalContentIdx()
 	} else if attemptMaintainSelection {
 		newSelectedContent := m.GetSelectedContent()
 		if newSelectedContent != nil && !(*newSelectedContent).Equals(*initialSelection) {
@@ -380,7 +382,7 @@ func (m *Model[T]) SetSelectedContentIdx(n int) {
 		return
 	}
 
-	if maxSelectedIdx := m.maxContentIdx(); n > maxSelectedIdx {
+	if maxSelectedIdx := m.finalContentIdx(); n > maxSelectedIdx {
 		m.selectedContentIdx = maxSelectedIdx
 	} else {
 		m.selectedContentIdx = max(0, n)
@@ -602,7 +604,7 @@ func (m *Model[T]) maxVisibleLineIdx() int {
 	return m.getLenContentStrings() - 1
 }
 
-func (m Model[T]) maxContentIdx() int {
+func (m Model[T]) finalContentIdx() int {
 	return len(m.content) - 1
 }
 
@@ -640,15 +642,15 @@ func (m Model[T]) getVisibleLines() []string {
 
 func (m Model[T]) getVisiblePartOfLine(line string) string {
 	rightTrimmedLineLength := stringWidth(strings.TrimRight(line, " "))
-	end := min(stringWidth(line), m.xOffset+m.width)
+	end := min(rightTrimmedLineLength, m.xOffset+m.width)
 	start := min(end, m.xOffset)
-	line = line[start:end]
+	line = sliceANSI(line, start, end)
 	if m.xOffset+m.width < rightTrimmedLineLength {
-		truncate := max(0, stringWidth(line)-m.lenLineContinuationIndicator)
+		truncate := max(0, rightTrimmedLineLength-m.lenLineContinuationIndicator)
 		line = line[:truncate] + m.lineContinuationIndicator
 	}
 	if m.xOffset > 0 {
-		line = m.lineContinuationIndicator + line[min(stringWidth(line), m.lenLineContinuationIndicator):]
+		line = m.lineContinuationIndicator + line[min(rightTrimmedLineLength, m.lenLineContinuationIndicator):]
 	}
 	return line
 }
@@ -747,5 +749,47 @@ func splitLineIntoSizedChunks(line string, chunkSize int) []string {
 // stringWidth is a function in case in the future something like utf8.RuneCountInString or lipgloss.Width is better
 func stringWidth(s string) int {
 	// NOTE: lipgloss.Width is significantly less performant than len
-	return len(s)
+	return lipgloss.Width(s)
+}
+
+func sliceANSI(s string, start, end int) string {
+	plainText := ansiRe.ReplaceAllString(s, "")
+
+	if end > len(plainText) {
+		end = len(plainText)
+	}
+	if start > len(plainText) {
+		start = len(plainText)
+	}
+
+	// Now we need to reapply ANSI escape sequences
+	parts := ansiRe.Split(s, -1)
+	matches := ansiRe.FindAllString(s, -1)
+
+	var sliced string
+	charCount := 0
+
+	for i := 0; i < len(parts) && charCount < end; i++ {
+		part := parts[i]
+		if charCount+len(part) > start && charCount < end {
+			if charCount+len(part) <= start {
+				// Skip the part that is before the start
+				charCount += len(part)
+				continue
+			}
+			if charCount < start {
+				part = part[start-charCount:]
+			}
+			if charCount+len(part) > end {
+				part = part[:end-charCount]
+			}
+			sliced += part
+		}
+		charCount += len(part)
+		if i < len(matches) {
+			sliced += matches[i]
+		}
+	}
+
+	return sliced
 }
