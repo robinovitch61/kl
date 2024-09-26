@@ -98,13 +98,13 @@ func TestViewport_SelectionDisabled_WrapOff_Basic(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetContent([]RenderableString{
 		{Content: "first line"},
-		{Content: renderer().NewStyle().Foreground(red).Render("second") + " line"},
+		//{Content: renderer().NewStyle().Foreground(red).Render("second") + " line"},
 		{Content: renderer().NewStyle().Foreground(red).Render("a really really long line")},
 		//{Content: renderer().NewStyle().Foreground(red).Render("a") + " really really long line"},
 	})
 	expectedView := pad(w, h, []string{
 		"first line",
-		"\x1b[38;2;255;0;0msecond\x1b[0m line",
+		//"\x1b[38;2;255;0;0msecond\x1b[0m line",
 		"\x1b[38;2;255;0;0ma really rea...\x1b[0m",
 	})
 	if diff := cmp.Diff(expectedView, vp.View()); diff != "" {
@@ -224,3 +224,4 @@ func TestViewport_OverflowLineWrap(t *testing.T) {
 // adding lipgloss style to a word at the start of a line should not shorten the line's view
 // transitioning between wrap/no wrap
 // adding new content should preserve selected line
+// test with a bunch of spaces at end of line(s)

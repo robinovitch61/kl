@@ -641,17 +641,18 @@ func (m Model[T]) getVisibleLines() []string {
 }
 
 func (m Model[T]) getVisiblePartOfLine(line string) string {
-	rightTrimmedLineLength := stringWidth(strings.TrimRight(line, " "))
-	end := min(rightTrimmedLineLength, m.xOffset+m.width)
+	// the full line is like this
+	//     |xOffset     |xOffset+width
+	//     |start       |end
+	//     |..l line i..|  <- returned if lineContinuationIndicator = ".."
+	line = strings.TrimRight(line, " ")
+	fullLineWidth := stringWidth(line)
+	end := min(fullLineWidth, m.xOffset+m.width)
 	start := min(end, m.xOffset)
-	line = sliceANSI(line, start, end)
-	if m.xOffset+m.width < rightTrimmedLineLength {
-		truncate := max(0, rightTrimmedLineLength-m.lenLineContinuationIndicator)
-		line = line[:truncate] + m.lineContinuationIndicator
-	}
-	if m.xOffset > 0 {
-		line = m.lineContinuationIndicator + line[min(rightTrimmedLineLength, m.lenLineContinuationIndicator):]
-	}
+	fmt.Println(fmt.Sprintf("%q", line))
+	println(line, start, end, m.xOffset, m.width, m.lineContinuationIndicator)
+	line = sliceANSI(line, start, end, m.xOffset, m.width, m.lineContinuationIndicator)
+	fmt.Println(fmt.Sprintf("%q", line))
 	return line
 }
 
@@ -752,8 +753,9 @@ func stringWidth(s string) int {
 	return lipgloss.Width(s)
 }
 
-func sliceANSI(s string, start, end int) string {
+func sliceANSI(s string, start, end, xOffset, width int, lineContinuationIndicator string) string {
 	plainText := ansiRe.ReplaceAllString(s, "")
+	fullLineWidth := len(plainText)
 
 	if end > len(plainText) {
 		end = len(plainText)
@@ -762,10 +764,17 @@ func sliceANSI(s string, start, end int) string {
 		start = len(plainText)
 	}
 
-	// Now we need to reapply ANSI escape sequences
+	if xOffset+width < fullLineWidth {
+		lineWidthWithoutContinuationIndicator := max(0, fullLineWidth-len(lineContinuationIndicator))
+		plainText = plainText[:lineWidthWithoutContinuationIndicator] + lineContinuationIndicator
+	}
+	if xOffset > 0 {
+		skipForLineStartContinuationIndicator := min(fullLineWidth, len(lineContinuationIndicator))
+		plainText = lineContinuationIndicator + plainText[skipForLineStartContinuationIndicator:]
+	}
+
 	parts := ansiRe.Split(s, -1)
 	matches := ansiRe.FindAllString(s, -1)
-
 	var sliced string
 	charCount := 0
 
@@ -773,7 +782,6 @@ func sliceANSI(s string, start, end int) string {
 		part := parts[i]
 		if charCount+len(part) > start && charCount < end {
 			if charCount+len(part) <= start {
-				// Skip the part that is before the start
 				charCount += len(part)
 				continue
 			}
