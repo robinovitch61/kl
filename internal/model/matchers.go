@@ -17,7 +17,12 @@ func NewValidRegex(pattern string) (*ValidRegex, error) {
 	return &ValidRegex{re}, nil
 }
 
-type Selectors struct {
+type Matchers struct {
+	AutoSelectMatcher Matcher
+	IgnoreMatcher     Matcher
+}
+
+type Matcher struct {
 	isEmpty    bool
 	cluster    *ValidRegex
 	namespace  *ValidRegex
@@ -26,15 +31,15 @@ type Selectors struct {
 	container  *ValidRegex
 }
 
-type NewSelectorArgs struct {
+type NewMatcherArgs struct {
 	Cluster    string
-	Namespace  string
-	Deployment string
-	Pod        string
 	Container  string
+	Deployment string
+	Namespace  string
+	Pod        string
 }
 
-func NewSelectors(args NewSelectorArgs) (*Selectors, error) {
+func NewMatcher(args NewMatcherArgs) (*Matcher, error) {
 	isEmpty := args.Cluster == "" && args.Namespace == "" && args.Deployment == "" && args.Pod == "" && args.Container == ""
 	clusterRe, err := NewValidRegex(args.Cluster)
 	if err != nil {
@@ -56,7 +61,7 @@ func NewSelectors(args NewSelectorArgs) (*Selectors, error) {
 	if err != nil {
 		return nil, fmt.Errorf("container: %v", err)
 	}
-	return &Selectors{
+	return &Matcher{
 		isEmpty:    isEmpty,
 		cluster:    clusterRe,
 		namespace:  namespaceRe,
@@ -66,7 +71,7 @@ func NewSelectors(args NewSelectorArgs) (*Selectors, error) {
 	}, nil
 }
 
-func (m Selectors) SelectContainer(c Container) bool {
+func (m Matcher) MatchesContainer(c Container) bool {
 	return !m.isEmpty &&
 		m.cluster.MatchString(c.Cluster) &&
 		m.namespace.MatchString(c.Namespace) &&

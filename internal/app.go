@@ -455,7 +455,7 @@ func (m Model) initialize() (Model, tea.Cmd) {
 				m.client,
 				clusterNamespaces.Cluster,
 				namespace,
-				m.config.Selectors,
+				m.config.Matchers,
 				m.config.ExtraOwnerRefs,
 			))
 		}
@@ -669,7 +669,7 @@ func (m Model) doSelectionActions(selectionActions map[model.Entity]bool) (Model
 	var cmds []tea.Cmd
 
 	// #6a: The user presses enter on the entities page. Container log scanners are started or stopped accordingly
-	// Note that a log scanner can also be started if the container matches the configured Selectors - see 6b
+	// Note that a log scanner can also be started if the container matches the configured AutoSelectMatcher - see 6b
 	for entity, startLogScanner := range selectionActions {
 		if startLogScanner {
 			m, cmd = m.getStartLogScannerCmd(m.client, entity, m.sinceTime.Time)

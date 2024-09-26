@@ -70,32 +70,57 @@ var (
 		"mc": {
 			cliShort:      "",
 			cfgFileEnvVar: "match-container",
-			description:   `Auto-select matching containers against this regex pattern`,
+			description:   `Auto-select containers matching this regex pattern`,
 		},
 		"mclust": {
 			cliShort:      "",
 			cfgFileEnvVar: "match-cluster",
-			description:   `Auto-select matching clusters against this regex pattern`,
+			description:   `Auto-select clusters matching this regex pattern`,
 		},
 		"mdep": {
 			cliShort:      "",
 			cfgFileEnvVar: "match-deployment",
-			description:   `Auto-select matching deployments against this regex pattern`,
+			description:   `Auto-select deployments matching this regex pattern`,
 		},
 		"mns": {
 			cliShort:      "",
 			cfgFileEnvVar: "match-namespace",
-			description:   `Auto-select matching namespaces against this regex pattern`,
+			description:   `Auto-select namespaces matching this regex pattern`,
 		},
 		"mpod": {
 			cliShort:      "",
 			cfgFileEnvVar: "match-pod",
-			description:   `Auto-select matching pods against this regex pattern`,
+			description:   `Auto-select pods matching this regex pattern`,
 		},
 		"namespace": {
 			cliShort:      "n",
 			cfgFileEnvVar: "namespace",
 			description:   `Namespace(s). Can be comma-separated list. Defaults to current namespace`,
+		},
+		"ic": {
+			cliShort:      "",
+			cfgFileEnvVar: "ignore-container",
+			description:   `Ignore containers matching this regex pattern`,
+		},
+		"iclust": {
+			cliShort:      "",
+			cfgFileEnvVar: "ignore-cluster",
+			description:   `Ignore containers clusters matching this regex pattern`,
+		},
+		"idep": {
+			cliShort:      "",
+			cfgFileEnvVar: "ignore-deployment",
+			description:   `Ignore deployments matching this regex pattern`,
+		},
+		"ins": {
+			cliShort:      "",
+			cfgFileEnvVar: "ignore-namespace",
+			description:   `Ignore namespaces matching this regex pattern`,
+		},
+		"ipod": {
+			cliShort:      "",
+			cfgFileEnvVar: "ignore-pod",
+			description:   `Ignore pods matching this regex pattern`,
 		},
 		"since": {
 			cliShort:      "",
@@ -149,6 +174,11 @@ func init() {
 		"mns",
 		"mpod",
 		"namespace",
+		"ic",
+		"iclust",
+		"idep",
+		"ins",
+		"ipod",
 		"since",
 	} {
 		c := rootNameToArg[cliLong]
@@ -241,6 +271,23 @@ func getExtraOwnerRefs(cmd *cobra.Command) []string {
 	return strings.Split(cmd.Flags().Lookup("extra-owner-refs").Value.String(), ",")
 }
 
+func getIgnoreMatchers(cmd *cobra.Command) model.Matcher {
+	ignoreMatchers, err := model.NewMatcher(
+		model.NewMatcherArgs{
+			Cluster:    cmd.Flags().Lookup("iclust").Value.String(),
+			Container:  cmd.Flags().Lookup("ic").Value.String(),
+			Deployment: cmd.Flags().Lookup("idep").Value.String(),
+			Namespace:  cmd.Flags().Lookup("ins").Value.String(),
+			Pod:        cmd.Flags().Lookup("ipod").Value.String(),
+		},
+	)
+	if err != nil {
+		fmt.Printf("ignore error: %v\n", err)
+		os.Exit(1)
+	}
+	return *ignoreMatchers
+}
+
 func getLogsView(cmd *cobra.Command) bool {
 	return cmd.Flags().Lookup("logs-view").Value.String() == "true"
 }
@@ -271,9 +318,9 @@ func getSince(cmd *cobra.Command) model.SinceTime {
 	return model.NewSinceTime(t, int(d.Minutes()))
 }
 
-func getSelectors(cmd *cobra.Command) model.Selectors {
-	selectors, err := model.NewSelectors(
-		model.NewSelectorArgs{
+func getAutoSelectMatchers(cmd *cobra.Command) model.Matcher {
+	autoSelectMatchers, err := model.NewMatcher(
+		model.NewMatcherArgs{
 			Cluster:    cmd.Flags().Lookup("mclust").Value.String(),
 			Namespace:  cmd.Flags().Lookup("mns").Value.String(),
 			Deployment: cmd.Flags().Lookup("mdep").Value.String(),
@@ -282,10 +329,10 @@ func getSelectors(cmd *cobra.Command) model.Selectors {
 		},
 	)
 	if err != nil {
-		fmt.Printf("selector error: %v\n", err)
+		fmt.Printf("auto-select error: %v\n", err)
 		os.Exit(1)
 	}
-	return *selectors
+	return *autoSelectMatchers
 }
 
 func getConfig(cmd *cobra.Command) internal.Config {
@@ -296,10 +343,13 @@ func getConfig(cmd *cobra.Command) internal.Config {
 		ExtraOwnerRefs: getExtraOwnerRefs(cmd),
 		KubeConfigPath: getKubeConfigPath(cmd),
 		LogsView:       getLogsView(cmd),
-		Namespaces:     getNamespaces(cmd),
-		SinceTime:      getSince(cmd),
-		Selectors:      getSelectors(cmd),
-		Version:        getVersion(),
+		Matchers: model.Matchers{
+			AutoSelectMatcher: getAutoSelectMatchers(cmd),
+			IgnoreMatcher:     getIgnoreMatchers(cmd),
+		},
+		Namespaces: getNamespaces(cmd),
+		SinceTime:  getSince(cmd),
+		Version:    getVersion(),
 	}
 }
 
