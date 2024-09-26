@@ -143,7 +143,7 @@ chocolateys:
     tags: "kl kubernetes k9s kubectl"
     summary: "An interactive Kubernetes log viewer for your terminal."
     description: |
-      # An interactive Kubernetes log viewer for your terminal.
+      An interactive Kubernetes log viewer for your terminal.
 
       https://github.com/robinovitch61/kl for installation and usage.
     release_notes: "https://github.com/robinovitch61/kl/releases/tag/v{{ .Version }}"
