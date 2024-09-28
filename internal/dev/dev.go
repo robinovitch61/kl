@@ -2,6 +2,7 @@ package dev
 
 import (
 	"fmt"
+	"github.com/charmbracelet/bubbles/cursor"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/robinovitch61/kl/internal/message"
 	"log"
@@ -28,9 +29,13 @@ func Debug(msg string) {
 
 func DebugMsg(component string, msg tea.Msg) {
 	switch msg.(type) {
-	case message.BatchUpdateLogsMsg, message.UpdateSinceTimeTextMsg:
+	case message.BatchUpdateLogsMsg, message.UpdateSinceTimeTextMsg, cursor.BlinkMsg:
 	// skip logging messages that are too frequent
 	default:
+		Debug("--")
 		Debug(fmt.Sprintf("Update %s: %T", component, msg))
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			Debug(fmt.Sprintf("  Key: '%v'", keyMsg.String()))
+		}
 	}
 }

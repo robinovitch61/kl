@@ -68,7 +68,8 @@ func (p EntityPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
 
 	// if filter has changed, also need to update the entity tree's prefixes
 	if prevFilterValue != p.filterableViewport.Filter.Value() {
-		p.syncEntityTreeAndViewport()
+		p.entityTree.UpdatePrettyPrintPrefixes(p.filterableViewport.Filter)
+		p.filterableViewport.SetAllRows(p.entityTree.GetEntities())
 	}
 	return p, tea.Batch(cmds...)
 }
@@ -109,7 +110,8 @@ func (p EntityPage) Help() string {
 
 func (p EntityPage) WithEntityTree(entityTree model.EntityTree) EntityPage {
 	p.entityTree = entityTree
-	p.syncEntityTreeAndViewport()
+	p.entityTree.UpdatePrettyPrintPrefixes(p.filterableViewport.Filter)
+	p.filterableViewport.SetAllRowsAndMatchesFilter(p.entityTree.GetEntities(), p.entityTree.IsVisibleGivenFilter)
 	return p
 }
 
@@ -131,10 +133,4 @@ func (p EntityPage) getVisibleEntities() []model.Entity {
 		return p.entityTree.GetEntities()
 	}
 	return p.entityTree.GetVisibleEntities(p.filterableViewport.Filter)
-}
-
-func (p *EntityPage) syncEntityTreeAndViewport() {
-	p.entityTree.UpdatePrettyPrintPrefixes(p.filterableViewport.Filter)
-	p.filterableViewport.SetAllRows(p.entityTree.GetEntities())
-	p.filterableViewport.SetMatchesFilter(p.entityTree.IsVisibleGivenFilter)
 }
