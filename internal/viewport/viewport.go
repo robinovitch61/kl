@@ -646,13 +646,7 @@ func (m Model[T]) getVisiblePartOfLine(line string) string {
 	//     |start       |end
 	//     |..l line i..|  <- returned if lineContinuationIndicator = ".."
 	line = strings.TrimRight(line, " ")
-	fullLineWidth := stringWidth(line)
-	end := min(fullLineWidth, m.xOffset+m.width)
-	start := min(end, m.xOffset)
-	fmt.Println(fmt.Sprintf("%q", line))
-	println(line, start, end, m.xOffset, m.width, m.lineContinuationIndicator)
-	line = sliceANSI(line, start, end, m.xOffset, m.width, m.lineContinuationIndicator)
-	fmt.Println(fmt.Sprintf("%q", line))
+	line = sliceANSI(line, m.xOffset, m.width, m.lineContinuationIndicator)
 	return line
 }
 
@@ -753,51 +747,41 @@ func stringWidth(s string) int {
 	return lipgloss.Width(s)
 }
 
-func sliceANSI(s string, start, end, xOffset, width int, lineContinuationIndicator string) string {
-	plainText := ansiRe.ReplaceAllString(s, "")
-	fullLineWidth := len(plainText)
-
-	if end > len(plainText) {
-		end = len(plainText)
-	}
-	if start > len(plainText) {
-		start = len(plainText)
-	}
-
-	if xOffset+width < fullLineWidth {
-		lineWidthWithoutContinuationIndicator := max(0, fullLineWidth-len(lineContinuationIndicator))
-		plainText = plainText[:lineWidthWithoutContinuationIndicator] + lineContinuationIndicator
-	}
-	if xOffset > 0 {
-		skipForLineStartContinuationIndicator := min(fullLineWidth, len(lineContinuationIndicator))
-		plainText = lineContinuationIndicator + plainText[skipForLineStartContinuationIndicator:]
-	}
-
+func sliceANSI(s string, xOffset, width int, lineContinuationIndicator string) string {
+	// TODO: ensure line continuation indicator has no ansi
 	parts := ansiRe.Split(s, -1)
 	matches := ansiRe.FindAllString(s, -1)
-	var sliced string
-	charCount := 0
+	plainText := ansiRe.ReplaceAllString(s, "")
+	fullLineWidth := len(plainText)
+	end := min(fullLineWidth, xOffset+width)
+	start := min(fullLineWidth, xOffset)
 
-	for i := 0; i < len(parts) && charCount < end; i++ {
-		part := parts[i]
-		if charCount+len(part) > start && charCount < end {
-			if charCount+len(part) <= start {
-				charCount += len(part)
-				continue
-			}
-			if charCount < start {
-				part = part[start-charCount:]
-			}
-			if charCount+len(part) > end {
-				part = part[:end-charCount]
-			}
-			sliced += part
+	if end < fullLineWidth {
+		lineEnd := max(0, xOffset+width-len(lineContinuationIndicator))
+		plainText = plainText[:lineEnd]
+
+		cont := lineContinuationIndicator
+		remainingSpace := max(0, width-xOffset-len(plainText))
+		if remainingSpace < len(lineContinuationIndicator) {
+			cont = cont[:remainingSpace]
 		}
-		charCount += len(part)
-		if i < len(matches) {
-			sliced += matches[i]
+		plainText = plainText + cont
+	}
+	if start > 0 {
+		lineStart := min(len(plainText), xOffset+len(lineContinuationIndicator))
+		plainText = plainText[lineStart:]
+
+		cont := lineContinuationIndicator
+		remainingSpace := max(0, width-xOffset-len(plainText))
+		if remainingSpace < len(lineContinuationIndicator) {
+			cont = cont[:remainingSpace]
 		}
+		plainText = cont + plainText
 	}
 
-	return sliced
+	fmt.Printf("fullLineWidth: %d, start: %d, end: %d\n", fullLineWidth, start, end)
+	fmt.Printf("parts: %q", strings.Join(parts, ", "))
+	fmt.Printf("matches: %q", strings.Join(matches, ", "))
+
+	return plainText
 }

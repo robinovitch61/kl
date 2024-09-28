@@ -81,6 +81,40 @@ func TestPad_Ansi(t *testing.T) {
 	}
 }
 
+func TestSliceANSI(t *testing.T) {
+	tests := []struct {
+		s                         string
+		xOffset                   int
+		width                     int
+		lineContinuationIndicator string
+		expected                  string
+	}{
+		{
+			s:                         "\x1b[38;2;255;0;0m1234567890123456789012345\x1b[0m",
+			xOffset:                   0,
+			width:                     15,
+			lineContinuationIndicator: "...",
+			expected:                  "\x1b[38;2;255;0;0m123456789012...\x1b[0m",
+		},
+		{
+			s:                         "\x1b[38;2;255;0;0m1234567890123456789012345\x1b[0m",
+			xOffset:                   5,
+			width:                     15,
+			lineContinuationIndicator: "...",
+			expected:                  "\x1b[38;2;255;0;0m...901234567...\x1b[0m",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.s, func(t *testing.T) {
+			actual := sliceANSI(tt.s, tt.xOffset, tt.width, tt.lineContinuationIndicator)
+			if diff := cmp.Diff(tt.expected, actual); diff != "" {
+				t.Errorf("Mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
 func newViewport(width, height int) Model[RenderableString] {
 	return New[RenderableString](width, height)
 }
