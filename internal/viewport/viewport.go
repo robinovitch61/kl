@@ -203,7 +203,7 @@ func (m Model[T]) View() string {
 		addLineToViewString(m.headerStyle.Render(headerViewLine))
 	}
 
-	hasStringToHighlight := stringWidth(m.stringToHighlight) == 0
+	hasStringToHighlight := stringWidth(m.stringToHighlight) > 0
 	visibleLines := m.getVisibleLines()
 	for idx, line := range visibleLines {
 		contentIdx := m.getContentIdx(m.yOffset + idx)
@@ -213,16 +213,22 @@ func (m Model[T]) View() string {
 		if isSelected {
 			lineStyle = m.SelectedContentStyle
 		}
+
+		// TODO LEO: remove
+		if isSelected {
+			dev.Debug(fmt.Sprintf("Full line: %s", line))
+		}
+
 		visiblePartOfLine := m.getVisiblePartOfLine(line)
+
+		// TODO LEO: remove
+		if isSelected {
+			dev.Debug(fmt.Sprintf("Visible part of line: %s", visiblePartOfLine))
+		}
 
 		if isSelected && visiblePartOfLine == "" {
 			// ensure the selected line is still visible if it's empty
 			visiblePartOfLine = " "
-		}
-
-		// TODO LEO: remove
-		if isSelected {
-			dev.Debug(fmt.Sprintf("Selected line: %s", lineStyle.Render(visiblePartOfLine)))
 		}
 
 		if hasStringToHighlight {
@@ -239,6 +245,11 @@ func (m Model[T]) View() string {
 			}
 			addLineToViewString(strings.Join(styledChunks, highlightStyle.Render(m.stringToHighlight)))
 		} else {
+			// TODO LEO: remove
+			if isSelected {
+				dev.Debug(fmt.Sprintf("Fully rendered line: %s", lineStyle.Render(visiblePartOfLine)))
+			}
+
 			addLineToViewString(lineStyle.Render(visiblePartOfLine))
 		}
 	}
