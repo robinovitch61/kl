@@ -646,7 +646,7 @@ func (m Model[T]) getVisiblePartOfLine(line string) string {
 	//     |start       |end
 	//     |..l line i..|  <- returned if lineContinuationIndicator = ".."
 	line = strings.TrimRight(line, " ")
-	line = sliceANSI(line, m.xOffset, m.width, m.lineContinuationIndicator)
+	line = getVisiblePartOfLine(line, m.xOffset, m.width, m.lineContinuationIndicator)
 	return line
 }
 
@@ -747,7 +747,7 @@ func stringWidth(s string) int {
 	return lipgloss.Width(s)
 }
 
-func sliceANSI(s string, xOffset, width int, lineContinuationIndicator string) string {
+func getVisiblePartOfLine(s string, xOffset, width int, lineContinuationIndicator string) string {
 	// TODO: ensure line continuation indicator has no ansi
 	parts := ansiRe.Split(s, -1)
 	matches := ansiRe.FindAllString(s, -1)
