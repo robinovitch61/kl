@@ -175,6 +175,22 @@ func TestGetVisiblePartOfLine(t *testing.T) {
 			expected:                  "...901234567...",
 		},
 		{
+			name:                      "positive offset, exactly at end",
+			s:                         "1234567890123456789012345",
+			xOffset:                   15,
+			width:                     10,
+			lineContinuationIndicator: "...",
+			expected:                  "...9012345",
+		},
+		{
+			name:                      "positive offset, over the end",
+			s:                         "1234567890123456789012345",
+			xOffset:                   20,
+			width:                     10,
+			lineContinuationIndicator: "...",
+			expected:                  "...45",
+		},
+		{
 			name:                      "zero offset, insufficient width, ansi",
 			s:                         "\x1b[38;2;255;0;0m1234567890123456789012345\x1b[0m",
 			xOffset:                   0,

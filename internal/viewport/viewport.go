@@ -774,10 +774,6 @@ func getVisiblePartOfLine(s string, xOffset, width int, lineContinuationIndicato
 		end = lenPlainText
 	}
 
-	if end-start == width && end == lenPlainText {
-		return s
-	}
-
 	if width == 2*indicatorLen {
 		return lineContinuationIndicator + lineContinuationIndicator
 	}
