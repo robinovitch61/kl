@@ -790,29 +790,32 @@ func getVisiblePartOfLine(s string, xOffset, width int, lineContinuationIndicato
 }
 
 func reapplyANSI(original, truncated string, ansiCodeIndexes [][]int, start, end int) string {
+	//fmt.Printf("original: %q\n", original)
+	//fmt.Printf("truncate: %q\n", truncated)
+	//
 	var result []byte
-	lastIndex := 0
-	var lastCode []byte
-
-	for _, code := range ansiCodeIndexes {
-		codeStart, codeEnd := code[0], code[1]
-		if codeStart >= start && codeStart < end {
-			result = append(result, truncated[lastIndex:codeStart-start]...)
-			result = append(result, original[codeStart:codeEnd]...)
-			lastIndex = codeStart - start
-		} else if codeStart < start {
-			result = append(result, original[codeStart:codeEnd]...)
-		} else if codeStart >= end {
-			lastCode = []byte(original[codeStart:codeEnd])
-			break
+	var lenAnsiAdded int
+	for i := 0; i < len(truncated); i++ {
+		idx := start + i + lenAnsiAdded
+		//println("i", i, "idx", idx)
+		for j, codeIndexes := range ansiCodeIndexes {
+			codeStart, codeEnd := codeIndexes[0], codeIndexes[1]
+			//println("code", codeStart, codeEnd)
+			if codeStart <= idx && idx < codeEnd {
+				result = append(result, original[codeStart:codeEnd]...)
+				lenAnsiAdded += codeEnd - codeStart
+				ansiCodeIndexes = append(ansiCodeIndexes[:j], ansiCodeIndexes[j+1:]...)
+				break
+			}
 		}
+		result = append(result, truncated[i])
+		//fmt.Printf("result: %q\n", result)
 	}
 
-	result = append(result, truncated[lastIndex:]...)
-
-	// Add the last ANSI code at the end if it exists
-	if len(lastCode) > 0 {
-		result = append(result, lastCode...)
+	// add remaining ansi codes
+	for _, codeIndexes := range ansiCodeIndexes {
+		codeStart, codeEnd := codeIndexes[0], codeIndexes[1]
+		result = append(result, original[codeStart:codeEnd]...)
 	}
 
 	return string(result)

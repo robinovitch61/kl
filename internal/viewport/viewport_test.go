@@ -206,6 +206,14 @@ func TestGetVisiblePartOfLine(t *testing.T) {
 			lineContinuationIndicator: "...",
 			expected:                  "\x1b[38;2;255;0;0m...901234567...\x1b[0m",
 		},
+		{
+			name:                      "no offset, insufficient width, inline ansi",
+			s:                         "|\x1b[38;2;169;15;15mfl..-1\x1b[0m| {\"timestamp\": \"2024-09-29T22:30:28.730520\"}",
+			xOffset:                   0,
+			width:                     15,
+			lineContinuationIndicator: "...",
+			expected:                  "|\x1b[38;2;169;15;15mfl..-1\x1b[0m| {\"t...",
+		},
 	}
 
 	for _, tt := range tests {
@@ -325,9 +333,9 @@ func TestViewport_SelectionDisabled_WrapOff_Scrolling(t *testing.T) {
 	compare(t, expectedView, vp.View())
 }
 
-func TestViewport_SelectionDisabled_WrapOff_Panning(t *testing.T) {
-	t.Errorf("TODO")
-}
+//func TestViewport_SelectionDisabled_WrapOff_Panning(t *testing.T) {
+//	t.Errorf("TODO")
+//}
 
 // # SELECTION DISABLED, WRAP ON
 
