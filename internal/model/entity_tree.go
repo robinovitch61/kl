@@ -68,9 +68,36 @@ type entityNode struct {
 	children map[string]*entityNode
 }
 
+type isVisibleCache struct {
+	filter string
+	cache  map[string]bool
+}
+
+func newIsVisibleCache(filter filter.Model) isVisibleCache {
+	return isVisibleCache{
+		filter: filter.Value(),
+		cache:  make(map[string]bool),
+	}
+}
+
+func (c isVisibleCache) RelevantFor(filter filter.Model) bool {
+	return c.cache != nil && filter.Value() == c.filter
+}
+
+func (c isVisibleCache) Contains(e Entity) (bool, bool) {
+	v, ok := c.cache[e.Container.ID()]
+	return v, ok
+}
+
+func (c isVisibleCache) SetAndReturn(e Entity, v bool) bool {
+	c.cache[e.Container.ID()] = v
+	return v
+}
+
 type entityTreeImpl struct {
 	allClusterNamespaces []ClusterNamespaces
 	root                 map[string]*entityNode
+	isVisibleCache       isVisibleCache
 }
 
 func NewEntityTree(allClusterNamespaces []ClusterNamespaces) EntityTree {
@@ -81,6 +108,8 @@ func NewEntityTree(allClusterNamespaces []ClusterNamespaces) EntityTree {
 }
 
 func (et *entityTreeImpl) AddOrReplace(entity Entity) {
+	et.isVisibleCache = isVisibleCache{}
+
 	if !entity.IsContainer() {
 		// for now keep this true, but leave the implementation such that we can remove this later
 		panic("entity must be a container")
@@ -284,16 +313,26 @@ func (et entityTreeImpl) AnyPendingContainers() bool {
 	return false
 }
 
-func (et entityTreeImpl) IsVisibleGivenFilter(entity Entity, filter filter.Model) bool {
+// IsVisibleGivenFilter tends to be called many times in a row with the same filter,
+// so uses a filter-specific cache for performance
+func (et *entityTreeImpl) IsVisibleGivenFilter(entity Entity, filter filter.Model) bool {
+	if et.isVisibleCache.RelevantFor(filter) {
+		if v, ok := et.isVisibleCache.Contains(entity); ok {
+			return v
+		}
+	} else {
+		et.isVisibleCache = newIsVisibleCache(filter)
+	}
+
 	if filter.Matches(entity) {
-		return true
+		return et.isVisibleCache.SetAndReturn(entity, true)
 	}
 
 	node := et.findNode(entity)
 	if node != nil {
 		for _, child := range node.children {
 			if et.IsVisibleGivenFilter(child.entity, filter) {
-				return true
+				return et.isVisibleCache.SetAndReturn(entity, true)
 			}
 		}
 	}
@@ -301,12 +340,12 @@ func (et entityTreeImpl) IsVisibleGivenFilter(entity Entity, filter filter.Model
 	parent := et.getParentEntity(entity)
 	for !parent.EqualTo(Entity{}) {
 		if filter.Matches(parent) {
-			return true
+			return et.isVisibleCache.SetAndReturn(entity, true)
 		}
 		parent = et.getParentEntity(parent)
 	}
 
-	return filter.Matches(parent)
+	return et.isVisibleCache.SetAndReturn(entity, filter.Matches(parent))
 }
 
 func (et *entityTreeImpl) GetContainerEntities() []Entity {
@@ -321,6 +360,8 @@ func (et *entityTreeImpl) GetContainerEntities() []Entity {
 }
 
 func (et *entityTreeImpl) Remove(entity Entity) {
+	et.isVisibleCache = isVisibleCache{}
+
 	path := []string{
 		entity.Container.Cluster,
 		entity.Container.Namespace,
@@ -476,13 +517,9 @@ func (et *entityTreeImpl) GetEntity(container Container) *Entity {
 }
 
 func (et *entityTreeImpl) UpdatePrettyPrintPrefixes(filter filter.Model) {
-	allEntities := et.GetEntities()
-	var visibleEntities []Entity
-	for _, entity := range allEntities {
-		if et.IsVisibleGivenFilter(entity, filter) {
-			visibleEntities = append(visibleEntities, entity)
-		}
-	}
+	et.isVisibleCache = isVisibleCache{}
+
+	visibleEntities := et.GetVisibleEntities(filter)
 
 	seenNamespace := false
 	seenDeployment := false

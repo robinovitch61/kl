@@ -8,16 +8,13 @@
 
 An interactive Kubernetes log viewer for your terminal.
 
-<table>
-  <tr>
-    <td><img src="./demo/img/tree.png" alt="tree view of containers" width="400"/></td>
-    <td><img src="./demo/img/logs.png" alt="logs view" width="400"/></td>
-  </tr>
-  <tr>
-    <td><img src="./demo/img/help.png" alt="help" width="400"/></td>
-    <td><img src="./demo/img/single.png" alt="single log" width="400"/></td>
-  </tr>
-</table>
+<div style="display: flex; justify-content: center; flex-wrap: wrap; gap: 10px;">
+  <img src="./demo/img/tree.png" alt="tree view of containers" width="400"/>
+  <img src="./demo/img/logs.png" alt="logs view" width="400"/>
+  <img src="./demo/img/single.png" alt="single log" width="400"/>
+  <img src="./demo/img/help.png" alt="help" width="400"/>
+</div>
+<br>
 
 * View logs across multiple containers, pods, deployments, namespaces, and clusters
 * Select containers interactively or auto-select by pattern matching
@@ -58,8 +55,11 @@ kl --mdep nginx
 # Auto-select all containers with the exact name of `my-container`
 kl --mc "^my-container$"
 
+# Ignore all containers with the exact name of `my-sidecar`
+kl --ic "^my-sidecar$"
+
 # Start on the logs page, ordered by timestamp descending, showing logs from 10 minutes ago onwards
-kl -l -d --since 10m
+kl --mc "^my-container$" -l -d --since 10m
 ```
 
 ## Installation

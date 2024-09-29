@@ -526,8 +526,8 @@ func (m Model) cleanupCmd() tea.Cmd {
 // ---
 
 func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
-	dev.Debug(fmt.Sprintf("App keyMsg: %v", msg))
-	defer dev.Debug("App keyMsg complete")
+	dev.Debug(fmt.Sprintf("App handling keyMsg '%v'", msg))
+	defer dev.Debug(fmt.Sprintf("App handling keyMsg '%v' complete", msg))
 
 	var cmd tea.Cmd
 	var cmds []tea.Cmd

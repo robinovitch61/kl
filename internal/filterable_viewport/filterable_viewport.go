@@ -70,8 +70,8 @@ func (p FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.C
 		}
 
 		if p.Filter.Focused() {
-			// done editing, apply Filter
 			if key.Matches(msg, p.keyMap.Enter) {
+				// done editing, apply Filter
 				p.Filter.Blur()
 				p.Filter.UpdateLabelAndSuffix()
 			}
@@ -178,7 +178,8 @@ func (p *FilterableViewport[T]) SetAllRows(allRows []T) {
 	p.updateVisibleRows()
 }
 
-func (p *FilterableViewport[T]) SetMatchesFilter(matchesFilter func(T, filter.Model) bool) {
+func (p *FilterableViewport[T]) SetAllRowsAndMatchesFilter(allRows []T, matchesFilter func(T, filter.Model) bool) {
+	p.allRows = allRows
 	p.matchesFilter = matchesFilter
 	p.updateVisibleRows()
 }
@@ -227,7 +228,7 @@ func (p *FilterableViewport[T]) updateVisibleRows() {
 	dev.Debug("Updating visible rows")
 	defer dev.Debug("Done updating visible rows")
 
-	if p.Filter.FilteringWithContext {
+	if p.Filter.FilteringWithContext && p.Filter.Value() != "" {
 		var entityIndexesMatchingFilter []int
 		for i := range p.allRows {
 			if p.matchesFilter(p.allRows[i], p.Filter) {
@@ -236,7 +237,6 @@ func (p *FilterableViewport[T]) updateVisibleRows() {
 		}
 		p.Filter.SetIndexesMatchingFilter(entityIndexesMatchingFilter)
 		p.viewport.SetContent(p.allRows)
-		return
 	} else if p.Filter.Value() != "" {
 		var filtered []T
 		for i := range p.allRows {
