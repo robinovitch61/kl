@@ -63,15 +63,15 @@ func (p FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.C
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		// clear available regardless of filter focus
+		// clearing the filter is always available regardless of filter focus
 		if key.Matches(msg, p.keyMap.Clear) {
 			p.clearFilter()
 			return p, nil
 		}
 
 		if p.Filter.Focused() {
-			// done editing, apply Filter
 			if key.Matches(msg, p.keyMap.Enter) {
+				// done editing, apply Filter
 				p.Filter.Blur()
 				p.Filter.UpdateLabelAndSuffix()
 			}
@@ -79,6 +79,20 @@ func (p FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.C
 			// if not editing filter, pass through to viewport
 			*p.viewport, cmd = p.viewport.Update(msg)
 			cmds = append(cmds, cmd)
+
+			// handle next match/prev match
+			if key.Matches(msg, p.Filter.KeyMap.FilterNextRow) || key.Matches(msg, p.Filter.KeyMap.FilterPrevRow) {
+				// if not filtering with context, or no filter text, ignore
+				if !p.Filter.FilteringWithContext || !p.Filter.HasFilterText() {
+					return p, nil
+				}
+				if key.Matches(msg, p.Filter.KeyMap.FilterNextRow) {
+					p.Filter.IncrementFilteredSelectionNum()
+				} else if key.Matches(msg, p.Filter.KeyMap.FilterPrevRow) {
+					p.Filter.DecrementFilteredSelectionNum()
+				}
+				p.scrollViewportToContentIdx(p.Filter.GetContextualMatchIdx())
+			}
 
 			// focus filter and start editing
 			if key.Matches(msg, p.keyMap.Filter) || key.Matches(msg, p.keyMap.FilterRegex) {
@@ -102,7 +116,6 @@ func (p FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.C
 		}
 
 		prevFilterString := p.Filter.Value()
-		prevFilterMatchIdx := p.Filter.GetContextualMatchIdx()
 
 		p.Filter, cmd = p.Filter.Update(msg)
 		cmds = append(cmds, cmd)
@@ -111,10 +124,12 @@ func (p FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.C
 			p.viewport.SetStringToHighlight(p.Filter.Value())
 			p.updateVisibleRows()
 			p.Filter.UpdateLabelAndSuffix()
-		}
 
-		if p.Filter.FilteringWithContext && p.Filter.GetContextualMatchIdx() != prevFilterMatchIdx {
-			p.scrollViewportToContentIdx(p.Filter.GetContextualMatchIdx())
+			// if filtering with context, reset the match number and scroll to the first match
+			if p.Filter.FilteringWithContext {
+				p.Filter.ResetContextualFilterMatchNum()
+				p.scrollViewportToContentIdx(p.Filter.GetContextualMatchIdx())
+			}
 		}
 
 		return p, tea.Batch(cmds...)
@@ -163,7 +178,8 @@ func (p *FilterableViewport[T]) SetAllRows(allRows []T) {
 	p.updateVisibleRows()
 }
 
-func (p *FilterableViewport[T]) SetMatchesFilter(matchesFilter func(T, filter.Model) bool) {
+func (p *FilterableViewport[T]) SetAllRowsAndMatchesFilter(allRows []T, matchesFilter func(T, filter.Model) bool) {
+	p.allRows = allRows
 	p.matchesFilter = matchesFilter
 	p.updateVisibleRows()
 }
@@ -212,7 +228,7 @@ func (p *FilterableViewport[T]) updateVisibleRows() {
 	dev.Debug("Updating visible rows")
 	defer dev.Debug("Done updating visible rows")
 
-	if p.Filter.FilteringWithContext {
+	if p.Filter.FilteringWithContext && p.Filter.Value() != "" {
 		var entityIndexesMatchingFilter []int
 		for i := range p.allRows {
 			if p.matchesFilter(p.allRows[i], p.Filter) {
@@ -221,7 +237,6 @@ func (p *FilterableViewport[T]) updateVisibleRows() {
 		}
 		p.Filter.SetIndexesMatchingFilter(entityIndexesMatchingFilter)
 		p.viewport.SetContent(p.allRows)
-		return
 	} else if p.Filter.Value() != "" {
 		var filtered []T
 		for i := range p.allRows {

@@ -39,6 +39,7 @@ type Model struct {
 	allClusterNamespaces []model.ClusterNamespaces
 	width, height        int
 	initialized          bool
+	seenFirstContainer   bool
 	toast                toast.Model
 	prompt               prompt.Model
 	whenPromptConfirm    func() (Model, tea.Cmd)
@@ -69,7 +70,6 @@ func InitialModel(c Config) Model {
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		tea.Tick(constants.BatchUpdateLogsInterval, func(t time.Time) tea.Msg { return message.BatchUpdateLogsMsg{} }),
-		tea.Tick(constants.AttemptMaintainEntitySelectionAfterStartup, func(t time.Time) tea.Msg { return message.StartMaintainEntitySelectionMsg{} }),
 	)
 }
 
@@ -453,7 +453,13 @@ func (m Model) initialize() (Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	for _, clusterNamespaces := range m.allClusterNamespaces {
 		for _, namespace := range clusterNamespaces.Namespaces {
-			cmds = append(cmds, command.GetContainerListenerCmd(m.client, clusterNamespaces.Cluster, namespace, m.config.Selectors))
+			cmds = append(cmds, command.GetContainerListenerCmd(
+				m.client,
+				clusterNamespaces.Cluster,
+				namespace,
+				m.config.Matchers,
+				m.config.ExtraOwnerRefs,
+			))
 		}
 	}
 
@@ -522,8 +528,8 @@ func (m Model) cleanupCmd() tea.Cmd {
 // ---
 
 func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
-	dev.Debug(fmt.Sprintf("App keyMsg: %v", msg))
-	defer dev.Debug("App keyMsg complete")
+	dev.Debug(fmt.Sprintf("App handling keyMsg '%v'", msg))
+	defer dev.Debug(fmt.Sprintf("App handling keyMsg '%v' complete", msg))
 
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
@@ -665,7 +671,7 @@ func (m Model) doSelectionActions(selectionActions map[model.Entity]bool) (Model
 	var cmds []tea.Cmd
 
 	// #6a: The user presses enter on the entities page. Container log scanners are started or stopped accordingly
-	// Note that a log scanner can also be started if the container matches the configured Selectors - see 6b
+	// Note that a log scanner can also be started if the container matches the configured AutoSelectMatcher - see 6b
 	for entity, startLogScanner := range selectionActions {
 		if startLogScanner {
 			m, cmd = m.getStartLogScannerCmd(m.client, entity, m.sinceTime.Time)
@@ -879,6 +885,12 @@ func (m Model) handleContainerDeltasMsg(msg command.GetContainerDeltasMsg) (Mode
 	}
 
 	existingContainerEntities := m.entityTree.GetContainerEntities()
+
+	if len(existingContainerEntities) == 0 && !m.seenFirstContainer {
+		cmds = append(cmds, tea.Tick(constants.AttemptMaintainEntitySelectionAfterFirstContainer, func(t time.Time) tea.Msg { return message.StartMaintainEntitySelectionMsg{} }))
+		m.seenFirstContainer = true
+	}
+
 	for _, delta := range msg.DeltaSet.OrderedDeltas() {
 		if delta.ToDelete {
 			// #10b: if a container delta indicates the container is deleted, remove it from the tree

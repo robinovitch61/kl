@@ -3,6 +3,7 @@ package viewport
 import (
 	"fmt"
 	"github.com/robinovitch61/kl/internal/dev"
+	"regexp"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -10,23 +11,47 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+var (
+	ansiPattern = regexp.MustCompile("\x1b\\[[0-9;]*m")
+)
+
+// Terminology (WIP):
+//
+// no wrap:
+// ```                       content index   line index
+// this is the first line    0               0
+// this is the second line   1               1
+// ```
+//
+// wrap:
+// ```           content index   line index
+// this is the   0               1
+// first line    0               2
+// this is the   1               3
+// second line   1               4
+// ```
+
 // Model represents a viewport component
 type Model[T RenderableComparable] struct {
-	KeyMap                    KeyMap
-	LineContinuationIndicator string
-	BackgroundStyle           lipgloss.Style
-	HeaderStyle               lipgloss.Style
-	SelectedContentStyle      lipgloss.Style
-	HighlightStyle            lipgloss.Style
-	HighlightStyleIfSelected  lipgloss.Style
-	ContentStyle              lipgloss.Style
-	FooterStyle               lipgloss.Style
+	// public
+	KeyMap               KeyMap
+	FooterStyle          lipgloss.Style
+	HighlightStyle       lipgloss.Style
+	SelectedContentStyle lipgloss.Style
 
-	header                       []string
-	wrappedHeader                []string
-	content                      []T
-	wrappedContent               []string
+	header         []string
+	wrappedHeader  []string
+	content        []T
+	wrappedContent []string
+
+	lineContinuationIndicator    string
 	lenLineContinuationIndicator int
+
+	// styles
+	contentStyle             lipgloss.Style
+	headerStyle              lipgloss.Style
+	highlightStyleIfSelected lipgloss.Style
+	backgroundStyle          lipgloss.Style
 
 	// if topSticky/bottomSticky is true and selection is enabled, selection remains at top/bottom until scroll down/up
 	topSticky    bool
@@ -74,8 +99,8 @@ func New[T RenderableComparable](width, height int) (m Model[T]) {
 	m.wrapText = false
 
 	m.KeyMap = DefaultKeyMap()
-	m.LineContinuationIndicator = "..."
-	m.lenLineContinuationIndicator = stringWidth(m.LineContinuationIndicator)
+	m.lineContinuationIndicator = "..."
+	m.lenLineContinuationIndicator = stringWidth(m.lineContinuationIndicator)
 	return m
 }
 
@@ -173,49 +198,48 @@ func (m Model[T]) View() string {
 	}
 
 	header := m.getHeader()
-	visibleLines := m.getVisibleLines()
-
 	for _, headerLine := range header {
 		headerViewLine := m.getVisiblePartOfLine(headerLine)
-		addLineToViewString(m.HeaderStyle.Render(headerViewLine))
+		addLineToViewString(m.headerStyle.Render(headerViewLine))
 	}
 
-	hasNoHighlight := stringWidth(m.stringToHighlight) == 0
+	hasStringToHighlight := stringWidth(m.stringToHighlight) == 0
+	visibleLines := m.getVisibleLines()
 	for idx, line := range visibleLines {
 		contentIdx := m.getContentIdx(m.yOffset + idx)
 		isSelected := m.selectionEnabled && contentIdx == m.selectedContentIdx
 
-		lineStyle := m.ContentStyle
+		lineStyle := m.contentStyle
 		if isSelected {
 			lineStyle = m.SelectedContentStyle
 		}
-		contentViewLine := m.getVisiblePartOfLine(line)
+		visiblePartOfLine := m.getVisiblePartOfLine(line)
 
-		if isSelected && contentViewLine == "" {
+		if isSelected && visiblePartOfLine == "" {
 			// ensure the selected line is still visible if it's empty
-			contentViewLine = " "
+			visiblePartOfLine = " "
 		}
 
 		// TODO LEO: remove
 		if isSelected {
-			dev.Debug(fmt.Sprintf("Selected line: %s", lineStyle.Render(contentViewLine)))
+			dev.Debug(fmt.Sprintf("Selected line: %s", lineStyle.Render(visiblePartOfLine)))
 		}
 
-		if hasNoHighlight {
-			addLineToViewString(lineStyle.Render(contentViewLine))
-		} else {
+		if hasStringToHighlight {
 			// this splitting and rejoining of styled content is expensive and causes increased flickering,
 			// so only do it if something is actually highlighted
 			highlightStyle := m.HighlightStyle
 			if isSelected {
-				highlightStyle = m.HighlightStyleIfSelected
+				highlightStyle = m.highlightStyleIfSelected
 			}
-			lineChunks := strings.Split(contentViewLine, m.stringToHighlight)
+			lineChunks := strings.Split(visiblePartOfLine, m.stringToHighlight)
 			var styledChunks []string
 			for _, chunk := range lineChunks {
 				styledChunks = append(styledChunks, lineStyle.Render(chunk))
 			}
 			addLineToViewString(strings.Join(styledChunks, highlightStyle.Render(m.stringToHighlight)))
+		} else {
+			addLineToViewString(lineStyle.Render(visiblePartOfLine))
 		}
 	}
 
@@ -225,14 +249,13 @@ func (m Model[T]) View() string {
 		viewString += strings.Repeat("\n", padCount)
 		viewString += footerString
 	}
-	renderedViewString := m.BackgroundStyle.Width(m.width).Height(m.height).Render(viewString)
+	renderedViewString := m.backgroundStyle.Width(m.width).Height(m.height).Render(viewString)
 
 	return renderedViewString
 }
 
 // SetContent sets the content, the selectable set of lines in the viewport
 func (m *Model[T]) SetContent(content []T) {
-	// TODO: clean this up
 	dev.Debug("Setting viewport content")
 	defer dev.Debug("Done setting viewport content")
 
@@ -243,18 +266,17 @@ func (m *Model[T]) SetContent(content []T) {
 		initialTopPadding = m.numLinesBetweenSelectionAndTop()
 	}
 
-	stayAtTop := false
+	var stayAtTop, stayAtBottom bool
 	if m.topSticky && m.selectionEnabled && m.selectedContentIdx == 0 {
 		stayAtTop = true
 	}
-	stayAtBottom := false
-	if m.bottomSticky && m.selectionEnabled && m.selectedContentIdx == m.maxContentIdx() {
+	if m.bottomSticky && m.selectionEnabled && m.selectedContentIdx == m.finalContentIdx() {
 		stayAtBottom = true
 	}
 
 	m.content = content
 	if m.wrapText {
-		// ok to skip because this is updated when wrap is initially enabled
+		// ok to skip if no wrap because this is called when wrap is initially (re)enabled
 		m.updateWrappedContent()
 	}
 	m.updateForHeaderAndContent()
@@ -262,15 +284,15 @@ func (m *Model[T]) SetContent(content []T) {
 	// fix any sort of potential selection issues
 	if m.selectedContentIdx < 0 {
 		m.selectedContentIdx = 0
-	} else if m.selectedContentIdx > m.maxContentIdx() {
-		m.selectedContentIdx = m.maxContentIdx()
+	} else if finalContentIdx := m.finalContentIdx(); m.selectedContentIdx > finalContentIdx {
+		m.selectedContentIdx = finalContentIdx
 	}
 
-	// stay at top or bottom if desired
+	// stay at top, bottom, or maintain previous selection if desired
 	if stayAtTop {
 		m.selectedContentIdx = 0
 	} else if stayAtBottom {
-		m.selectedContentIdx = m.maxContentIdx()
+		m.selectedContentIdx = m.finalContentIdx()
 	} else if attemptMaintainSelection {
 		newSelectedContent := m.GetSelectedContent()
 		if newSelectedContent != nil && !(*newSelectedContent).Equals(*initialSelection) {
@@ -366,7 +388,7 @@ func (m *Model[T]) SetSelectedContentIdx(n int) {
 		return
 	}
 
-	if maxSelectedIdx := m.maxContentIdx(); n > maxSelectedIdx {
+	if maxSelectedIdx := m.finalContentIdx(); n > maxSelectedIdx {
 		m.selectedContentIdx = maxSelectedIdx
 	} else {
 		m.selectedContentIdx = max(0, n)
@@ -588,7 +610,7 @@ func (m *Model[T]) maxVisibleLineIdx() int {
 	return m.getLenContentStrings() - 1
 }
 
-func (m Model[T]) maxContentIdx() int {
+func (m Model[T]) finalContentIdx() int {
 	return len(m.content) - 1
 }
 
@@ -625,17 +647,12 @@ func (m Model[T]) getVisibleLines() []string {
 }
 
 func (m Model[T]) getVisiblePartOfLine(line string) string {
-	rightTrimmedLineLength := stringWidth(strings.TrimRight(line, " "))
-	end := min(stringWidth(line), m.xOffset+m.width)
-	start := min(end, m.xOffset)
-	line = line[start:end]
-	if m.xOffset+m.width < rightTrimmedLineLength {
-		truncate := max(0, stringWidth(line)-m.lenLineContinuationIndicator)
-		line = line[:truncate] + m.LineContinuationIndicator
-	}
-	if m.xOffset > 0 {
-		line = m.LineContinuationIndicator + line[min(stringWidth(line), m.lenLineContinuationIndicator):]
-	}
+	// the full line is like this
+	//     |xOffset     |xOffset+width
+	//     |start       |end
+	//     |..l line i..|  <- returned if lineContinuationIndicator = ".."
+	line = strings.TrimRight(line, " ")
+	line = getVisiblePartOfLine(line, m.xOffset, m.width, m.lineContinuationIndicator)
 	return line
 }
 
@@ -734,4 +751,75 @@ func splitLineIntoSizedChunks(line string, chunkSize int) []string {
 func stringWidth(s string) int {
 	// NOTE: lipgloss.Width is significantly less performant than len
 	return lipgloss.Width(s)
+}
+
+func getVisiblePartOfLine(s string, xOffset, width int, lineContinuationIndicator string) string {
+	if width <= 0 {
+		return ""
+	}
+
+	ansiCodeIndexes := ansiPattern.FindAllStringIndex(s, -1)
+	plainText := ansiPattern.ReplaceAllString(s, "")
+	lenPlainText := len(plainText)
+
+	indicatorLen := len(lineContinuationIndicator)
+	if width <= indicatorLen {
+		return lineContinuationIndicator[:width]
+	}
+
+	start := xOffset
+	end := xOffset + width
+	if start < 0 {
+		start = 0
+	}
+	if start >= lenPlainText {
+		return ""
+	}
+
+	if end > lenPlainText {
+		end = lenPlainText
+	}
+
+	if width == 2*indicatorLen {
+		return lineContinuationIndicator + lineContinuationIndicator
+	}
+
+	visible := plainText[start:end]
+	if xOffset > 0 {
+		visible = lineContinuationIndicator + visible[indicatorLen:]
+	}
+	if end < len(plainText) {
+		visible = visible[:width-indicatorLen] + lineContinuationIndicator
+	}
+
+	return reapplyANSI(s, visible, ansiCodeIndexes, start, end)
+}
+
+func reapplyANSI(original, truncated string, ansiCodeIndexes [][]int, start, end int) string {
+	var result []byte
+	lastIndex := 0
+	var lastCode []byte
+
+	for _, code := range ansiCodeIndexes {
+		codeStart, codeEnd := code[0], code[1]
+		if codeStart >= start && codeStart < end {
+			result = append(result, truncated[lastIndex:codeStart-start]...)
+			result = append(result, original[codeStart:codeEnd]...)
+			lastIndex = codeStart - start
+		} else if codeStart < start {
+			result = append(result, original[codeStart:codeEnd]...)
+		} else if codeStart >= end {
+			lastCode = []byte(original[codeStart:codeEnd])
+			break
+		}
+	}
+
+	result = append(result, truncated[lastIndex:]...)
+
+	// Add the last ANSI code at the end if it exists
+	if len(lastCode) > 0 {
+		result = append(result, lastCode...)
+	}
+
+	return string(result)
 }

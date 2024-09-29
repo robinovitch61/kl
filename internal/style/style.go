@@ -41,9 +41,7 @@ var (
 )
 
 func lightenColor(hex string, offset int) string {
-	if strings.HasPrefix(hex, "#") {
-		hex = hex[1:]
-	}
+	hex = strings.TrimPrefix(hex, "#")
 
 	r, _ := strconv.ParseInt(hex[0:2], 16, 0)
 	g, _ := strconv.ParseInt(hex[2:4], 16, 0)

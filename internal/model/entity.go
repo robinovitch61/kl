@@ -35,12 +35,33 @@ func (e Entity) Render() string {
 		return e.Prefix + e.Container.Pod
 	} else {
 		containerRepr := e.Prefix + prefix + " " + e.Container.Name + " (" + e.Container.Status.State.String()
-		if !e.Container.Status.RunningSince.IsZero() {
-			containerRepr += " for " + util.TimeSince(e.Container.Status.RunningSince)
+
+		// running container with started at time, show "for X time"
+		if e.Container.Status.State == ContainerRunning && !e.Container.Status.StartedAt.IsZero() {
+			containerRepr += " for " + util.TimeSince(e.Container.Status.StartedAt)
 		}
-		if e.Container.Status.RunningSince.After(time.Now().Add(-constants.NewContainerThreshold)) {
+
+		// terminated containers with terminated at time
+		if e.Container.Status.State == ContainerTerminated && !e.Container.Status.TerminatedAt.IsZero() {
+			if e.Container.Status.StartedAt.IsZero() {
+				// terminated container with just terminated at time, show "for X time"
+				containerRepr += " for " + util.TimeSince(e.Container.Status.TerminatedAt)
+			} else {
+				// terminated container with started at and terminated at time, show "for X time, ran X time"
+				containerRepr += " for " + util.TimeSince(e.Container.Status.TerminatedAt) + ", ran " + util.FormatDuration(e.Container.Status.TerminatedAt.Sub(e.Container.Status.StartedAt))
+			}
+		}
+
+		// waiting container with waiting for reason, show "waiting for X"
+		if e.Container.Status.State == ContainerWaiting && e.Container.Status.WaitingFor != "" {
+			containerRepr += ", " + e.Container.Status.WaitingFor
+		}
+
+		// add "NEW" to newly started containers
+		if e.Container.Status.State == ContainerRunning && e.Container.Status.StartedAt.After(time.Now().Add(-constants.NewContainerThreshold)) {
 			containerRepr += " - NEW"
 		}
+
 		containerRepr += ")"
 		return containerRepr
 	}
