@@ -12,10 +12,10 @@ import (
 )
 
 var (
-	ansiRe = regexp.MustCompile("\x1b\\[[0-9;]*[a-zA-Z]")
+	ansiPattern = regexp.MustCompile("\x1b\\[[0-9;]*m")
 )
 
-// Terminology:
+// Terminology (WIP):
 //
 // no wrap:
 // ```                       content index   line index
@@ -748,40 +748,76 @@ func stringWidth(s string) int {
 }
 
 func getVisiblePartOfLine(s string, xOffset, width int, lineContinuationIndicator string) string {
-	// TODO: ensure line continuation indicator has no ansi
-	parts := ansiRe.Split(s, -1)
-	matches := ansiRe.FindAllString(s, -1)
-	plainText := ansiRe.ReplaceAllString(s, "")
-	fullLineWidth := len(plainText)
-	end := min(fullLineWidth, xOffset+width)
-	start := min(fullLineWidth, xOffset)
-
-	if end < fullLineWidth {
-		lineEnd := max(0, xOffset+width-len(lineContinuationIndicator))
-		plainText = plainText[:lineEnd]
-
-		cont := lineContinuationIndicator
-		remainingSpace := max(0, width-xOffset-len(plainText))
-		if remainingSpace < len(lineContinuationIndicator) {
-			cont = cont[:remainingSpace]
-		}
-		plainText = plainText + cont
-	}
-	if start > 0 {
-		lineStart := min(len(plainText), xOffset+len(lineContinuationIndicator))
-		plainText = plainText[lineStart:]
-
-		cont := lineContinuationIndicator
-		remainingSpace := max(0, width-xOffset-len(plainText))
-		if remainingSpace < len(lineContinuationIndicator) {
-			cont = cont[:remainingSpace]
-		}
-		plainText = cont + plainText
+	if width <= 0 {
+		return ""
 	}
 
-	fmt.Printf("fullLineWidth: %d, start: %d, end: %d\n", fullLineWidth, start, end)
-	fmt.Printf("parts: %q", strings.Join(parts, ", "))
-	fmt.Printf("matches: %q", strings.Join(matches, ", "))
+	ansiCodeIndexes := ansiPattern.FindAllStringIndex(s, -1)
+	plainText := ansiPattern.ReplaceAllString(s, "")
+	lenPlainText := len(plainText)
 
-	return plainText
+	indicatorLen := len(lineContinuationIndicator)
+	if width <= indicatorLen {
+		return lineContinuationIndicator[:width]
+	}
+
+	start := xOffset
+	end := xOffset + width
+	if start < 0 {
+		start = 0
+	}
+	if start >= lenPlainText {
+		return ""
+	}
+
+	if end > lenPlainText {
+		end = lenPlainText
+	}
+
+	if end-start == width && end == lenPlainText {
+		return s
+	}
+
+	if width == 2*indicatorLen {
+		return lineContinuationIndicator + lineContinuationIndicator
+	}
+
+	visible := plainText[start:end]
+	if xOffset > 0 {
+		visible = lineContinuationIndicator + visible[indicatorLen:]
+	}
+	if end < len(plainText) {
+		visible = visible[:width-indicatorLen] + lineContinuationIndicator
+	}
+
+	return reapplyANSI(s, visible, ansiCodeIndexes, start, end)
+}
+
+func reapplyANSI(original, truncated string, ansiCodeIndexes [][]int, start, end int) string {
+	var result []byte
+	lastIndex := 0
+	var lastCode []byte
+
+	for _, code := range ansiCodeIndexes {
+		codeStart, codeEnd := code[0], code[1]
+		if codeStart >= start && codeStart < end {
+			result = append(result, truncated[lastIndex:codeStart-start]...)
+			result = append(result, original[codeStart:codeEnd]...)
+			lastIndex = codeStart - start
+		} else if codeStart < start {
+			result = append(result, original[codeStart:codeEnd]...)
+		} else if codeStart >= end {
+			lastCode = []byte(original[codeStart:codeEnd])
+			break
+		}
+	}
+
+	result = append(result, truncated[lastIndex:]...)
+
+	// Add the last ANSI code at the end if it exists
+	if len(lastCode) > 0 {
+		result = append(result, lastCode...)
+	}
+
+	return string(result)
 }

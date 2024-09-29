@@ -93,7 +93,7 @@ func compare(t *testing.T, expected, actual string) {
 
 // # HELPER FUNCTIONS THAT ARE TRICKY
 
-func TestSliceAnsi(t *testing.T) {
+func TestGetVisiblePartOfLine(t *testing.T) {
 	tests := []struct {
 		name                      string
 		s                         string
@@ -135,12 +135,28 @@ func TestSliceAnsi(t *testing.T) {
 			expected:                  ".",
 		},
 		{
+			name:                      "twice the lineContinuationIndicator longer than width",
+			s:                         "1234567",
+			xOffset:                   1,
+			width:                     5,
+			lineContinuationIndicator: "...",
+			expected:                  ".....",
+		},
+		{
 			name:                      "zero offset, sufficient width",
 			s:                         "1234567890123456789012345",
 			xOffset:                   0,
 			width:                     30,
 			lineContinuationIndicator: "...",
 			expected:                  "1234567890123456789012345",
+		},
+		{
+			name:                      "zero offset, sufficient width, space at end",
+			s:                         "1234567890123456789012345     ",
+			xOffset:                   0,
+			width:                     30,
+			lineContinuationIndicator: "...",
+			expected:                  "1234567890123456789012345     ",
 		},
 		{
 			name:                      "zero offset, insufficient width",
@@ -151,26 +167,29 @@ func TestSliceAnsi(t *testing.T) {
 			expected:                  "123456789012...",
 		},
 		{
+			name:                      "positive offset, insufficient width",
 			s:                         "1234567890123456789012345",
 			xOffset:                   5,
 			width:                     15,
 			lineContinuationIndicator: "...",
 			expected:                  "...901234567...",
 		},
-		//{
-		//	s:                         "\x1b[38;2;255;0;0m1234567890123456789012345\x1b[0m",
-		//	xOffset:                   0,
-		//	width:                     15,
-		//	lineContinuationIndicator: "...",
-		//	expected:                  "\x1b[38;2;255;0;0m123456789012...\x1b[0m",
-		//},
-		//{
-		//	s:                         "\x1b[38;2;255;0;0m1234567890123456789012345\x1b[0m",
-		//	xOffset:                   5,
-		//	width:                     15,
-		//	lineContinuationIndicator: "...",
-		//	expected:                  "\x1b[38;2;255;0;0m...901234567...\x1b[0m",
-		//},
+		{
+			name:                      "zero offset, insufficient width, ansi",
+			s:                         "\x1b[38;2;255;0;0m1234567890123456789012345\x1b[0m",
+			xOffset:                   0,
+			width:                     15,
+			lineContinuationIndicator: "...",
+			expected:                  "\x1b[38;2;255;0;0m123456789012...\x1b[0m",
+		},
+		{
+			name:                      "positive offset, insufficient width, ansi",
+			s:                         "\x1b[38;2;255;0;0m1234567890123456789012345\x1b[0m",
+			xOffset:                   5,
+			width:                     15,
+			lineContinuationIndicator: "...",
+			expected:                  "\x1b[38;2;255;0;0m...901234567...\x1b[0m",
+		},
 	}
 
 	for _, tt := range tests {
