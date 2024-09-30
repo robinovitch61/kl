@@ -30,7 +30,11 @@ func (e Entity) Render() string {
 	} else if e.IsNamespace {
 		return e.Prefix + e.Container.Namespace
 	} else if e.IsDeployment {
-		return e.Prefix + e.Container.Deployment
+		res := e.Prefix + e.Container.Deployment
+		if e.Container.PodOwnerMetadata.RefType != "" {
+			res += " <" + e.Container.PodOwnerMetadata.RefType + ">"
+		}
+		return res
 	} else if e.IsPod {
 		return e.Prefix + e.Container.Pod
 	} else {

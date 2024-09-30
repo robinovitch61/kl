@@ -947,7 +947,6 @@ func (m Model) handleContainerDeltasMsg(msg command.GetContainerDeltasMsg) (Mode
 					m, cmd = m.getStartLogScannerCmd(m.client, newEntity, m.sinceTime.Time)
 					cmds = append(cmds, cmd)
 				}
-
 			}
 			dev.Debug(fmt.Sprintf("model added/updated container %s, state %s", delta.Container.HumanReadable(), delta.Container.Status.State))
 		}

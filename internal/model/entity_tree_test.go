@@ -58,6 +58,7 @@ var (
 	container2RegexFilter = newFilter("containe.2", true)
 	cluster1RegexFilter   = newFilter("cluste.1", true)
 	cluster2Filter        = newFilter("cluster2", false)
+	deploymentFilter      = newFilter("<Deployment>", false)
 )
 
 func newTree() EntityTree {
@@ -84,6 +85,34 @@ func TestEntityTreeImpl_AddOrReplaceContainer(t *testing.T) {
 
 	if !entitiesEqual(entities, expected) {
 		t.Errorf("GetEntities():\n%v\nWant\n%v", formatEntities(entities), formatEntities(expected))
+	}
+}
+
+func TestEntityTreeImpl_AddOrReplaceContainerWithPodMetadata(t *testing.T) {
+	tree := newTree()
+
+	cm := container1Cluster1
+	pomd := PodOwnerMetadata{RefType: "Deployment"}
+	cm.Container.PodOwnerMetadata = pomd
+	tree.AddOrReplace(cm)
+
+	entities := tree.GetEntities()
+	expected := []Entity{cluster1, namespace1, deployment1, pod1, container1Cluster1}
+
+	if !entitiesEqual(entities, expected) {
+		t.Errorf("GetEntities():\n%v\nWant\n%v", formatEntities(entities), formatEntities(expected))
+	}
+
+	for _, e := range entities {
+		if e.IsContainer() || e.IsPod || e.IsDeployment {
+			if e.Container.PodOwnerMetadata != pomd {
+				t.Errorf("Expected pod owner metadata to be set, got %s", e.Container.PodOwnerMetadata)
+			}
+		} else {
+			if e.Container.PodOwnerMetadata == pomd {
+				t.Errorf("Expected pod owner metadata to be not be set, got %s", e.Container.PodOwnerMetadata)
+			}
+		}
 	}
 }
 
@@ -118,9 +147,11 @@ func TestEntityTreeImpl_AddOrReplaceUpdate(t *testing.T) {
 
 func TestEntityTreeImpl_GetVisibleEntities(t *testing.T) {
 	tree := newTree()
+	c1c2 := container1Cluster2
+	c1c2.Container.PodOwnerMetadata = PodOwnerMetadata{RefType: "Deployment"}
 	tree.AddOrReplace(container1Cluster1)
 	tree.AddOrReplace(container2Cluster1)
-	tree.AddOrReplace(container1Cluster2)
+	tree.AddOrReplace(c1c2)
 
 	tests := []struct {
 		name   string
@@ -130,12 +161,12 @@ func TestEntityTreeImpl_GetVisibleEntities(t *testing.T) {
 		{
 			name:   "No filter",
 			filter: emptyFilter,
-			want:   []Entity{cluster1, namespace1, deployment1, pod1, container1Cluster1, container2Cluster1, cluster2, namespace2, deployment2, pod2, container1Cluster2},
+			want:   []Entity{cluster1, namespace1, deployment1, pod1, container1Cluster1, container2Cluster1, cluster2, namespace2, deployment2, pod2, c1c2},
 		},
 		{
 			name:   "Filter matches container1",
 			filter: container1Filter,
-			want:   []Entity{cluster1, namespace1, deployment1, pod1, container1Cluster1, cluster2, namespace2, deployment2, pod2, container1Cluster2},
+			want:   []Entity{cluster1, namespace1, deployment1, pod1, container1Cluster1, cluster2, namespace2, deployment2, pod2, c1c2},
 		},
 		{
 			name:   "Filter regex matches container2",
@@ -145,7 +176,12 @@ func TestEntityTreeImpl_GetVisibleEntities(t *testing.T) {
 		{
 			name:   "Filter matching cluster2 shows all children",
 			filter: cluster2Filter,
-			want:   []Entity{cluster2, namespace2, deployment2, pod2, container1Cluster2},
+			want:   []Entity{cluster2, namespace2, deployment2, pod2, c1c2},
+		},
+		{
+			name:   "Filter matching pod owner metadata",
+			filter: deploymentFilter,
+			want:   []Entity{cluster2, namespace2, deployment2, pod2, c1c2},
 		},
 	}
 

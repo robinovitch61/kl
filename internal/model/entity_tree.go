@@ -80,7 +80,7 @@ func newIsVisibleCache(filter filter.Model) isVisibleCache {
 	}
 }
 
-func (c isVisibleCache) RelevantFor(filter filter.Model) bool {
+func (c isVisibleCache) ValidFor(filter filter.Model) bool {
 	return c.cache != nil && filter.Value() == c.filter
 }
 
@@ -200,7 +200,7 @@ func (et *entityTreeImpl) addOrReplacePod(entity Entity, replace bool) {
 	deploymentID := entity.Container.Deployment
 	podID := entity.Container.Pod
 	et.addDeployment(
-		Entity{Container: Container{Cluster: clusterID, Namespace: namespaceID, Deployment: deploymentID}, IsDeployment: true},
+		Entity{Container: Container{Cluster: clusterID, Namespace: namespaceID, Deployment: deploymentID, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsDeployment: true},
 		false,
 	)
 
@@ -222,7 +222,7 @@ func (et *entityTreeImpl) addOrReplaceContainer(entity Entity, replace bool) {
 	podID := entity.Container.Pod
 	containerID := entity.Container.Name
 	et.addOrReplacePod(
-		Entity{Container: Container{Cluster: clusterID, Namespace: namespaceID, Deployment: deploymentID, Pod: podID}, IsPod: true},
+		Entity{Container: Container{Cluster: clusterID, Namespace: namespaceID, Deployment: deploymentID, Pod: podID, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsPod: true},
 		false,
 	)
 
@@ -316,7 +316,7 @@ func (et entityTreeImpl) AnyPendingContainers() bool {
 // IsVisibleGivenFilter tends to be called many times in a row with the same filter,
 // so uses a filter-specific cache for performance
 func (et *entityTreeImpl) IsVisibleGivenFilter(entity Entity, filter filter.Model) bool {
-	if et.isVisibleCache.RelevantFor(filter) {
+	if et.isVisibleCache.ValidFor(filter) {
 		if v, ok := et.isVisibleCache.Contains(entity); ok {
 			return v
 		}
@@ -492,9 +492,9 @@ func (et *entityTreeImpl) getParentEntity(entity Entity) Entity {
 	} else if entity.IsDeployment {
 		return Entity{Container: Container{Cluster: entity.Container.Cluster, Namespace: entity.Container.Namespace}, IsNamespace: true}
 	} else if entity.IsPod {
-		return Entity{Container: Container{Cluster: entity.Container.Cluster, Namespace: entity.Container.Namespace, Deployment: entity.Container.Deployment}, IsDeployment: true}
+		return Entity{Container: Container{Cluster: entity.Container.Cluster, Namespace: entity.Container.Namespace, Deployment: entity.Container.Deployment, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsDeployment: true}
 	} else if entity.IsContainer() {
-		return Entity{Container: Container{Cluster: entity.Container.Cluster, Namespace: entity.Container.Namespace, Deployment: entity.Container.Deployment, Pod: entity.Container.Pod}, IsPod: true}
+		return Entity{Container: Container{Cluster: entity.Container.Cluster, Namespace: entity.Container.Namespace, Deployment: entity.Container.Deployment, Pod: entity.Container.Pod, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsPod: true}
 	}
 	return Entity{}
 }

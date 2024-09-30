@@ -7,8 +7,11 @@ import (
 const idSeparator = "/"
 
 type Container struct {
+	// TODO: Deployment is a bit of a misnomer - it is more accurately described as "pod owner name"
+	//  e.g. for a ReplicaSet, it is the Deployment name, but for a DaemonSet, it is the DaemonSet name
 	Cluster, Namespace, Deployment, Pod, Name string
 	Status                                    ContainerStatus
+	PodOwnerMetadata                          PodOwnerMetadata
 }
 
 func (c Container) ID() string {
