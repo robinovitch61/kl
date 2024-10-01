@@ -532,6 +532,10 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
+	if !m.initialized {
+		return m, nil
+	}
+
 	// #11: After a long and prosperous interactive log session, user exits the app. Some cleanup is done before exiting
 	if key.Matches(msg, m.keyMap.Quit) {
 		return m, m.cleanupCmd()
