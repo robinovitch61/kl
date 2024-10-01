@@ -6,6 +6,7 @@ import (
 
 type Config struct {
 	AllNamespaces  bool
+	ContainerLimit int
 	Contexts       string
 	Descending     bool
 	ExtraOwnerRefs []string

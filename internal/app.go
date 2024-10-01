@@ -711,6 +711,19 @@ func (m Model) getStartLogScannerCmd(client k8s.Client, entity model.Entity, sin
 		return m, nil
 	}
 
+	// check the limit of active log scanners isn't reached
+	numPendingOrActive := 0
+	for _, ce := range m.entityTree.GetContainerEntities() {
+		if ce.LogScannerPending || ce.IsSelected() {
+			numPendingOrActive++
+		}
+	}
+	if m.config.ContainerLimit >= 0 && numPendingOrActive >= m.config.ContainerLimit {
+		newToast := toast.New(fmt.Sprintf("limit of %d selections reached: run kl with --limit flag to increase", m.config.ContainerLimit))
+		m.toast = newToast
+		return m, tea.Tick(time.Second*5, func(t time.Time) tea.Msg { return toast.TimeoutMsg{ID: newToast.ID} })
+	}
+
 	// mark the entity as pending in the tree so that the UI can show that and to protect against duplicate scanner requests
 	entity.LogScannerPending = true
 	m.entityTree.AddOrReplace(entity)

@@ -52,8 +52,8 @@ kl --context my-context,other-context -n default,other-ns
 # Auto-select all containers in a deployment containing the word `nginx`
 kl --mdep nginx
 
-# Auto-select all containers with the exact name of `my-container`
-kl --mc "^my-container$"
+# Auto-select all containers with the exact name of `my-container`, limited to 10 selections
+kl --mc "^my-container$" --limit 10
 
 # Ignore all containers with the exact name of `my-sidecar`
 kl --ic "^my-sidecar$"

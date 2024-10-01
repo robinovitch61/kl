@@ -61,6 +61,12 @@ var (
 			cfgFileEnvVar: "kubeconfig",
 			description:   `Config file path. Defaults to $HOME/.kube/config`,
 		},
+		"limit": {
+			cfgFileEnvVar: "limit",
+			description:   `Limit the number of selected containers. Default unlimited`,
+			isInt:         true,
+			defaultIfInt:  -1,
+		},
 		"logs-view": {
 			cliShort:      "l",
 			cfgFileEnvVar: "logs-view",
@@ -167,6 +173,7 @@ func init() {
 		"desc",
 		"extra-owner-refs",
 		"kubeconfig",
+		"limit",
 		"logs-view",
 		"mc",
 		"mclust",
@@ -228,7 +235,7 @@ func mainEntrypoint(cmd *cobra.Command, _ []string) {
 	program := tea.NewProgram(initialModel, options...)
 
 	if _, err := program.Run(); err != nil {
-		fmt.Printf("Error on kl startup: %v", err)
+		fmt.Printf("error on kl startup: %v", err)
 		os.Exit(1)
 	}
 }
@@ -249,6 +256,23 @@ func homeDir() string {
 
 func getAllNamespaces(cmd *cobra.Command) bool {
 	return cmd.Flags().Lookup("all-namespaces").Value.String() == "true"
+}
+
+func getContainerLimit(cmd *cobra.Command) int {
+	// -1 indicates no limit
+	if !cmd.Flags().Lookup("limit").Changed {
+		return -1
+	}
+	limit, err := cmd.Flags().GetInt("limit")
+	if err != nil {
+		fmt.Printf("error parsing limit: %v\n", err)
+		os.Exit(1)
+	}
+	if limit < 0 {
+		fmt.Println("error: limit must be non-negative")
+		os.Exit(1)
+	}
+	return limit
 }
 
 func getKubeConfigPath(cmd *cobra.Command) string {
@@ -338,6 +362,7 @@ func getAutoSelectMatchers(cmd *cobra.Command) model.Matcher {
 func getConfig(cmd *cobra.Command) internal.Config {
 	return internal.Config{
 		AllNamespaces:  getAllNamespaces(cmd),
+		ContainerLimit: getContainerLimit(cmd),
 		Contexts:       getKubeContexts(cmd),
 		Descending:     getDescending(cmd),
 		ExtraOwnerRefs: getExtraOwnerRefs(cmd),
