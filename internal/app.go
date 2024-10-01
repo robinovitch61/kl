@@ -583,7 +583,7 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	// save content of current page
 	if key.Matches(msg, m.keyMap.Save) {
-		cmds = append(cmds, fileio.GetSaveCommand("", m.pages[m.currentPageType].AllContent()))
+		cmds = append(cmds, fileio.GetSaveCommand("", m.pages[m.currentPageType].ContentToPersist()))
 		return m, tea.Batch(cmds...)
 	}
 
@@ -780,7 +780,7 @@ func (m Model) handleSingleLogPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	// handle copy single log content
 	if key.Matches(msg, m.keyMap.Copy) {
-		return m, command.CopyContentToClipboardCmd(strings.Join(m.pages[page.SingleLogPageType].AllContent(), "\n"))
+		return m, command.CopyContentToClipboardCmd(strings.Join(m.pages[page.SingleLogPageType].ContentToPersist(), "\n"))
 	}
 
 	// handle cycling through single logs

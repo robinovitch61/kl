@@ -64,7 +64,7 @@ func (p SingleLogPage) HighjackingInput() bool {
 	return p.filterableViewport.Filter.Focused()
 }
 
-func (p SingleLogPage) AllContent() []string {
+func (p SingleLogPage) ContentToPersist() []string {
 	header, content := veryNicelyFormatThisLog(p.log)
 	res := []string{header}
 	return append(res, content...)

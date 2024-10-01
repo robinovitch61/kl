@@ -82,7 +82,7 @@ func (p EntityPage) HighjackingInput() bool {
 	return p.filterableViewport.HighjackingInput()
 }
 
-func (p EntityPage) AllContent() []string {
+func (p EntityPage) ContentToPersist() []string {
 	var content []string
 	for _, l := range p.getVisibleEntities() {
 		content = append(content, l.Render())
