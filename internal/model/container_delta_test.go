@@ -17,7 +17,7 @@ func TestContainerDeltaSetAdd(t *testing.T) {
 	delta1 := ContainerDelta{
 		Time: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		Container: Container{
-			Cluster: "cluster1", Namespace: "ns1", Deployment: "dep1", Pod: "pod1", Name: "container1",
+			Cluster: "cluster1", Namespace: "ns1", PodOwner: "dep1", Pod: "pod1", Name: "container1",
 			Status: ContainerStatus{
 				State:     ContainerRunning,
 				StartedAt: now,
@@ -34,7 +34,7 @@ func TestContainerDeltaSetAdd(t *testing.T) {
 	delta2 := ContainerDelta{
 		Time: time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
 		Container: Container{
-			Cluster: "cluster1", Namespace: "ns1", Deployment: "dep1", Pod: "pod1", Name: "container2",
+			Cluster: "cluster1", Namespace: "ns1", PodOwner: "dep1", Pod: "pod1", Name: "container2",
 			Status: ContainerStatus{
 				State:     ContainerTerminated,
 				StartedAt: now.Add(-1 * time.Hour), // Terminated 1 hour ago
@@ -58,7 +58,7 @@ func TestContainerDeltaSetOrderedDeltas(t *testing.T) {
 	delta1 := ContainerDelta{
 		Time: time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
 		Container: Container{
-			Cluster: "cluster1", Namespace: "ns1", Deployment: "dep1", Pod: "pod1", Name: "container1",
+			Cluster: "cluster1", Namespace: "ns1", PodOwner: "dep1", Pod: "pod1", Name: "container1",
 			Status: ContainerStatus{
 				State:     ContainerRunning,
 				StartedAt: now,
@@ -70,7 +70,7 @@ func TestContainerDeltaSetOrderedDeltas(t *testing.T) {
 	delta2 := ContainerDelta{
 		Time: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		Container: Container{
-			Cluster: "cluster1", Namespace: "ns1", Deployment: "dep1", Pod: "pod1", Name: "container1",
+			Cluster: "cluster1", Namespace: "ns1", PodOwner: "dep1", Pod: "pod1", Name: "container1",
 			Status: ContainerStatus{
 				State:     ContainerUnknown,
 				StartedAt: time.Time{},
@@ -81,7 +81,7 @@ func TestContainerDeltaSetOrderedDeltas(t *testing.T) {
 	delta3 := ContainerDelta{
 		Time: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		Container: Container{
-			Cluster: "cluster1", Namespace: "ns1", Deployment: "dep1", Pod: "pod1", Name: "container2",
+			Cluster: "cluster1", Namespace: "ns1", PodOwner: "dep1", Pod: "pod1", Name: "container2",
 			Status: ContainerStatus{
 				State:     ContainerWaiting,
 				StartedAt: time.Time{},

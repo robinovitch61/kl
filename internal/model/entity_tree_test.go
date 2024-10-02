@@ -25,40 +25,40 @@ var (
 		Container:   Container{Cluster: "cluster2", Namespace: "namespace2"},
 		IsNamespace: true,
 	}
-	deployment1 = Entity{
-		Container:    Container{Cluster: "cluster1", Namespace: "namespace1", Deployment: "deployment1"},
-		IsDeployment: true,
+	podOwner1 = Entity{
+		Container:  Container{Cluster: "cluster1", Namespace: "namespace1", PodOwner: "podOwner1"},
+		IsPodOwner: true,
 	}
-	deployment2 = Entity{
-		Container:    Container{Cluster: "cluster2", Namespace: "namespace2", Deployment: "deployment2"},
-		IsDeployment: true,
+	podOwner2 = Entity{
+		Container:  Container{Cluster: "cluster2", Namespace: "namespace2", PodOwner: "podOwner2"},
+		IsPodOwner: true,
 	}
 	pod1 = Entity{
-		Container: Container{Cluster: "cluster1", Namespace: "namespace1", Deployment: "deployment1", Pod: "pod1"},
+		Container: Container{Cluster: "cluster1", Namespace: "namespace1", PodOwner: "podOwner1", Pod: "pod1"},
 		IsPod:     true,
 	}
 	pod2 = Entity{
-		Container: Container{Cluster: "cluster2", Namespace: "namespace2", Deployment: "deployment2", Pod: "pod2"},
+		Container: Container{Cluster: "cluster2", Namespace: "namespace2", PodOwner: "podOwner2", Pod: "pod2"},
 		IsPod:     true,
 	}
 	container1Cluster1 = Entity{
-		Container: Container{Cluster: "cluster1", Namespace: "namespace1", Deployment: "deployment1", Pod: "pod1", Name: "container1"},
+		Container: Container{Cluster: "cluster1", Namespace: "namespace1", PodOwner: "podOwner1", Pod: "pod1", Name: "container1"},
 	}
 	container2Cluster1 = Entity{
-		Container: Container{Cluster: "cluster1", Namespace: "namespace1", Deployment: "deployment1", Pod: "pod1", Name: "container2"},
+		Container: Container{Cluster: "cluster1", Namespace: "namespace1", PodOwner: "podOwner1", Pod: "pod1", Name: "container2"},
 	}
 	container3Cluster1 = Entity{
-		Container: Container{Cluster: "cluster1", Namespace: "namespace1", Deployment: "deployment1", Pod: "pod1", Name: "container3"},
+		Container: Container{Cluster: "cluster1", Namespace: "namespace1", PodOwner: "podOwner1", Pod: "pod1", Name: "container3"},
 	}
 	container1Cluster2 = Entity{
-		Container: Container{Cluster: "cluster2", Namespace: "namespace2", Deployment: "deployment2", Pod: "pod2", Name: "container1"},
+		Container: Container{Cluster: "cluster2", Namespace: "namespace2", PodOwner: "podOwner2", Pod: "pod2", Name: "container1"},
 	}
 	emptyFilter           = newFilter("", false)
 	container1Filter      = newFilter("container1", false)
 	container2RegexFilter = newFilter("containe.2", true)
 	cluster1RegexFilter   = newFilter("cluste.1", true)
 	cluster2Filter        = newFilter("cluster2", false)
-	deploymentFilter      = newFilter("<Deployment>", false)
+	podOwnerFilter        = newFilter("<Deployment>", false)
 )
 
 func newTree() EntityTree {
@@ -81,7 +81,7 @@ func TestEntityTreeImpl_AddOrReplaceContainer(t *testing.T) {
 	tree.AddOrReplace(container1Cluster1)
 
 	entities := tree.GetEntities()
-	expected := []Entity{cluster1, namespace1, deployment1, pod1, container1Cluster1}
+	expected := []Entity{cluster1, namespace1, podOwner1, pod1, container1Cluster1}
 
 	if !entitiesEqual(entities, expected) {
 		t.Errorf("GetEntities():\n%v\nWant\n%v", formatEntities(entities), formatEntities(expected))
@@ -92,19 +92,19 @@ func TestEntityTreeImpl_AddOrReplaceContainerWithPodMetadata(t *testing.T) {
 	tree := newTree()
 
 	cm := container1Cluster1
-	pomd := PodOwnerMetadata{RefType: "Deployment"}
+	pomd := PodOwnerMetadata{OwnerType: "PodOwner"}
 	cm.Container.PodOwnerMetadata = pomd
 	tree.AddOrReplace(cm)
 
 	entities := tree.GetEntities()
-	expected := []Entity{cluster1, namespace1, deployment1, pod1, container1Cluster1}
+	expected := []Entity{cluster1, namespace1, podOwner1, pod1, container1Cluster1}
 
 	if !entitiesEqual(entities, expected) {
 		t.Errorf("GetEntities():\n%v\nWant\n%v", formatEntities(entities), formatEntities(expected))
 	}
 
 	for _, e := range entities {
-		if e.IsContainer() || e.IsPod || e.IsDeployment {
+		if e.IsContainer() || e.IsPod || e.IsPodOwner {
 			if e.Container.PodOwnerMetadata != pomd {
 				t.Errorf("Expected pod owner metadata to be set, got %s", e.Container.PodOwnerMetadata)
 			}
@@ -123,7 +123,7 @@ func TestEntityTreeImpl_AddOrReplaceContainers(t *testing.T) {
 	tree.AddOrReplace(container1Cluster2)
 
 	entities := tree.GetEntities()
-	expected := []Entity{cluster1, namespace1, deployment1, pod1, container1Cluster1, cluster2, namespace2, deployment2, pod2, container1Cluster2}
+	expected := []Entity{cluster1, namespace1, podOwner1, pod1, container1Cluster1, cluster2, namespace2, podOwner2, pod2, container1Cluster2}
 
 	if !entitiesEqual(entities, expected) {
 		t.Errorf("GetEntities() = %v, want %v", entities, expected)
@@ -148,7 +148,7 @@ func TestEntityTreeImpl_AddOrReplaceUpdate(t *testing.T) {
 func TestEntityTreeImpl_GetVisibleEntities(t *testing.T) {
 	tree := newTree()
 	c1c2 := container1Cluster2
-	c1c2.Container.PodOwnerMetadata = PodOwnerMetadata{RefType: "Deployment"}
+	c1c2.Container.PodOwnerMetadata = PodOwnerMetadata{OwnerType: "Deployment"}
 	tree.AddOrReplace(container1Cluster1)
 	tree.AddOrReplace(container2Cluster1)
 	tree.AddOrReplace(c1c2)
@@ -161,27 +161,27 @@ func TestEntityTreeImpl_GetVisibleEntities(t *testing.T) {
 		{
 			name:   "No filter",
 			filter: emptyFilter,
-			want:   []Entity{cluster1, namespace1, deployment1, pod1, container1Cluster1, container2Cluster1, cluster2, namespace2, deployment2, pod2, c1c2},
+			want:   []Entity{cluster1, namespace1, podOwner1, pod1, container1Cluster1, container2Cluster1, cluster2, namespace2, podOwner2, pod2, c1c2},
 		},
 		{
 			name:   "Filter matches container1",
 			filter: container1Filter,
-			want:   []Entity{cluster1, namespace1, deployment1, pod1, container1Cluster1, cluster2, namespace2, deployment2, pod2, c1c2},
+			want:   []Entity{cluster1, namespace1, podOwner1, pod1, container1Cluster1, cluster2, namespace2, podOwner2, pod2, c1c2},
 		},
 		{
 			name:   "Filter regex matches container2",
 			filter: container2RegexFilter,
-			want:   []Entity{cluster1, namespace1, deployment1, pod1, container2Cluster1},
+			want:   []Entity{cluster1, namespace1, podOwner1, pod1, container2Cluster1},
 		},
 		{
 			name:   "Filter matching cluster2 shows all children",
 			filter: cluster2Filter,
-			want:   []Entity{cluster2, namespace2, deployment2, pod2, c1c2},
+			want:   []Entity{cluster2, namespace2, podOwner2, pod2, c1c2},
 		},
 		{
 			name:   "Filter matching pod owner metadata",
-			filter: deploymentFilter,
-			want:   []Entity{cluster2, namespace2, deployment2, pod2, c1c2},
+			filter: podOwnerFilter,
+			want:   []Entity{cluster2, namespace2, podOwner2, pod2, c1c2},
 		},
 	}
 
@@ -383,7 +383,7 @@ func TestRemoveOne(t *testing.T) {
 
 	entities := tree.GetEntities()
 
-	expected := []Entity{cluster2, namespace2, deployment2, pod2, container1Cluster2}
+	expected := []Entity{cluster2, namespace2, podOwner2, pod2, container1Cluster2}
 	if !entitiesEqual(entities, expected) {
 		t.Errorf(
 			"GetVisibleEntities() mismatch:\nGot:\n%s\nWant:\n%s",
@@ -426,8 +426,8 @@ func TestEntityTreeImpl_GetSelectionActions(t *testing.T) {
 			expectedActions: 1,
 		},
 		{
-			name:            "Select deployment1",
-			selectedEntity:  deployment1,
+			name:            "Select podOwner1",
+			selectedEntity:  podOwner1,
 			filter:          emptyFilter,
 			expectedActions: 1,
 		},
@@ -522,7 +522,7 @@ func TestEntityTreeImpl_UpdatePrettyPrintPrefixes_Simple(t *testing.T) {
 	tree.UpdatePrettyPrintPrefixes(cluster2Filter)
 
 	entities := tree.GetEntities()
-	expected := []Entity{cluster1, namespace1, deployment1, pod1, container1Cluster1, cluster2, namespace2, deployment2, pod2, container1Cluster2}
+	expected := []Entity{cluster1, namespace1, podOwner1, pod1, container1Cluster1, cluster2, namespace2, podOwner2, pod2, container1Cluster2}
 
 	if !entitiesEqual(entities, expected) {
 		t.Errorf("GetEntities():\n%v\nWant\n%v", formatEntities(entities), formatEntities(expected))
@@ -551,7 +551,7 @@ func TestEntityTreeImpl_UpdatePrettyPrintPrefixes_Multi(t *testing.T) {
 	tree.UpdatePrettyPrintPrefixes(emptyFilter)
 
 	entities := tree.GetEntities()
-	expected := []Entity{cluster1, namespace1, deployment1, pod1, container1Cluster1, container2Cluster1, cluster2, namespace2, deployment2, pod2, container1Cluster2}
+	expected := []Entity{cluster1, namespace1, podOwner1, pod1, container1Cluster1, container2Cluster1, cluster2, namespace2, podOwner2, pod2, container1Cluster2}
 
 	if !entitiesEqual(entities, expected) {
 		t.Errorf("GetEntities():\n%v\nWant\n%v", formatEntities(entities), formatEntities(expected))
@@ -585,9 +585,9 @@ func TestEntityTreeImpl_ContainerToShortName(t *testing.T) {
 	}
 	f := tree.ContainerToShortName(3)
 	expected := map[Container]string{
-		container1Cluster1.Container: "clu..er1/nam..ce1/dep..nt1/pod1/con..er1",
-		container1Cluster2.Container: "clu..er2/nam..ce2/dep..nt2/pod2/con..er1",
-		container2Cluster1.Container: "clu..er1/nam..ce1/dep..nt1/pod1/con..er2",
+		container1Cluster1.Container: "clu..er1/nam..ce1/pod..er1/pod1/con..er1",
+		container1Cluster2.Container: "clu..er2/nam..ce2/pod..er2/pod2/con..er1",
+		container2Cluster1.Container: "clu..er1/nam..ce1/pod..er1/pod1/con..er2",
 	}
 	for c, short := range expected {
 		n, err := f(c)
@@ -625,11 +625,11 @@ func formatEntities(entities []Entity) string {
 }
 
 func formatEntity(e Entity) string {
-	return fmt.Sprintf("%s, IsCluster: %t, IsNamespace: %t, IsDeployment: %t, IsPod: %t",
+	return fmt.Sprintf("%s, IsCluster: %t, IsNamespace: %t, IsPodOwner: %t, IsPod: %t",
 		e.Container.ID(),
 		e.IsCluster,
 		e.IsNamespace,
-		e.IsDeployment,
+		e.IsPodOwner,
 		e.IsPod)
 }
 

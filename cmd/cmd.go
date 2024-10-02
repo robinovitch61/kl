@@ -30,6 +30,7 @@ type arg struct {
 }
 
 var (
+	// match when possible https://kubernetes.io/docs/reference/kubectl/ & https://kubernetes.io/docs/reference/kubectl/generated/kubectl/
 	rootNameToArg = map[string]arg{
 		"all-namespaces": {
 			cliShort:      "A",
@@ -48,14 +49,34 @@ var (
 			description:   `If present, start with logs in descending order by timestamp. Default false`,
 			isBool:        true,
 		},
-		"extra-owner-refs": {
-			cfgFileEnvVar: "extra-owner-refs",
-			description:   `Comma-separated list of extra owner ref types to include. Defaults to only ReplicaSet.`,
-		},
 		"help": {
 			description: `Print usage`,
 		},
-		// generally match https://kubernetes.io/docs/reference/kubectl/ & https://kubernetes.io/docs/reference/kubectl/generated/kubectl/
+		"ic": {
+			cliShort:      "",
+			cfgFileEnvVar: "ignore-container",
+			description:   `Ignore containers matching this regex pattern`,
+		},
+		"iclust": {
+			cliShort:      "",
+			cfgFileEnvVar: "ignore-cluster",
+			description:   `Ignore containers clusters matching this regex pattern`,
+		},
+		"ins": {
+			cliShort:      "",
+			cfgFileEnvVar: "ignore-namespace",
+			description:   `Ignore namespaces matching this regex pattern`,
+		},
+		"iown": {
+			cliShort:      "",
+			cfgFileEnvVar: "ignore-pod-owner",
+			description:   `Ignore pod owners matching this regex pattern`,
+		},
+		"ipod": {
+			cliShort:      "",
+			cfgFileEnvVar: "ignore-pod",
+			description:   `Ignore pods matching this regex pattern`,
+		},
 		"kubeconfig": {
 			cliShort:      "",
 			cfgFileEnvVar: "kubeconfig",
@@ -83,15 +104,15 @@ var (
 			cfgFileEnvVar: "match-cluster",
 			description:   `Auto-select clusters matching this regex pattern`,
 		},
-		"mdep": {
-			cliShort:      "",
-			cfgFileEnvVar: "match-deployment",
-			description:   `Auto-select deployments matching this regex pattern`,
-		},
 		"mns": {
 			cliShort:      "",
 			cfgFileEnvVar: "match-namespace",
 			description:   `Auto-select namespaces matching this regex pattern`,
+		},
+		"mown": {
+			cliShort:      "",
+			cfgFileEnvVar: "match-pod-owner",
+			description:   `Auto-select pod owners matching this regex pattern`,
 		},
 		"mpod": {
 			cliShort:      "",
@@ -103,30 +124,9 @@ var (
 			cfgFileEnvVar: "namespace",
 			description:   `Namespace(s). Can be comma-separated list. Defaults to current namespace`,
 		},
-		"ic": {
-			cliShort:      "",
-			cfgFileEnvVar: "ignore-container",
-			description:   `Ignore containers matching this regex pattern`,
-		},
-		"iclust": {
-			cliShort:      "",
-			cfgFileEnvVar: "ignore-cluster",
-			description:   `Ignore containers clusters matching this regex pattern`,
-		},
-		"idep": {
-			cliShort:      "",
-			cfgFileEnvVar: "ignore-deployment",
-			description:   `Ignore deployments matching this regex pattern`,
-		},
-		"ins": {
-			cliShort:      "",
-			cfgFileEnvVar: "ignore-namespace",
-			description:   `Ignore namespaces matching this regex pattern`,
-		},
-		"ipod": {
-			cliShort:      "",
-			cfgFileEnvVar: "ignore-pod",
-			description:   `Ignore pods matching this regex pattern`,
+		"pod-owner-types": {
+			cfgFileEnvVar: "pod-owner-types",
+			description:   `Comma-separated list of pod owner types to include. Defaults to ReplicaSet.`,
 		},
 		"since": {
 			cliShort:      "",
@@ -171,21 +171,21 @@ func init() {
 		"all-namespaces",
 		"context",
 		"desc",
-		"extra-owner-refs",
+		"ic",
+		"iclust",
+		"ins",
+		"iown",
+		"ipod",
 		"kubeconfig",
 		"limit",
 		"logs-view",
 		"mc",
 		"mclust",
-		"mdep",
 		"mns",
+		"mown",
 		"mpod",
 		"namespace",
-		"ic",
-		"iclust",
-		"idep",
-		"ins",
-		"ipod",
+		"pod-owner-types",
 		"since",
 	} {
 		c := rootNameToArg[cliLong]
@@ -291,18 +291,14 @@ func getDescending(cmd *cobra.Command) bool {
 	return cmd.Flags().Lookup("desc").Value.String() == "true"
 }
 
-func getExtraOwnerRefs(cmd *cobra.Command) []string {
-	return strings.Split(cmd.Flags().Lookup("extra-owner-refs").Value.String(), ",")
-}
-
 func getIgnoreMatchers(cmd *cobra.Command) model.Matcher {
 	ignoreMatchers, err := model.NewMatcher(
 		model.NewMatcherArgs{
-			Cluster:    cmd.Flags().Lookup("iclust").Value.String(),
-			Container:  cmd.Flags().Lookup("ic").Value.String(),
-			Deployment: cmd.Flags().Lookup("idep").Value.String(),
-			Namespace:  cmd.Flags().Lookup("ins").Value.String(),
-			Pod:        cmd.Flags().Lookup("ipod").Value.String(),
+			Cluster:   cmd.Flags().Lookup("iclust").Value.String(),
+			Container: cmd.Flags().Lookup("ic").Value.String(),
+			PodOwner:  cmd.Flags().Lookup("iown").Value.String(),
+			Namespace: cmd.Flags().Lookup("ins").Value.String(),
+			Pod:       cmd.Flags().Lookup("ipod").Value.String(),
 		},
 	)
 	if err != nil {
@@ -318,6 +314,14 @@ func getLogsView(cmd *cobra.Command) bool {
 
 func getNamespaces(cmd *cobra.Command) string {
 	return cmd.Flags().Lookup("namespace").Value.String()
+}
+
+func getPodOwnerTypes(cmd *cobra.Command) []string {
+	types := strings.Split(cmd.Flags().Lookup("pod-owner-types").Value.String(), ",")
+	if len(types) == 0 || (len(types) == 1 && types[0] == "") {
+		return []string{"ReplicaSet"}
+	}
+	return types
 }
 
 func getSince(cmd *cobra.Command) model.SinceTime {
@@ -345,11 +349,11 @@ func getSince(cmd *cobra.Command) model.SinceTime {
 func getAutoSelectMatchers(cmd *cobra.Command) model.Matcher {
 	autoSelectMatchers, err := model.NewMatcher(
 		model.NewMatcherArgs{
-			Cluster:    cmd.Flags().Lookup("mclust").Value.String(),
-			Namespace:  cmd.Flags().Lookup("mns").Value.String(),
-			Deployment: cmd.Flags().Lookup("mdep").Value.String(),
-			Pod:        cmd.Flags().Lookup("mpod").Value.String(),
-			Container:  cmd.Flags().Lookup("mc").Value.String(),
+			Cluster:   cmd.Flags().Lookup("mclust").Value.String(),
+			Namespace: cmd.Flags().Lookup("mns").Value.String(),
+			PodOwner:  cmd.Flags().Lookup("mown").Value.String(),
+			Pod:       cmd.Flags().Lookup("mpod").Value.String(),
+			Container: cmd.Flags().Lookup("mc").Value.String(),
 		},
 	)
 	if err != nil {
@@ -365,16 +369,16 @@ func getConfig(cmd *cobra.Command) internal.Config {
 		ContainerLimit: getContainerLimit(cmd),
 		Contexts:       getKubeContexts(cmd),
 		Descending:     getDescending(cmd),
-		ExtraOwnerRefs: getExtraOwnerRefs(cmd),
 		KubeConfigPath: getKubeConfigPath(cmd),
 		LogsView:       getLogsView(cmd),
 		Matchers: model.Matchers{
 			AutoSelectMatcher: getAutoSelectMatchers(cmd),
 			IgnoreMatcher:     getIgnoreMatchers(cmd),
 		},
-		Namespaces: getNamespaces(cmd),
-		SinceTime:  getSince(cmd),
-		Version:    getVersion(),
+		Namespaces:    getNamespaces(cmd),
+		PodOwnerTypes: getPodOwnerTypes(cmd),
+		SinceTime:     getSince(cmd),
+		Version:       getVersion(),
 	}
 }
 

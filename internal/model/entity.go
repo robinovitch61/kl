@@ -7,14 +7,14 @@ import (
 	"time"
 )
 
-// Entity represents a renderable & selectable kubernetes entity (cluster, namespace, deployment, pod, or container)
+// Entity represents a renderable & selectable kubernetes entity (cluster, namespace, pod owner, pod, or container)
 type Entity struct {
-	Container                                   Container
-	IsCluster, IsNamespace, IsDeployment, IsPod bool
-	LogScanner                                  *LogScanner
-	LogScannerPending                           bool
-	Terminated                                  bool
-	Prefix                                      string
+	Container                                 Container
+	IsCluster, IsNamespace, IsPodOwner, IsPod bool
+	LogScanner                                *LogScanner
+	LogScannerPending                         bool
+	Terminated                                bool
+	Prefix                                    string
 }
 
 func (e Entity) Render() string {
@@ -29,10 +29,10 @@ func (e Entity) Render() string {
 		return e.Prefix + e.Container.Cluster
 	} else if e.IsNamespace {
 		return e.Prefix + e.Container.Namespace
-	} else if e.IsDeployment {
-		res := e.Prefix + e.Container.Deployment
-		if e.Container.PodOwnerMetadata.RefType != "" {
-			res += " <" + e.Container.PodOwnerMetadata.RefType + ">"
+	} else if e.IsPodOwner {
+		res := e.Prefix + e.Container.PodOwner
+		if e.Container.PodOwnerMetadata.OwnerType != "" {
+			res += " <" + e.Container.PodOwnerMetadata.OwnerType + ">"
 		}
 		return res
 	} else if e.IsPod {
@@ -91,7 +91,7 @@ func (e Entity) IsSelected() bool {
 }
 
 func (e Entity) IsContainer() bool {
-	return !e.IsCluster && !e.IsNamespace && !e.IsDeployment && !e.IsPod
+	return !e.IsCluster && !e.IsNamespace && !e.IsPodOwner && !e.IsPod
 }
 
 func (e Entity) AssertIsContainer() error {
@@ -109,8 +109,8 @@ func (e Entity) IsChildContainerOfNamespace(namespace Entity) bool {
 	return e.IsContainer() && e.Container.inNamespaceOf(namespace.Container)
 }
 
-func (e Entity) IsChildContainerOfDeployment(deployment Entity) bool {
-	return e.IsContainer() && e.Container.inDeploymentOf(deployment.Container)
+func (e Entity) IsChildContainerOfPodOwner(podOwner Entity) bool {
+	return e.IsContainer() && e.Container.inPodOwnerOf(podOwner.Container)
 }
 
 func (e Entity) IsChildContainerOfPod(pod Entity) bool {
@@ -122,8 +122,8 @@ func (e Entity) Type() string {
 		return "cluster"
 	} else if e.IsNamespace {
 		return "namespace"
-	} else if e.IsDeployment {
-		return "deployment"
+	} else if e.IsPodOwner {
+		return "podOwner"
 	} else if e.IsPod {
 		return "pod"
 	} else {

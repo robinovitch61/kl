@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// EntityTree is a tree of entities with hierarchy Cluster > Namespace > Deployment > Pod > Container
+// EntityTree is a tree of entities with hierarchy Cluster > Namespace > PodOwner > Pod > Container
 // can contain multiple clusters
 type EntityTree interface {
 	// AddOrReplace adds or updates an entity in the tree
@@ -19,7 +19,7 @@ type EntityTree interface {
 	AddOrReplace(entity Entity)
 
 	// GetEntities returns all entities in the tree
-	// within a cluster and namespace, sorted by deployment, pod, and container
+	// within a cluster and namespace, sorted by pod owner, pod, and container
 	GetEntities() []Entity
 
 	// GetVisibleEntities returns all entities that match the filter, any of their children match the filter,
@@ -47,7 +47,7 @@ type EntityTree interface {
 	// If an Entity doesn't match the filter, it is not included in the map
 	// If an Entity is pending, it is not included in the map
 	// If the selection is a container, only the selection is returned
-	// If it is a cluster, namespace, deployment, or pod, all children containers are returned
+	// If it is a cluster, namespace, pod owner, or pod, all children containers are returned
 	// If the request is to activate, only running containers are returned
 	GetSelectionActions(selectedEntity Entity, filter filter.Model) map[Entity]bool
 
@@ -135,8 +135,8 @@ func (et *entityTreeImpl) AddOrReplace(entity Entity) {
 		et.addCluster(entity, true)
 	} else if entity.IsNamespace {
 		et.addNamespace(entity, true)
-	} else if entity.IsDeployment {
-		et.addDeployment(entity, true)
+	} else if entity.IsPodOwner {
+		et.addPodOwner(entity, true)
 	} else if entity.IsPod {
 		et.addOrReplacePod(entity, true)
 	} else if entity.IsContainer() {
@@ -174,59 +174,59 @@ func (et *entityTreeImpl) addNamespace(entity Entity, replace bool) {
 	}
 }
 
-func (et *entityTreeImpl) addDeployment(entity Entity, replace bool) {
+func (et *entityTreeImpl) addPodOwner(entity Entity, replace bool) {
 	clusterID := entity.Container.Cluster
 	namespaceID := entity.Container.Namespace
-	deploymentID := entity.Container.Deployment
+	podOwnerId := entity.Container.PodOwner
 	et.addNamespace(
 		Entity{Container: Container{Cluster: clusterID, Namespace: namespaceID}, IsNamespace: true},
 		false,
 	)
 
 	namespace := et.root[clusterID].children[namespaceID]
-	if _, exists := namespace.children[deploymentID]; !exists {
-		namespace.children[deploymentID] = &entityNode{
+	if _, exists := namespace.children[podOwnerId]; !exists {
+		namespace.children[podOwnerId] = &entityNode{
 			entity:   entity,
 			children: make(map[string]*entityNode),
 		}
 	} else if replace {
-		namespace.children[deploymentID].entity = entity
+		namespace.children[podOwnerId].entity = entity
 	}
 }
 
 func (et *entityTreeImpl) addOrReplacePod(entity Entity, replace bool) {
 	clusterID := entity.Container.Cluster
 	namespaceID := entity.Container.Namespace
-	deploymentID := entity.Container.Deployment
+	podOwnerId := entity.Container.PodOwner
 	podID := entity.Container.Pod
-	et.addDeployment(
-		Entity{Container: Container{Cluster: clusterID, Namespace: namespaceID, Deployment: deploymentID, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsDeployment: true},
+	et.addPodOwner(
+		Entity{Container: Container{Cluster: clusterID, Namespace: namespaceID, PodOwner: podOwnerId, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsPodOwner: true},
 		false,
 	)
 
-	deployment := et.root[clusterID].children[namespaceID].children[deploymentID]
-	if _, exists := deployment.children[podID]; !exists {
-		deployment.children[podID] = &entityNode{
+	podOwner := et.root[clusterID].children[namespaceID].children[podOwnerId]
+	if _, exists := podOwner.children[podID]; !exists {
+		podOwner.children[podID] = &entityNode{
 			entity:   entity,
 			children: make(map[string]*entityNode),
 		}
 	} else if replace {
-		deployment.children[podID].entity = entity
+		podOwner.children[podID].entity = entity
 	}
 }
 
 func (et *entityTreeImpl) addOrReplaceContainer(entity Entity, replace bool) {
 	clusterID := entity.Container.Cluster
 	namespaceID := entity.Container.Namespace
-	deploymentID := entity.Container.Deployment
+	podOwnerId := entity.Container.PodOwner
 	podID := entity.Container.Pod
 	containerID := entity.Container.Name
 	et.addOrReplacePod(
-		Entity{Container: Container{Cluster: clusterID, Namespace: namespaceID, Deployment: deploymentID, Pod: podID, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsPod: true},
+		Entity{Container: Container{Cluster: clusterID, Namespace: namespaceID, PodOwner: podOwnerId, Pod: podID, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsPod: true},
 		false,
 	)
 
-	pod := et.root[clusterID].children[namespaceID].children[deploymentID].children[podID]
+	pod := et.root[clusterID].children[namespaceID].children[podOwnerId].children[podID]
 	if _, exists := pod.children[containerID]; !exists {
 		pod.children[containerID] = &entityNode{
 			entity:   entity,
@@ -248,24 +248,24 @@ func (et *entityTreeImpl) GetEntities() []Entity {
 				if namespace, ok := cluster.children[namespaceID]; ok {
 					result = append(result, namespace.entity)
 
-					deployments := make([]string, 0, len(namespace.children))
-					for deploymentID := range namespace.children {
-						deployments = append(deployments, deploymentID)
+					podOwners := make([]string, 0, len(namespace.children))
+					for podOwnerId := range namespace.children {
+						podOwners = append(podOwners, podOwnerId)
 					}
-					sort.Strings(deployments)
+					sort.Strings(podOwners)
 
-					for _, deploymentID := range deployments {
-						deployment := namespace.children[deploymentID]
-						result = append(result, deployment.entity)
+					for _, podOwnerId := range podOwners {
+						podOwner := namespace.children[podOwnerId]
+						result = append(result, podOwner.entity)
 
-						pods := make([]string, 0, len(deployment.children))
-						for podID := range deployment.children {
+						pods := make([]string, 0, len(podOwner.children))
+						for podID := range podOwner.children {
 							pods = append(pods, podID)
 						}
 						sort.Strings(pods)
 
 						for _, podID := range pods {
-							pod := deployment.children[podID]
+							pod := podOwner.children[podID]
 							result = append(result, pod.entity)
 
 							containers := make([]string, 0, len(pod.children))
@@ -365,7 +365,7 @@ func (et *entityTreeImpl) Remove(entity Entity) {
 	path := []string{
 		entity.Container.Cluster,
 		entity.Container.Namespace,
-		entity.Container.Deployment,
+		entity.Container.PodOwner,
 		entity.Container.Pod,
 		entity.Container.Name,
 	}
@@ -477,8 +477,8 @@ func (et *entityTreeImpl) findNode(entity Entity) *entityNode {
 
 	if entity.IsNamespace {
 		return parent.children[entity.Container.Namespace]
-	} else if entity.IsDeployment {
-		return parent.children[entity.Container.Deployment]
+	} else if entity.IsPodOwner {
+		return parent.children[entity.Container.PodOwner]
 	} else if entity.IsPod {
 		return parent.children[entity.Container.Pod]
 	}
@@ -489,12 +489,12 @@ func (et *entityTreeImpl) findNode(entity Entity) *entityNode {
 func (et *entityTreeImpl) getParentEntity(entity Entity) Entity {
 	if entity.IsNamespace {
 		return Entity{Container: Container{Cluster: entity.Container.Cluster}, IsCluster: true}
-	} else if entity.IsDeployment {
+	} else if entity.IsPodOwner {
 		return Entity{Container: Container{Cluster: entity.Container.Cluster, Namespace: entity.Container.Namespace}, IsNamespace: true}
 	} else if entity.IsPod {
-		return Entity{Container: Container{Cluster: entity.Container.Cluster, Namespace: entity.Container.Namespace, Deployment: entity.Container.Deployment, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsDeployment: true}
+		return Entity{Container: Container{Cluster: entity.Container.Cluster, Namespace: entity.Container.Namespace, PodOwner: entity.Container.PodOwner, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsPodOwner: true}
 	} else if entity.IsContainer() {
-		return Entity{Container: Container{Cluster: entity.Container.Cluster, Namespace: entity.Container.Namespace, Deployment: entity.Container.Deployment, Pod: entity.Container.Pod, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsPod: true}
+		return Entity{Container: Container{Cluster: entity.Container.Cluster, Namespace: entity.Container.Namespace, PodOwner: entity.Container.PodOwner, Pod: entity.Container.Pod, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsPod: true}
 	}
 	return Entity{}
 }
@@ -502,8 +502,8 @@ func (et *entityTreeImpl) getParentEntity(entity Entity) Entity {
 func (et *entityTreeImpl) GetEntity(container Container) *Entity {
 	for _, cluster := range et.root {
 		for _, namespace := range cluster.children {
-			for _, deployment := range namespace.children {
-				for _, pod := range deployment.children {
+			for _, podOwner := range namespace.children {
+				for _, pod := range podOwner.children {
 					for _, containerNode := range pod.children {
 						if containerNode.entity.Container.Equals(container) {
 							return &containerNode.entity
@@ -522,7 +522,7 @@ func (et *entityTreeImpl) UpdatePrettyPrintPrefixes(filter filter.Model) {
 	visibleEntities := et.GetVisibleEntities(filter)
 
 	seenNamespace := false
-	seenDeployment := false
+	seenPodOwner := false
 	seenPod := false
 	seenContainer := false
 
@@ -538,11 +538,11 @@ func (et *entityTreeImpl) UpdatePrettyPrintPrefixes(filter filter.Model) {
 			if seenPod {
 				podBar = "│"
 			}
-			if seenNamespace && seenDeployment {
+			if seenNamespace && seenPodOwner {
 				entity.Prefix = "  │ " + podBar + " " + suffix
 			} else if seenNamespace {
 				entity.Prefix = "    " + podBar + " " + suffix
-			} else if seenDeployment {
+			} else if seenPodOwner {
 				entity.Prefix = "  │ " + podBar + " " + suffix
 			} else {
 				entity.Prefix = "    " + podBar + " " + suffix
@@ -553,21 +553,21 @@ func (et *entityTreeImpl) UpdatePrettyPrintPrefixes(filter filter.Model) {
 			if seenPod {
 				suffix = "├─"
 			}
-			if seenNamespace && seenDeployment {
+			if seenNamespace && seenPodOwner {
 				entity.Prefix = "  │ " + suffix
 			} else if seenNamespace {
 				entity.Prefix = "    " + suffix
-			} else if seenDeployment {
+			} else if seenPodOwner {
 				entity.Prefix = "  │ " + suffix
 			} else {
 				entity.Prefix = "    " + suffix
 			}
 			seenContainer = false
 			seenPod = true
-		} else if entity.IsDeployment {
-			if seenNamespace && seenDeployment {
+		} else if entity.IsPodOwner {
+			if seenNamespace && seenPodOwner {
 				entity.Prefix = "  ├─"
-			} else if seenDeployment {
+			} else if seenPodOwner {
 				entity.Prefix = "  ├─"
 			} else if seenNamespace {
 				entity.Prefix = "  └─"
@@ -575,13 +575,13 @@ func (et *entityTreeImpl) UpdatePrettyPrintPrefixes(filter filter.Model) {
 				entity.Prefix = "  └─"
 			}
 			seenPod = false
-			seenDeployment = true
+			seenPodOwner = true
 		} else if entity.IsNamespace {
 			entity.Prefix = "  "
 			seenNamespace = true
 		} else if entity.IsCluster {
 			seenNamespace = false
-			seenDeployment = false
+			seenPodOwner = false
 		}
 
 		visibleEntities[i] = entity
@@ -599,7 +599,7 @@ func (et entityTreeImpl) ContainerToShortName(minCharsEachSide int) func(Contain
 
 	activeClusters := make(map[string]bool)
 	activeNamespaces := make(map[string]bool)
-	activeDeployments := make(map[string]bool)
+	activePodOwners := make(map[string]bool)
 	activePods := make(map[string]bool)
 	activeContainers := make(map[string]bool)
 	for _, e := range entities {
@@ -608,14 +608,14 @@ func (et entityTreeImpl) ContainerToShortName(minCharsEachSide int) func(Contain
 		}
 		activeClusters[e.Container.Cluster] = true
 		activeNamespaces[e.Container.Namespace] = true
-		activeDeployments[e.Container.Deployment] = true
+		activePodOwners[e.Container.PodOwner] = true
 		activePods[e.Container.Pod] = true
 		activeContainers[e.Container.Name] = true
 	}
 
 	shortNameFromCluster := util.GetUniqueShortNamesFromEdges(activeClusters, minCharsEachSide)
 	shortNameFromNamespace := util.GetUniqueShortNamesFromEdges(activeNamespaces, minCharsEachSide)
-	shortNameFromDeployment := util.GetUniqueShortNamesFromEdges(activeDeployments, minCharsEachSide)
+	shortNameFromPodOwner := util.GetUniqueShortNamesFromEdges(activePodOwners, minCharsEachSide)
 	shortNameFromPod := util.GetUniqueShortNamesFromEdges(activePods, minCharsEachSide)
 	shortNameFromContainer := util.GetUniqueShortNamesFromEdges(activeContainers, minCharsEachSide)
 	specFromContainerId := make(map[string]Container)
@@ -637,9 +637,9 @@ func (et entityTreeImpl) ContainerToShortName(minCharsEachSide int) func(Contain
 		if len(shortNameFromNamespace) == 1 {
 			shortNamespace = ""
 		}
-		shortDeployment := shortNameFromDeployment[c.Deployment]
-		if len(shortNameFromDeployment) == 1 {
-			shortDeployment = ""
+		shortPodOwner := shortNameFromPodOwner[c.PodOwner]
+		if len(shortNameFromPodOwner) == 1 {
+			shortPodOwner = ""
 		}
 		shortPod := shortNameFromPod[c.Pod]
 		if len(shortNameFromPod) == 1 {
@@ -650,7 +650,7 @@ func (et entityTreeImpl) ContainerToShortName(minCharsEachSide int) func(Contain
 			shortContainer = ""
 		}
 		var toJoin []string
-		for _, v := range []string{shortCluster, shortNamespace, shortDeployment, shortPod, shortContainer} {
+		for _, v := range []string{shortCluster, shortNamespace, shortPodOwner, shortPod, shortContainer} {
 			if v != "" {
 				toJoin = append(toJoin, v)
 			}

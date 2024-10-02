@@ -16,7 +16,7 @@ An interactive Kubernetes log viewer for your terminal.
 </div>
 <br>
 
-* View logs across multiple containers, pods, deployments, namespaces, and clusters
+* View logs across multiple containers, pods, namespaces, and clusters
 * Select containers interactively or auto-select by pattern matching
 * See cluster changes in real time
 * Navigate interleaved logs from multiple containers, ordered globally by timestamp
@@ -49,8 +49,8 @@ kl --context my-context -A
 # Use contexts `my-context` & `other-context`, namespaces `default` & `other-ns` in each
 kl --context my-context,other-context -n default,other-ns
 
-# Auto-select all containers in a deployment containing the word `nginx`
-kl --mdep nginx
+# Auto-select all containers in a with a pod owner (e.g. deployment) containing the word `nginx`
+kl --mown nginx
 
 # Auto-select all containers with the exact name of `my-container`, limited to 10 selections
 kl --mc "^my-container$" --limit 10

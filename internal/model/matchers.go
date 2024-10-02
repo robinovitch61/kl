@@ -23,24 +23,24 @@ type Matchers struct {
 }
 
 type Matcher struct {
-	isEmpty    bool
-	cluster    *ValidRegex
-	namespace  *ValidRegex
-	deployment *ValidRegex
-	pod        *ValidRegex
-	container  *ValidRegex
+	isEmpty   bool
+	cluster   *ValidRegex
+	namespace *ValidRegex
+	podOwner  *ValidRegex
+	pod       *ValidRegex
+	container *ValidRegex
 }
 
 type NewMatcherArgs struct {
-	Cluster    string
-	Container  string
-	Deployment string
-	Namespace  string
-	Pod        string
+	Cluster   string
+	Container string
+	PodOwner  string
+	Namespace string
+	Pod       string
 }
 
 func NewMatcher(args NewMatcherArgs) (*Matcher, error) {
-	isEmpty := args.Cluster == "" && args.Namespace == "" && args.Deployment == "" && args.Pod == "" && args.Container == ""
+	isEmpty := args.Cluster == "" && args.Namespace == "" && args.PodOwner == "" && args.Pod == "" && args.Container == ""
 	clusterRe, err := NewValidRegex(args.Cluster)
 	if err != nil {
 		return nil, fmt.Errorf("cluster: %v", err)
@@ -49,9 +49,9 @@ func NewMatcher(args NewMatcherArgs) (*Matcher, error) {
 	if err != nil {
 		return nil, fmt.Errorf("namespace: %v", err)
 	}
-	deploymentRe, err := NewValidRegex(args.Deployment)
+	podOwnerRe, err := NewValidRegex(args.PodOwner)
 	if err != nil {
-		return nil, fmt.Errorf("deployment: %v", err)
+		return nil, fmt.Errorf("podOwner: %v", err)
 	}
 	podRe, err := NewValidRegex(args.Pod)
 	if err != nil {
@@ -62,12 +62,12 @@ func NewMatcher(args NewMatcherArgs) (*Matcher, error) {
 		return nil, fmt.Errorf("container: %v", err)
 	}
 	return &Matcher{
-		isEmpty:    isEmpty,
-		cluster:    clusterRe,
-		namespace:  namespaceRe,
-		deployment: deploymentRe,
-		pod:        podRe,
-		container:  containerRe,
+		isEmpty:   isEmpty,
+		cluster:   clusterRe,
+		namespace: namespaceRe,
+		podOwner:  podOwnerRe,
+		pod:       podRe,
+		container: containerRe,
 	}, nil
 }
 
@@ -75,7 +75,7 @@ func (m Matcher) MatchesContainer(c Container) bool {
 	return !m.isEmpty &&
 		m.cluster.MatchString(c.Cluster) &&
 		m.namespace.MatchString(c.Namespace) &&
-		m.deployment.MatchString(c.Deployment) &&
+		m.podOwner.MatchString(c.PodOwner) &&
 		m.pod.MatchString(c.Pod) &&
 		m.container.MatchString(c.Name)
 }
