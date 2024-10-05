@@ -456,7 +456,7 @@ func (m Model) initialize() (Model, tea.Cmd) {
 				clusterNamespaces.Cluster,
 				namespace,
 				m.config.Matchers,
-				m.config.ExtraOwnerRefs,
+				m.config.PodOwnerTypes,
 			))
 		}
 	}
@@ -532,6 +532,10 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
+	if !m.initialized {
+		return m, nil
+	}
+
 	// #11: After a long and prosperous interactive log session, user exits the app. Some cleanup is done before exiting
 	if key.Matches(msg, m.keyMap.Quit) {
 		return m, m.cleanupCmd()
@@ -583,7 +587,7 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	// save content of current page
 	if key.Matches(msg, m.keyMap.Save) {
-		cmds = append(cmds, fileio.GetSaveCommand("", m.pages[m.currentPageType].AllContent()))
+		cmds = append(cmds, fileio.GetSaveCommand("", m.pages[m.currentPageType].ContentToPersist()))
 		return m, tea.Batch(cmds...)
 	}
 
@@ -707,6 +711,19 @@ func (m Model) getStartLogScannerCmd(client k8s.Client, entity model.Entity, sin
 		return m, nil
 	}
 
+	// check the limit of active log scanners isn't reached
+	numPendingOrActive := 0
+	for _, ce := range m.entityTree.GetContainerEntities() {
+		if ce.LogScannerPending || ce.IsSelected() {
+			numPendingOrActive++
+		}
+	}
+	if m.config.ContainerLimit >= 0 && numPendingOrActive >= m.config.ContainerLimit {
+		newToast := toast.New(fmt.Sprintf("limit of %d selections reached: run kl with --limit flag to increase", m.config.ContainerLimit))
+		m.toast = newToast
+		return m, tea.Tick(time.Second*5, func(t time.Time) tea.Msg { return toast.TimeoutMsg{ID: newToast.ID} })
+	}
+
 	// mark the entity as pending in the tree so that the UI can show that and to protect against duplicate scanner requests
 	entity.LogScannerPending = true
 	m.entityTree.AddOrReplace(entity)
@@ -780,7 +797,7 @@ func (m Model) handleSingleLogPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	// handle copy single log content
 	if key.Matches(msg, m.keyMap.Copy) {
-		return m, command.CopyContentToClipboardCmd(strings.Join(m.pages[page.SingleLogPageType].AllContent(), "\n"))
+		return m, command.CopyContentToClipboardCmd(strings.Join(m.pages[page.SingleLogPageType].ContentToPersist(), "\n"))
 	}
 
 	// handle cycling through single logs
@@ -947,7 +964,6 @@ func (m Model) handleContainerDeltasMsg(msg command.GetContainerDeltasMsg) (Mode
 					m, cmd = m.getStartLogScannerCmd(m.client, newEntity, m.sinceTime.Time)
 					cmds = append(cmds, cmd)
 				}
-
 			}
 			dev.Debug(fmt.Sprintf("model added/updated container %s, state %s", delta.Container.HumanReadable(), delta.Container.Status.State))
 		}

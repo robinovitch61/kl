@@ -71,7 +71,8 @@ func (p FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.C
 
 		if p.Filter.Focused() {
 			if key.Matches(msg, p.keyMap.Enter) {
-				// done editing, apply Filter
+				// done editing
+				p.viewport.SelectedContentStyle = style.Inverse
 				p.Filter.Blur()
 				p.Filter.UpdateLabelAndSuffix()
 			}
@@ -105,6 +106,9 @@ func (p FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.C
 				if prevIsRegex != newIsRegex {
 					p.updateVisibleRows()
 				}
+
+				// change the color of the selection
+				p.viewport.SelectedContentStyle = style.AltInverse
 				return p, textinput.Blink
 			}
 
@@ -253,7 +257,7 @@ func (p *FilterableViewport[T]) updateVisibleRows() {
 func (p *FilterableViewport[T]) clearFilter() {
 	p.Filter.BlurAndClear()
 	p.viewport.SetStringToHighlight("")
-	p.Filter.Blur()
+	p.viewport.SelectedContentStyle = style.Inverse
 	p.updateVisibleRows()
 }
 

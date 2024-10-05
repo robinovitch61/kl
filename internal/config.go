@@ -6,13 +6,14 @@ import (
 
 type Config struct {
 	AllNamespaces  bool
+	ContainerLimit int
 	Contexts       string
 	Descending     bool
-	ExtraOwnerRefs []string
 	KubeConfigPath string
 	LogsView       bool
 	Matchers       model.Matchers
 	Namespaces     string
+	PodOwnerTypes  []string
 	SinceTime      model.SinceTime
 	Version        string
 }

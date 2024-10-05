@@ -7,12 +7,13 @@ import (
 const idSeparator = "/"
 
 type Container struct {
-	Cluster, Namespace, Deployment, Pod, Name string
-	Status                                    ContainerStatus
+	Cluster, Namespace, PodOwner, Pod, Name string
+	Status                                  ContainerStatus
+	PodOwnerMetadata                        PodOwnerMetadata
 }
 
 func (c Container) ID() string {
-	return strings.Join([]string{c.Cluster, c.Namespace, c.Deployment, c.Pod, c.Name}, idSeparator)
+	return strings.Join([]string{c.Cluster, c.Namespace, c.PodOwner, c.Pod, c.Name}, idSeparator)
 }
 
 func (c Container) HumanReadable() string {
@@ -38,10 +39,10 @@ func (c Container) inNamespaceOf(other Container) bool {
 	return c.Cluster == other.Cluster && c.Namespace == other.Namespace
 }
 
-func (c Container) inDeploymentOf(other Container) bool {
-	return c.Cluster == other.Cluster && c.Namespace == other.Namespace && c.Deployment == other.Deployment
+func (c Container) inPodOwnerOf(other Container) bool {
+	return c.Cluster == other.Cluster && c.Namespace == other.Namespace && c.PodOwner == other.PodOwner
 }
 
 func (c Container) inPodOf(other Container) bool {
-	return c.Cluster == other.Cluster && c.Namespace == other.Namespace && c.Deployment == other.Deployment && c.Pod == other.Pod
+	return c.Cluster == other.Cluster && c.Namespace == other.Namespace && c.PodOwner == other.PodOwner && c.Pod == other.Pod
 }
