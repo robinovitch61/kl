@@ -68,18 +68,12 @@ func getVisiblePartOfLine(s string, xOffset, width int, lineContinuationIndicato
 		return ""
 	}
 
-	// TODO LEO: fix this
-	println(s, xOffset, width, start, end)
-	if end-start < width {
-		return s[start:end]
+	if end-start == lenPlainText {
+		return s
 	}
 
 	if end-start <= indicatorLen {
 		return lineContinuationIndicator[:min(indicatorLen, end-start)]
-	}
-
-	if width == 2*indicatorLen {
-		return lineContinuationIndicator + lineContinuationIndicator
 	}
 
 	visible := plainText[start:end]
