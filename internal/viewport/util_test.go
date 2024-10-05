@@ -150,6 +150,14 @@ func TestGetVisiblePartOfLine(t *testing.T) {
 			expected:                  "...45",
 		},
 		{
+			name:                      "positive offset, ansi",
+			s:                         "\x1b[38;2;255;0;0ma really really long line\x1b[0m",
+			xOffset:                   15,
+			width:                     15,
+			lineContinuationIndicator: "",
+			expected:                  "\x1b[38;2;255;0;0m long line\x1b[0m",
+		},
+		{
 			name:                      "zero offset, insufficient width, ansi",
 			s:                         "\x1b[38;2;255;0;0m1234567890123456789012345\x1b[0m",
 			xOffset:                   0,

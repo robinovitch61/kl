@@ -10,19 +10,10 @@ import (
 // TODO LEO: test
 func splitLineIntoSizedChunks(line string, chunkSize int) []string {
 	var wrappedLines []string
-	for {
-		lineWidth := stringWidth(line)
-		if lineWidth == 0 {
-			break
-		}
-
-		width := chunkSize
-		if lineWidth < chunkSize {
-			width = lineWidth
-		}
-
-		wrappedLines = append(wrappedLines, line[0:width])
-		line = line[width:]
+	lineWidth := stringWidth(line)
+	for xOffset := 0; xOffset < lineWidth; xOffset += chunkSize {
+		visiblePartOfLine := getVisiblePartOfLine(line, xOffset, chunkSize, "")
+		wrappedLines = append(wrappedLines, visiblePartOfLine)
 	}
 	return wrappedLines
 }
@@ -109,10 +100,15 @@ func reapplyANSI(original, truncated string, ansiCodeIndexes [][]int, start, end
 		result = append(result, truncated[i])
 	}
 
-	// add remaining ansi codes in order to end
+	// add remaining ansi codes in order to either start or end
 	for _, codeIndexes := range ansiCodeIndexes {
 		codeStart, codeEnd := codeIndexes[0], codeIndexes[1]
-		result = append(result, original[codeStart:codeEnd]...)
+		originalAnsi := []byte(original[codeStart:codeEnd])
+		if codeStart < start {
+			result = append(originalAnsi, result...)
+		} else {
+			result = append(result, originalAnsi...)
+		}
 	}
 
 	return string(result)
