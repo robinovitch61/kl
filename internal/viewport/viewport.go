@@ -203,7 +203,7 @@ func (m Model[T]) View() string {
 		addLineToViewString(m.headerStyle.Render(headerViewLine))
 	}
 
-	hasStringToHighlight := stringWidth(m.stringToHighlight) == 0
+	hasStringToHighlight := stringWidth(m.stringToHighlight) != 0
 	visibleLines := m.getVisibleLines()
 	for idx, line := range visibleLines {
 		contentIdx := m.getContentIdx(m.yOffset + idx)

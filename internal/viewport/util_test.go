@@ -39,7 +39,9 @@ func TestPad_Ansi(t *testing.T) {
 }
 
 func newViewport(width, height int) Model[RenderableString] {
-	return New[RenderableString](width, height)
+	vp := New[RenderableString](width, height)
+	vp.SelectedContentStyle = selectionStyle
+	return vp
 }
 
 // # HELPER FUNCTIONS THAT ARE TRICKY
