@@ -44,9 +44,7 @@ func newViewport(width, height int) Model[RenderableString] {
 	return vp
 }
 
-// # HELPER FUNCTIONS THAT ARE TRICKY
-
-func TestGetVisiblePartOfLine(t *testing.T) {
+func TestTruncateLine(t *testing.T) {
 	tests := []struct {
 		name                      string
 		s                         string
@@ -187,7 +185,7 @@ func TestGetVisiblePartOfLine(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual := getVisiblePartOfLine(tt.s, tt.xOffset, tt.width, tt.lineContinuationIndicator)
+			actual := truncateLine(tt.s, tt.xOffset, tt.width, tt.lineContinuationIndicator)
 			if diff := cmp.Diff(tt.expected, actual); diff != "" {
 				t.Errorf("Mismatch (-want +got):\n%s", diff)
 			}

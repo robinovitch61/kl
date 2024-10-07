@@ -739,3 +739,4 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 // test with a bunch of spaces at end of line(s)
 // test string to highlight
 // zero & one width/height viewport in each case
+// go to top/bottom

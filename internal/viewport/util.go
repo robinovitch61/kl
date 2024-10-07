@@ -10,13 +10,13 @@ import (
 func wrap(line string, width int) []string {
 	line = strings.TrimRight(line, " ")
 
-	var wrappedLines []string
+	var res []string
 	lineWidth := stringWidth(line)
 	for xOffset := 0; xOffset < lineWidth; xOffset += width {
-		visiblePartOfLine := getVisiblePartOfLine(line, xOffset, width, "")
-		wrappedLines = append(wrappedLines, visiblePartOfLine)
+		truncatedLine := truncateLine(line, xOffset, width, "")
+		res = append(res, truncatedLine)
 	}
-	return wrappedLines
+	return res
 }
 
 func percent(a, b int) int {
@@ -29,8 +29,8 @@ func stringWidth(s string) int {
 	return lipgloss.Width(s)
 }
 
-// getVisiblePartOfLine returns the visible part of a line given an xOffset and width.
-func getVisiblePartOfLine(s string, xOffset, width int, lineContinuationIndicator string) string {
+// truncateLine returns the visible part of a line given an xOffset and width
+func truncateLine(s string, xOffset, width int, lineContinuationIndicator string) string {
 	// "the full line is like this"
 	//      |xOffset     |xOffset+width
 	//      |start       |end
@@ -150,4 +150,24 @@ func compare(t *testing.T, expected, actual string) {
 	if diff := cmp.Diff(expected, actual); diff != "" {
 		t.Errorf("Mismatch (-want +got):\n%s", diff)
 	}
+}
+
+func safeSliceUpToIdx(s []string, i int) []string {
+	if i > len(s) {
+		return s
+	}
+	if i < 0 {
+		return []string{}
+	}
+	return s[:i]
+}
+
+func safeSliceFromIdx(s []string, i int) []string {
+	if i < 0 {
+		return s
+	}
+	if i > len(s) {
+		return []string{}
+	}
+	return s[i:]
 }
