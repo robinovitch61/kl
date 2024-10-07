@@ -5,6 +5,7 @@ import (
 	"github.com/robinovitch61/kl/internal/dev"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,84 +16,86 @@ var (
 	ansiPattern = regexp.MustCompile("\x1b\\[[0-9;]*m")
 )
 
-// Terminology (WIP):
+// Terminology:
+// - content: an item to be rendered in the viewport
+// - line: a row in the terminal
 //
-// no wrap:
-// ```                       content index   line index
+// wrap disabled:
+//                           content index   line index
 // this is the first line    0               0
 // this is the second line   1               1
-// ```
 //
-// wrap:
-// ```           content index   line index
+// wrap enabled:
+//               content index   line index
 // this is the   0               1
 // first line    0               2
 // this is the   1               3
 // second line   1               4
-// ```
+//
 
 // Model represents a viewport component
 type Model[T RenderableComparable] struct {
-	// public
-	KeyMap               KeyMap
+	// KeyMap is the keymap for the viewport
+	KeyMap KeyMap
+
+	// styles
 	FooterStyle          lipgloss.Style
 	HighlightStyle       lipgloss.Style
 	SelectedContentStyle lipgloss.Style
 
-	header         []string
-	wrappedHeader  []string
-	content        []T
-	wrappedContent []string
+	// header is the fixed header lines at the top of the viewport
+	// these lines will wrap and be horizontally scrollable similar to other rendered content
+	header []string
 
-	lineContinuationIndicator    string
-	lenLineContinuationIndicator int
+	// content is the complete list of items to be rendered in the viewport
+	content []T
 
-	// styles
-	contentStyle             lipgloss.Style
-	headerStyle              lipgloss.Style
-	highlightStyleIfSelected lipgloss.Style
-	backgroundStyle          lipgloss.Style
+	// contentHeight is the number of lines of content shown given the current header and footer
+	contentHeight int
 
-	// if topSticky/bottomSticky is true and selection is enabled, selection remains at top/bottom until scroll down/up
-	topSticky    bool
-	bottomSticky bool
+	// lineContinuationIndicator is the string to use to indicate that a line has been truncated from the left or right
+	lineContinuationIndicator string
 
-	// maintainSelection is true if the viewport should try to maintain the current selection when content changes
+	// selectionEnabled is true if the viewport allows individual line selection
+	selectionEnabled bool
+
+	// wrapText is true if the viewport wraps text rather than showing that a line is truncated/horizontally scrollable
+	wrapText bool
+
+	// stringToHighlight is a string to highlight in the viewport wherever it shows up
+	stringToHighlight string
+
+	// topSelectionSticky is true when selection should remain at the top until user manually scrolls down
+	topSelectionSticky bool
+
+	// bottomSelectionSticky is true when selection should remain at the bottom until user manually scrolls up
+	bottomSelectionSticky bool
+
+	// maintainSelection is true if the viewport should try to maintain the current selection when content is added or removed
 	maintainSelection bool
-
-	// wrappedContentIdxToContentIdx maps the item at an index of wrappedContent to the index of content it is associated with (many wrappedContent indexes -> one content index)
-	wrappedContentIdxToContentIdx map[int]int
-
-	// contentIdxToFirstWrappedContentIdx maps the item at an index of content to the first index of wrappedContent it is associated with (index of content -> first index of wrappedContent)
-	contentIdxToFirstWrappedContentIdx map[int]int
-
-	// contentIdxToHeight maps the item at an index of content to its wrapped height in terminal rows
-	contentIdxToHeight map[int]int
 
 	// selectedContentIdx is the index of content of the currently selected item when selectionEnabled is true
 	selectedContentIdx int
-	stringToHighlight  string
-	selectionEnabled   bool
-	wrapText           bool
 
 	// width is the width of the entire viewport in terminal columns
 	width int
+
 	// height is the height of the entire viewport in terminal rows
 	height int
-	// contentHeight is the height of the viewport in terminal rows, excluding the header and footer
-	contentHeight int
-	// maxLineLength is the maximum line length in terminal characters across header and visible content
-	maxLineLength int
 
-	// yOffset is the index of the first row shown on screen - wrappedContent[yOffset] if wrapText, otherwise content[yOffset]
-	yOffset int
+	// topContentIdx is the content index of the topmost visible line
+	topContentIdx int
+
+	// topContentLineOffset is the number of lines from the top of the topmost visible line, when wrapped
+	topContentLineOffset int
+
 	// xOffset is the number of columns scrolled right when content lines overflow the viewport and wrapText is false
 	xOffset int
 }
 
 // New creates a new viewport model with reasonable defaults
 func New[T RenderableComparable](width, height int) (m Model[T]) {
-	m.setWidthAndHeight(width, height)
+	m.width, m.height = width, height
 	m.updateContentHeight()
 
 	m.selectionEnabled = false
@@ -100,7 +103,6 @@ func New[T RenderableComparable](width, height int) (m Model[T]) {
 
 	m.KeyMap = DefaultKeyMap()
 	m.lineContinuationIndicator = "..."
-	m.lenLineContinuationIndicator = stringWidth(m.lineContinuationIndicator)
 	return m
 }
 
@@ -169,9 +171,10 @@ func (m Model[T]) Update(msg tea.Msg) (Model[T], tea.Cmd) {
 
 		case key.Matches(msg, m.KeyMap.Top):
 			if m.selectionEnabled {
-				m.selectedContentIdxUp(m.yOffset + m.contentHeight)
+				m.SetSelectedContentIdx(0)
 			} else {
-				m.viewUp(m.yOffset + m.contentHeight)
+				m.topContentIdx = 0
+				m.topContentLineOffset = 0
 			}
 
 		case key.Matches(msg, m.KeyMap.Bottom):
@@ -199,43 +202,49 @@ func (m Model[T]) View() string {
 
 	header := m.getHeader()
 	for _, headerLine := range header {
-		headerViewLine := m.getVisiblePartOfLine(headerLine)
-		addLineToViewString(m.headerStyle.Render(headerViewLine))
+		visiblePart := m.getVisible(headerLine)
+		addLineToViewString(fmt.Sprintf("%s\n", visiblePart))
 	}
 
 	hasStringToHighlight := stringWidth(m.stringToHighlight) != 0
-	visibleLines := m.getVisibleLines()
-	for idx, line := range visibleLines {
-		contentIdx := m.getContentIdx(m.yOffset + idx)
-		isSelected := m.selectionEnabled && contentIdx == m.selectedContentIdx
 
-		lineStyle := m.contentStyle
-		if isSelected {
-			lineStyle = m.SelectedContentStyle
-		}
-		visiblePartOfLine := m.getVisiblePartOfLine(line)
+	// get the lines to show based on the topContentIdx and topContentLineOffset
+	// TODO
 
-		if isSelected && visiblePartOfLine == "" {
-			visiblePartOfLine = " "
-		}
-
-		if hasStringToHighlight {
-			// this splitting and rejoining of styled content is expensive and causes increased flickering,
-			// so only do it if something is actually highlighted
-			highlightStyle := m.HighlightStyle
-			if isSelected {
-				highlightStyle = m.highlightStyleIfSelected
-			}
-			lineChunks := strings.Split(visiblePartOfLine, m.stringToHighlight)
-			var styledChunks []string
-			for _, chunk := range lineChunks {
-				styledChunks = append(styledChunks, lineStyle.Render(chunk))
-			}
-			addLineToViewString(strings.Join(styledChunks, highlightStyle.Render(m.stringToHighlight)))
-		} else {
-			addLineToViewString(lineStyle.Render(visiblePartOfLine))
-		}
-	}
+	// get the visible part of each line given the xOffset
+	// TODO
+	//visibleLines := m.getVisibleContentLines()
+	//for idx, line := range visibleLines {
+	//	contentIdx := m.getContentIdx(m.yOffset + idx)
+	//	isSelected := m.selectionEnabled && contentIdx == m.selectedContentIdx
+	//
+	//	lineStyle := m.contentStyle
+	//	if isSelected {
+	//		lineStyle = m.SelectedContentStyle
+	//	}
+	//	visiblePartOfLine := m.getVisible(line)
+	//
+	//	if isSelected && visiblePartOfLine == "" {
+	//		visiblePartOfLine = " "
+	//	}
+	//
+	//	if hasStringToHighlight {
+	//		// this splitting and rejoining of styled content is expensive and causes increased flickering,
+	//		// so only do it if something is actually highlighted
+	//		highlightStyle := m.HighlightStyle
+	//		if isSelected {
+	//			highlightStyle = m.highlightStyleIfSelected
+	//		}
+	//		lineChunks := strings.Split(visiblePartOfLine, m.stringToHighlight)
+	//		var styledChunks []string
+	//		for _, chunk := range lineChunks {
+	//			styledChunks = append(styledChunks, lineStyle.Render(chunk))
+	//		}
+	//		addLineToViewString(strings.Join(styledChunks, highlightStyle.Render(m.stringToHighlight)))
+	//	} else {
+	//		addLineToViewString(lineStyle.Render(visiblePartOfLine))
+	//	}
+	//}
 
 	if footerHeight > 0 {
 		// pad so footer shows up at bottom
@@ -261,10 +270,10 @@ func (m *Model[T]) SetContent(content []T) {
 	}
 
 	var stayAtTop, stayAtBottom bool
-	if m.topSticky && m.selectionEnabled && m.selectedContentIdx == 0 {
+	if m.topSelectionSticky && m.selectionEnabled && m.selectedContentIdx == 0 {
 		stayAtTop = true
 	}
-	if m.bottomSticky && m.selectionEnabled && m.selectedContentIdx == m.finalContentIdx() {
+	if m.bottomSelectionSticky && m.selectionEnabled && m.selectedContentIdx == m.finalContentIdx() {
 		stayAtBottom = true
 	}
 
@@ -311,12 +320,12 @@ func (m *Model[T]) SetContent(content []T) {
 
 // SetTopSticky sets whether selection should stay at top when new content added and selection is at the top
 func (m *Model[T]) SetTopSticky(topSticky bool) {
-	m.topSticky = topSticky
+	m.topSelectionSticky = topSticky
 }
 
 // SetBottomSticky sets whether selection should stay at bottom when new content added and selection is at the bottom
 func (m *Model[T]) SetBottomSticky(bottomSticky bool) {
-	m.bottomSticky = bottomSticky
+	m.bottomSelectionSticky = bottomSticky
 }
 
 // SetSelectionEnabled sets whether the viewport allows line selection
@@ -356,7 +365,7 @@ func (m Model[T]) GetWrapText() bool {
 
 // SetWidth sets the viewport's width
 func (m *Model[T]) SetWidth(width int) {
-	m.setWidthAndHeight(width, m.height)
+	m.width = width
 	m.updateForHeaderAndContent()
 }
 
@@ -367,7 +376,7 @@ func (m Model[T]) GetWidth() int {
 
 // SetHeight sets the viewport's height, including header and footer
 func (m *Model[T]) SetHeight(height int) {
-	m.setWidthAndHeight(m.width, height)
+	m.height = height
 	m.updateForHeaderAndContent()
 }
 
@@ -438,97 +447,14 @@ func (m *Model[T]) setXOffset(n int) {
 	m.xOffset = max(0, min(maxXOffset, n))
 }
 
-func (m *Model[T]) updateWrappedHeader() {
-	var allWrappedHeader []string
-	for _, line := range m.header {
-		wrappedLinesForLine := m.getWrappedLines(line)
-		allWrappedHeader = append(allWrappedHeader, wrappedLinesForLine...)
-	}
-	m.wrappedHeader = allWrappedHeader
-}
-
-func (m *Model[T]) updateWrappedContent() {
-	var allWrappedContent []string
-	wrappedContentIdxToContentIdx := make(map[int]int)
-	contentIdxToFirstWrappedContentIdx := make(map[int]int)
-	contentIdxToHeight := make(map[int]int)
-
-	var wrappedContentIdx int
-	for contentIdx, item := range m.content {
-		line := item.Render()
-		wrappedLinesForLine := m.getWrappedLines(line)
-		contentIdxToHeight[contentIdx] = len(wrappedLinesForLine)
-		for _, wrappedLine := range wrappedLinesForLine {
-			allWrappedContent = append(allWrappedContent, wrappedLine)
-
-			wrappedContentIdxToContentIdx[wrappedContentIdx] = contentIdx
-			if _, exists := contentIdxToFirstWrappedContentIdx[contentIdx]; !exists {
-				contentIdxToFirstWrappedContentIdx[contentIdx] = wrappedContentIdx
-			}
-
-			wrappedContentIdx++
-		}
-	}
-	m.wrappedContent = allWrappedContent
-	m.wrappedContentIdxToContentIdx = wrappedContentIdxToContentIdx
-	m.contentIdxToFirstWrappedContentIdx = contentIdxToFirstWrappedContentIdx
-	m.contentIdxToHeight = contentIdxToHeight
-}
-
 func (m *Model[T]) updateForHeaderAndContent() {
 	m.updateContentHeight()
-	m.ensureViewContainsSelection()
-	m.updateMaxVisibleLineLength()
-}
-
-func (m *Model[T]) updateMaxVisibleLineLength() {
-	m.maxLineLength = 0
-	header, content := m.getHeader(), m.getVisibleLines()
-	for _, line := range append(header, content...) {
-		if lineLength := stringWidth(line); lineLength > m.maxLineLength {
-			m.maxLineLength = lineLength
-		}
-	}
-}
-
-func (m *Model[T]) setWidthAndHeight(width, height int) {
-	m.width, m.height = width, height
-	m.updateWrappedHeader()
-	m.updateWrappedContent()
-}
-
-func (m *Model[T]) ensureViewContainsSelection() {
-	currentLineIdx := m.getCurrentLineIdx()
-	lastVisibleLineIdx := m.lastVisibleLineIdx()
-	offScreenRowCount := currentLineIdx - lastVisibleLineIdx
-	if offScreenRowCount >= 0 || m.lastContentItemSelected() {
-		heightOffset := m.contentIdxToHeight[m.selectedContentIdx] - 1
-		if !m.wrapText {
-			heightOffset = 0
-		}
-		m.viewDown(offScreenRowCount + heightOffset)
-	} else if currentLineIdx < m.yOffset {
-		m.viewUp(m.yOffset - currentLineIdx)
-	}
-
-	if maxYOffset := m.maxYOffset(); m.yOffset > maxYOffset {
-		m.setYOffset(maxYOffset)
-	}
 }
 
 func (m *Model[T]) updateContentHeight() {
 	_, footerHeight := m.getFooter()
 	contentHeight := m.height - len(m.getHeader()) - footerHeight
 	m.contentHeight = max(0, contentHeight)
-}
-
-func (m *Model[T]) setYOffset(n int) {
-	if maxYOffset := m.maxYOffset(); n > maxYOffset {
-		m.yOffset = maxYOffset
-	} else {
-		m.yOffset = max(0, n)
-	}
-	m.updateMaxVisibleLineLength()
 }
 
 func (m *Model[T]) selectedContentIdxDown(n int) {
@@ -556,35 +482,14 @@ func (m *Model[T]) viewRight(n int) {
 }
 
 func (m Model[T]) getHeader() []string {
-	if m.wrapText {
-		return m.wrappedHeader
+	if !m.wrapText {
+		return m.header
 	}
-	return m.header
-}
-
-func (m Model[T]) getContentStrings(start, end int) []string {
-	if m.wrapText {
-		if end == -1 {
-			end = len(m.wrappedContent)
-		}
-		return m.wrappedContent[start:end]
+	var wrappedHeaderLines []string
+	for _, s := range m.header {
+		wrappedHeaderLines = append(wrappedHeaderLines, wrap(s, m.width)...)
 	}
-
-	var contentStrings []string
-	if end == -1 {
-		end = len(m.content)
-	}
-	for _, item := range m.content[start:end] {
-		contentStrings = append(contentStrings, item.Render())
-	}
-	return contentStrings
-}
-
-func (m Model[T]) getLenContentStrings() int {
-	if m.wrapText {
-		return len(m.wrappedContent)
-	}
-	return len(m.content)
+	return wrappedHeaderLines
 }
 
 // lastVisibleLineIdx returns the maximum visible line index
@@ -629,8 +534,8 @@ func (m Model[T]) numLinesBetweenSelectionAndTop() int {
 	return 0
 }
 
-// getVisibleLines retrieves the visible content based on the yOffset and contentHeight
-func (m Model[T]) getVisibleLines() []string {
+// getVisibleContentLines retrieves the visible content based on the yOffset and contentHeight
+func (m Model[T]) getVisibleContentLines() []string {
 	maxVisibleLineIdx := m.maxVisibleLineIdx()
 	start := max(0, min(maxVisibleLineIdx, m.yOffset))
 	end := start + m.contentHeight
@@ -640,14 +545,9 @@ func (m Model[T]) getVisibleLines() []string {
 	return m.getContentStrings(start, end)
 }
 
-func (m Model[T]) getVisiblePartOfLine(line string) string {
-	// the full line is like this
-	//     |xOffset     |xOffset+width
-	//     |start       |end
-	//     |..l line i..|  <- returned if lineContinuationIndicator = ".."
-	line = strings.TrimRight(line, " ")
-	line = getVisiblePartOfLine(line, m.xOffset, m.width, m.lineContinuationIndicator)
-	return line
+func (m Model[T]) getVisible(line string) string {
+	lineNoTrailingSpace := strings.TrimRightFunc(line, unicode.IsSpace)
+	return getVisiblePartOfLine(lineNoTrailingSpace, m.xOffset, m.width, m.lineContinuationIndicator)
 }
 
 func (m Model[T]) getContentIdx(wrappedContentIdx int) int {
@@ -662,14 +562,6 @@ func (m Model[T]) getCurrentLineIdx() int {
 		return m.contentIdxToFirstWrappedContentIdx[m.selectedContentIdx]
 	}
 	return m.selectedContentIdx
-}
-
-func (m Model[T]) getWrappedLines(line string) []string {
-	if stringWidth(line) < m.width {
-		return []string{line}
-	}
-	line = strings.TrimRight(line, " ")
-	return splitLineIntoSizedChunks(line, m.width)
 }
 
 func (m Model[T]) getNumVisibleItems() int {

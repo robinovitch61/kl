@@ -7,12 +7,13 @@ import (
 	"testing"
 )
 
-// TODO LEO: test
-func splitLineIntoSizedChunks(line string, chunkSize int) []string {
+func wrap(line string, width int) []string {
+	line = strings.TrimRight(line, " ")
+
 	var wrappedLines []string
 	lineWidth := stringWidth(line)
-	for xOffset := 0; xOffset < lineWidth; xOffset += chunkSize {
-		visiblePartOfLine := getVisiblePartOfLine(line, xOffset, chunkSize, "")
+	for xOffset := 0; xOffset < lineWidth; xOffset += width {
+		visiblePartOfLine := getVisiblePartOfLine(line, xOffset, width, "")
 		wrappedLines = append(wrappedLines, visiblePartOfLine)
 	}
 	return wrappedLines
@@ -28,7 +29,13 @@ func stringWidth(s string) int {
 	return lipgloss.Width(s)
 }
 
+// getVisiblePartOfLine returns the visible part of a line given an xOffset and width.
 func getVisiblePartOfLine(s string, xOffset, width int, lineContinuationIndicator string) string {
+	// "the full line is like this"
+	//      |xOffset     |xOffset+width
+	//      |start       |end
+	//      |..l line i..|  <- returned if lineContinuationIndicator = ".."
+
 	if width <= 0 {
 		return ""
 	}

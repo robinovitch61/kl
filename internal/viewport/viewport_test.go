@@ -733,8 +733,9 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 }
 
 // TODO:
+// add header to all test cases
 // transitioning between wrap/no wrap should preserve selection + position relative to top
 // adding new content should preserve selected line when maintain selection enabled
 // test with a bunch of spaces at end of line(s)
 // test string to highlight
-// zero & one width/height viewport
+// zero & one width/height viewport in each case
