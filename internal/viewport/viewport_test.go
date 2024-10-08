@@ -752,9 +752,9 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	vp.SetContent([]RenderableString{
 		{Content: "first line that is fairly long"},
 		{Content: "second line that is even much longer than the first"},
-		{Content: "third line that is fairly long"},
-		{Content: "fourth"},
-		{Content: "fifth line that is fairly long"},
+		{Content: "third line that is fairly long as well"},
+		{Content: "fourth kinda long"},
+		{Content: "fifth kinda long too"},
 		{Content: "sixth"},
 	})
 	expectedView := pad(w, h, []string{
@@ -788,10 +788,10 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	// scroll down
 	vp, _ = vp.Update(downKeyMsg)
 	expectedView = pad(w, h, []string{
-		"t",
 		"\x1b[38;2;0;0;255mthird line\x1b[0m",
 		"\x1b[38;2;0;0;255m that is f\x1b[0m",
 		"\x1b[38;2;0;0;255mairly long\x1b[0m",
+		"\x1b[38;2;0;0;255m as well\x1b[0m",
 		"50% (3/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -799,10 +799,10 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	// scroll down
 	vp, _ = vp.Update(downKeyMsg)
 	expectedView = pad(w, h, []string{
-		"third line",
-		" that is f",
 		"airly long",
-		"\x1b[38;2;0;0;255mfourth\x1b[0m",
+		" as well",
+		"\x1b[38;2;0;0;255mfourth kin\x1b[0m",
+		"\x1b[38;2;0;0;255mda long\x1b[0m",
 		"66% (4/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -810,10 +810,10 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	// scroll down
 	vp, _ = vp.Update(downKeyMsg)
 	expectedView = pad(w, h, []string{
-		"fourth",
-		"\x1b[38;2;0;0;255mfifth line\x1b[0m",
-		"\x1b[38;2;0;0;255m that is f\x1b[0m",
-		"\x1b[38;2;0;0;255mairly long\x1b[0m",
+		"fourth kin",
+		"da long",
+		"\x1b[38;2;0;0;255mfifth kind\x1b[0m",
+		"\x1b[38;2;0;0;255ma long too\x1b[0m",
 		"83% (5/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -821,11 +821,67 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	// scroll down
 	vp, _ = vp.Update(downKeyMsg)
 	expectedView = pad(w, h, []string{
-		"fifth line",
-		" that is f",
-		"airly long",
+		"da long",
+		"fifth kind",
+		"a long too",
 		"\x1b[38;2;0;0;255msixth\x1b[0m",
 		"100% (6/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// TODO: add this to other selection on case
+	// scroll up
+	vp, _ = vp.Update(upKeyMsg)
+	expectedView = pad(w, h, []string{
+		"da long",
+		"\x1b[38;2;0;0;255mfifth kind\x1b[0m",
+		"\x1b[38;2;0;0;255ma long too\x1b[0m",
+		"sixth",
+		"83% (5/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// scroll up
+	vp, _ = vp.Update(upKeyMsg)
+	expectedView = pad(w, h, []string{
+		"\x1b[38;2;0;0;255mfourth kin\x1b[0m",
+		"\x1b[38;2;0;0;255mda long\x1b[0m",
+		"fifth kind",
+		"a long too",
+		"66% (4/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// scroll up
+	vp, _ = vp.Update(upKeyMsg)
+	expectedView = pad(w, h, []string{
+		"\x1b[38;2;0;0;255mthird line\x1b[0m",
+		"\x1b[38;2;0;0;255m that is f\x1b[0m",
+		"\x1b[38;2;0;0;255mairly long\x1b[0m",
+		"\x1b[38;2;0;0;255m as well\x1b[0m",
+		"50% (3/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// scroll up
+	vp, _ = vp.Update(upKeyMsg)
+	expectedView = pad(w, h, []string{
+		"\x1b[38;2;0;0;255msecond lin\x1b[0m",
+		"\x1b[38;2;0;0;255me that is \x1b[0m",
+		"\x1b[38;2;0;0;255meven much \x1b[0m",
+		"\x1b[38;2;0;0;255mlonger tha\x1b[0m",
+		"33% (2/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// scroll up
+	vp, _ = vp.Update(upKeyMsg)
+	expectedView = pad(w, h, []string{
+		"\x1b[38;2;0;0;255mfirst line\x1b[0m",
+		"\x1b[38;2;0;0;255m that is f\x1b[0m",
+		"\x1b[38;2;0;0;255mairly long\x1b[0m",
+		"second lin",
+		"16% (1/6)",
 	})
 	compare(t, expectedView, vp.View())
 }

@@ -157,6 +157,7 @@ func (m Model[T]) Update(msg tea.Msg) (Model[T], tea.Cmd) {
 
 		case key.Matches(msg, m.KeyMap.HalfPageDown):
 			offset := max(1, m.getNumVisibleItems()/2)
+			// TODO: bug where scroll past here results in view going past bottom, height getting messed up
 			m.viewDown(m.numContentLines / 2)
 			if m.selectionEnabled {
 				m.selectedContentIdxDown(offset)
@@ -350,7 +351,7 @@ func (m *Model[T]) SetSelectedContentIdx(n int) {
 
 	numLinesOfSelectionInView := m.numLinesOfSelectionInView()
 	if numLinesInSelection != numLinesOfSelectionInView {
-		if m.topItemIdx <= m.selectedItemIdx {
+		if m.topItemIdx < m.selectedItemIdx {
 			// if selection is below, scroll until it's fully in view at the bottom
 			// first, put it at the top
 			m.topItemIdx, m.topItemLineOffset = m.selectedItemIdx, 0
