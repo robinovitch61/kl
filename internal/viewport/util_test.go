@@ -181,6 +181,22 @@ func TestTruncateLine(t *testing.T) {
 			lineContinuationIndicator: "...",
 			expected:                  "|\x1b[38;2;169;15;15mfl..-1\x1b[0m| {\"t...",
 		},
+		{
+			name:                      "offset overflow, ansi",
+			s:                         "\x1b[38;2;0;0;255mthird line that is fairly long\x1b[0m",
+			xOffset:                   41,
+			width:                     10,
+			lineContinuationIndicator: "...",
+			expected:                  "\x1b[38;2;0;0;255m\x1b[0m",
+		},
+		{
+			name:                      "offset overflow, ansi 2",
+			s:                         "\x1b[38;2;0;0;255mfourth\x1b[0m",
+			xOffset:                   41,
+			width:                     10,
+			lineContinuationIndicator: "...",
+			expected:                  "\x1b[38;2;0;0;255m\x1b[0m",
+		},
 	}
 
 	for _, tt := range tests {

@@ -27,6 +27,16 @@ func renderer() *lipgloss.Renderer {
 
 // # SELECTION DISABLED, WRAP OFF
 
+// TODO: add this test to all cases
+func TestViewport_SelectionOff_WrapOff_Empty(t *testing.T) {
+	w, h := 15, 5
+	vp := newViewport(w, h)
+	expectedView := pad(w, h, []string{})
+	if diff := cmp.Diff(expectedView, vp.View()); diff != "" {
+		t.Errorf("Mismatch (-want +got):\n%s", diff)
+	}
+}
+
 func TestViewport_SelectionOff_WrapOff_Basic(t *testing.T) {
 	w, h := 15, 5
 	vp := newViewport(w, h)
@@ -201,6 +211,17 @@ func TestViewport_SelectionOff_WrapOff_Panning(t *testing.T) {
 
 // # SELECTION ENABLED, WRAP OFF
 
+// TODO: add this test to all cases
+func TestViewport_SelectionOn_WrapOff_Empty(t *testing.T) {
+	w, h := 15, 5
+	vp := newViewport(w, h)
+	vp.SetSelectionEnabled(true)
+	expectedView := pad(w, h, []string{})
+	if diff := cmp.Diff(expectedView, vp.View()); diff != "" {
+		t.Errorf("Mismatch (-want +got):\n%s", diff)
+	}
+}
+
 func TestViewport_SelectionOn_WrapOff_Basic(t *testing.T) {
 	w, h := 15, 5
 	vp := newViewport(w, h)
@@ -374,9 +395,42 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 	expectedView = pad(w, h, []string{
 		"",
 		"...e first",
-		"\x1b[38;2;0;0;255m \x1b[0m",
+		"\x1b[38;2;0;0;255m\x1b[0m", // TODO: want " " here to indicate where the selection is?
 		"",
 		"50% (3/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// scroll down
+	vp, _ = vp.Update(downKeyMsg)
+	expectedView = pad(w, h, []string{
+		"",
+		"...e first",
+		"",
+		"\x1b[38;2;0;0;255m\x1b[0m", // TODO: want " " here to indicate where the selection is?
+		"66% (4/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// scroll down
+	vp, _ = vp.Update(downKeyMsg)
+	expectedView = pad(w, h, []string{
+		"...e first",
+		"",
+		"",
+		"\x1b[38;2;0;0;255m\x1b[0m", // TODO: want " " here to indicate where the selection is?
+		"83% (5/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// scroll down
+	vp, _ = vp.Update(downKeyMsg)
+	expectedView = pad(w, h, []string{
+		"",
+		"",
+		"",
+		"\x1b[38;2;0;0;255m\x1b[0m", // TODO: want " " here to indicate where the selection is?
+		"100% (6/6)",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -398,7 +452,7 @@ func TestViewport_SelectionOff_WrapOn_Basic(t *testing.T) {
 		"\x1b[38;2;255;0;0msecond\x1b[0m line",
 		"\x1b[38;2;255;0;0ma really really\x1b[0m",
 		"\x1b[38;2;255;0;0m long line\x1b[0m",
-		"66% (4/6)",
+		"75% (3/4)",
 	})
 	if diff := cmp.Diff(expectedView, vp.View()); diff != "" {
 		t.Errorf("Mismatch (-want +got):\n%s", diff)
@@ -438,7 +492,7 @@ func TestViewport_SelectionOff_WrapOn_OverflowHeight(t *testing.T) {
 		"123456789012345",
 		"6",
 		"123456789012345",
-		"36% (4/11)",
+		"50% (3/6)",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -512,7 +566,7 @@ func TestViewport_SelectionOff_WrapOn_Panning(t *testing.T) {
 		" that is f",
 		"airly long",
 		"second lin",
-		"23% (4/17)",
+		"33% (2/6)",
 	})
 	compare(t, expectedView, vp.View())
 
@@ -527,7 +581,7 @@ func TestViewport_SelectionOff_WrapOn_Panning(t *testing.T) {
 		"airly long",
 		"second lin",
 		"e that is ",
-		"29% (5/17)",
+		"33% (2/6)",
 	})
 	compare(t, expectedView, vp.View())
 
@@ -542,7 +596,18 @@ func TestViewport_SelectionOff_WrapOn_Panning(t *testing.T) {
 		"second lin",
 		"e that is",
 		"even much",
-		"35% (6/17)",
+		"33% (2/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// scroll down
+	vp, _ = vp.Update(downKeyMsg)
+	expectedView = pad(w, h, []string{
+		"second lin",
+		"e that is ",
+		"even much ",
+		"longer tha",
+		"33% (2/6)",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -711,7 +776,7 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 		"\x1b[38;2;0;0;255msecond lin\x1b[0m",
 		"\x1b[38;2;0;0;255me that is \x1b[0m",
 		"\x1b[38;2;0;0;255meven much \x1b[0m",
-		"\x1b[38;2;0;0;255mlonger the\x1b[0m",
+		"\x1b[38;2;0;0;255mlonger tha\x1b[0m",
 		"33% (2/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -723,11 +788,44 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	// scroll down
 	vp, _ = vp.Update(downKeyMsg)
 	expectedView = pad(w, h, []string{
+		"t",
 		"\x1b[38;2;0;0;255mthird line\x1b[0m",
-		"\x1b[38;2;0;0;255mthat is fa\x1b[0m",
-		"\x1b[38;2;0;0;255mirly long\x1b[0m",
-		"fourth",
+		"\x1b[38;2;0;0;255m that is f\x1b[0m",
+		"\x1b[38;2;0;0;255mairly long\x1b[0m",
 		"50% (3/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// scroll down
+	vp, _ = vp.Update(downKeyMsg)
+	expectedView = pad(w, h, []string{
+		"third line",
+		" that is f",
+		"airly long",
+		"\x1b[38;2;0;0;255mfourth\x1b[0m",
+		"66% (4/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// scroll down
+	vp, _ = vp.Update(downKeyMsg)
+	expectedView = pad(w, h, []string{
+		"fourth",
+		"\x1b[38;2;0;0;255mfifth line\x1b[0m",
+		"\x1b[38;2;0;0;255m that is f\x1b[0m",
+		"\x1b[38;2;0;0;255mairly long\x1b[0m",
+		"83% (5/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// scroll down
+	vp, _ = vp.Update(downKeyMsg)
+	expectedView = pad(w, h, []string{
+		"fifth line",
+		" that is f",
+		"airly long",
+		"\x1b[38;2;0;0;255msixth\x1b[0m",
+		"100% (6/6)",
 	})
 	compare(t, expectedView, vp.View())
 }

@@ -55,7 +55,7 @@ func truncateLine(s string, xOffset, width int, lineContinuationIndicator string
 		start = 0
 	}
 	if start >= lenPlainText {
-		return ""
+		return reapplyANSI(s, "", ansiCodeIndexes, 0, 0)
 	}
 
 	if end > lenPlainText {
@@ -63,7 +63,7 @@ func truncateLine(s string, xOffset, width int, lineContinuationIndicator string
 	}
 
 	if end < start {
-		return ""
+		return reapplyANSI(s, "", ansiCodeIndexes, 0, 0)
 	}
 
 	if end-start == lenPlainText {
@@ -170,4 +170,8 @@ func safeSliceFromIdx(s []string, i int) []string {
 		return []string{}
 	}
 	return s[i:]
+}
+
+func clamp(v, minimum, maximum int) int {
+	return max(minimum, min(maximum, v))
 }
