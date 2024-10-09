@@ -24,7 +24,6 @@ type KeyMap struct {
 	Quit          key.Binding
 	ReverseOrder  key.Binding
 	Save          key.Binding
-	Selection     key.Binding
 	Timestamps    key.Binding
 	TogglePause   key.Binding
 	Wrap          key.Binding
@@ -73,7 +72,7 @@ var DefaultKeyMap = KeyMap{
 	),
 	Logs: key.NewBinding(
 		key.WithKeys("l", "L"),
-		key.WithHelp("l/L", "go to logs view"),
+		key.WithHelp("L", "go to logs view"),
 	),
 	Lookback: key.NewBinding(
 		key.WithKeys("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"),
@@ -102,10 +101,6 @@ var DefaultKeyMap = KeyMap{
 	Save: key.NewBinding(
 		key.WithKeys("ctrl+s"),
 		key.WithHelp("ctrl+s", "save view to file"),
-	),
-	Selection: key.NewBinding(
-		key.WithKeys("s", "S"),
-		key.WithHelp("s/S", "go to selection view"),
 	),
 	Timestamps: key.NewBinding(
 		key.WithKeys("t"),
@@ -142,8 +137,6 @@ func GlobalKeyBindings(km KeyMap) []key.Binding {
 	return []key.Binding{
 		km.Quit,
 		km.Help,
-		km.Logs,
-		km.Selection,
 		km.Save,
 		km.Wrap,
 		viewport.DefaultKeyMap().Up,

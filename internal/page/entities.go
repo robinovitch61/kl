@@ -79,7 +79,11 @@ func (p EntityPage) View() string {
 }
 
 func (p EntityPage) HighjackingInput() bool {
-	return p.filterableViewport.HighjackingInput()
+	return p.filterableViewport.FilterFocused()
+}
+
+func (p EntityPage) HasAppliedFilter() bool {
+	return p.filterableViewport.Filter.Value() != ""
 }
 
 func (p EntityPage) ContentToPersist() []string {
@@ -98,6 +102,7 @@ func (p EntityPage) WithDimensions(width, height int) GenericPage {
 func (p EntityPage) Help() string {
 	local := []key.Binding{
 		keymap.WithDesc(p.keyMap.Enter, "select/deselect"),
+		p.keyMap.Logs,
 		p.keyMap.TogglePause,
 	}
 	local = append(local, keymap.LookbackKeyBindings(p.keyMap)...)
