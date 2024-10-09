@@ -62,6 +62,10 @@ var (
 			cfgFileEnvVar: "ignore-cluster",
 			description:   `Ignore containers clusters matching this regex pattern`,
 		},
+		"ignore-owner-types": {
+			cfgFileEnvVar: "ignore-owner-types",
+			description:   `Comma-separated list of pod owner types to exclude, e.g. 'Deployment' or 'Job,Unowned,DaemonSet'`,
+		},
 		"ins": {
 			cliShort:      "",
 			cfgFileEnvVar: "ignore-namespace",
@@ -124,10 +128,6 @@ var (
 			cfgFileEnvVar: "namespace",
 			description:   `Namespace(s). Can be comma-separated list. Defaults to current namespace`,
 		},
-		"pod-owner-types": {
-			cfgFileEnvVar: "pod-owner-types",
-			description:   `Comma-separated list of pod owner types to include. Defaults to ReplicaSet.`,
-		},
 		"since": {
 			cliShort:      "",
 			cfgFileEnvVar: "since",
@@ -173,6 +173,7 @@ func init() {
 		"desc",
 		"ic",
 		"iclust",
+		"ignore-owner-types",
 		"ins",
 		"iown",
 		"ipod",
@@ -185,7 +186,6 @@ func init() {
 		"mown",
 		"mpod",
 		"namespace",
-		"pod-owner-types",
 		"since",
 	} {
 		c := rootNameToArg[cliLong]
@@ -291,6 +291,14 @@ func getDescending(cmd *cobra.Command) bool {
 	return cmd.Flags().Lookup("desc").Value.String() == "true"
 }
 
+func getIgnoreOwnerTypes(cmd *cobra.Command) []string {
+	types := strings.Split(cmd.Flags().Lookup("ignore-owner-types").Value.String(), ",")
+	if len(types) == 0 || (len(types) == 1 && types[0] == "") {
+		return []string{}
+	}
+	return types
+}
+
 func getIgnoreMatchers(cmd *cobra.Command) model.Matcher {
 	ignoreMatchers, err := model.NewMatcher(
 		model.NewMatcherArgs{
@@ -314,14 +322,6 @@ func getLogsView(cmd *cobra.Command) bool {
 
 func getNamespaces(cmd *cobra.Command) string {
 	return cmd.Flags().Lookup("namespace").Value.String()
-}
-
-func getPodOwnerTypes(cmd *cobra.Command) []string {
-	types := strings.Split(cmd.Flags().Lookup("pod-owner-types").Value.String(), ",")
-	if len(types) == 0 || (len(types) == 1 && types[0] == "") {
-		return []string{"ReplicaSet"}
-	}
-	return types
 }
 
 func getSince(cmd *cobra.Command) model.SinceTime {
@@ -365,20 +365,20 @@ func getAutoSelectMatchers(cmd *cobra.Command) model.Matcher {
 
 func getConfig(cmd *cobra.Command) internal.Config {
 	return internal.Config{
-		AllNamespaces:  getAllNamespaces(cmd),
-		ContainerLimit: getContainerLimit(cmd),
-		Contexts:       getKubeContexts(cmd),
-		Descending:     getDescending(cmd),
-		KubeConfigPath: getKubeConfigPath(cmd),
-		LogsView:       getLogsView(cmd),
+		AllNamespaces:    getAllNamespaces(cmd),
+		ContainerLimit:   getContainerLimit(cmd),
+		Contexts:         getKubeContexts(cmd),
+		Descending:       getDescending(cmd),
+		IgnoreOwnerTypes: getIgnoreOwnerTypes(cmd),
+		KubeConfigPath:   getKubeConfigPath(cmd),
+		LogsView:         getLogsView(cmd),
 		Matchers: model.Matchers{
 			AutoSelectMatcher: getAutoSelectMatchers(cmd),
 			IgnoreMatcher:     getIgnoreMatchers(cmd),
 		},
-		Namespaces:    getNamespaces(cmd),
-		PodOwnerTypes: getPodOwnerTypes(cmd),
-		SinceTime:     getSince(cmd),
-		Version:       getVersion(),
+		Namespaces: getNamespaces(cmd),
+		SinceTime:  getSince(cmd),
+		Version:    getVersion(),
 	}
 }
 
