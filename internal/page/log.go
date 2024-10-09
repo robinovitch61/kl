@@ -26,7 +26,7 @@ var _ GenericPage = SingleLogPage{}
 
 func NewSingleLogPage(keyMap keymap.KeyMap, width, height int) SingleLogPage {
 	filterableViewport := filterable_viewport.NewFilterableViewport[viewport.RenderableString](
-		"Single Log",
+		fmt.Sprintf("Single Log - %s for Logs", strings.ToUpper(keyMap.Clear.Help().Key)),
 		true,
 		false,
 		keyMap,
@@ -77,8 +77,8 @@ func (p SingleLogPage) WithDimensions(width, height int) GenericPage {
 
 func (p SingleLogPage) Help() string {
 	local := []key.Binding{
-		p.keyMap.Copy,
 		keymap.WithDesc(p.keyMap.Clear, "back to logs"),
+		p.keyMap.Copy,
 		p.keyMap.PrevLog,
 		p.keyMap.NextLog,
 		key.NewBinding(key.WithHelp("shift+↑/k", "scroll up within log")),

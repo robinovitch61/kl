@@ -571,20 +571,6 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 	m.pages[m.currentPageType], cmd = m.pages[m.currentPageType].Update(msg)
 	cmds = append(cmds, cmd)
 
-	// change to selection page
-	if key.Matches(msg, m.keyMap.Selection) {
-		m, cmd = m.changeCurrentPage(page.EntitiesPageType)
-		cmds = append(cmds, cmd)
-		return m, tea.Batch(cmds...)
-	}
-
-	// change to logs page
-	if key.Matches(msg, m.keyMap.Logs) {
-		m, cmd = m.changeCurrentPage(page.LogsPageType)
-		cmds = append(cmds, cmd)
-		return m, tea.Batch(cmds...)
-	}
-
 	// save content of current page
 	if key.Matches(msg, m.keyMap.Save) {
 		cmds = append(cmds, fileio.GetSaveCommand("", m.pages[m.currentPageType].ContentToPersist()))
@@ -621,6 +607,15 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 }
 
 func (m Model) handleEntitiesPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+	var cmds []tea.Cmd
+	// change to logs page
+	if key.Matches(msg, m.keyMap.Logs) {
+		m, cmd = m.changeCurrentPage(page.LogsPageType)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+	}
+
 	// handle pressing enter on selected entity
 	if key.Matches(msg, m.keyMap.Enter) {
 		selected, selectionActions := m.pages[m.currentPageType].(page.EntityPage).GetSelectionActions()
@@ -759,6 +754,12 @@ func (m Model) withContainerEntityPendingAndBufferedLogsRemoved(entity model.Ent
 func (m Model) handleLogsPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
+	// change to selection page
+	if key.Matches(msg, m.keyMap.Clear) {
+		m, cmd = m.changeCurrentPage(page.EntitiesPageType)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+	}
 	// change to single log page
 	if key.Matches(msg, m.keyMap.Enter) {
 		selectedLog := m.pages[page.LogsPageType].(page.LogsPage).GetSelectedLog()
@@ -783,9 +784,16 @@ func (m Model) handleLogsPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 }
 
 func (m Model) handleSingleLogPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
-	// handle clear
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
+	// change to logs page
+	if key.Matches(msg, m.keyMap.Clear) {
+		m, cmd = m.changeCurrentPage(page.LogsPageType)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+	}
+
+	// handle clear
 	isClear := key.Matches(msg, m.keyMap.Clear)
 	notHighjackingInput := !m.pages[m.currentPageType].HighjackingInput()
 	noAppliedFilter := !m.pages[m.currentPageType].(page.SingleLogPage).HasAppliedFilter()
