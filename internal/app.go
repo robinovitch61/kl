@@ -456,6 +456,7 @@ func (m Model) initialize() (Model, tea.Cmd) {
 				clusterNamespaces.Cluster,
 				namespace,
 				m.config.Matchers,
+				m.config.Selector,
 				m.config.IgnoreOwnerTypes,
 			))
 		}
