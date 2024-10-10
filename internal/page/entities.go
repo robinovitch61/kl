@@ -98,6 +98,7 @@ func (p EntityPage) WithDimensions(width, height int) GenericPage {
 func (p EntityPage) Help() string {
 	local := []key.Binding{
 		keymap.WithDesc(p.keyMap.Enter, "select/deselect"),
+		p.keyMap.Logs,
 		p.keyMap.TogglePause,
 	}
 	local = append(local, keymap.LookbackKeyBindings(p.keyMap)...)

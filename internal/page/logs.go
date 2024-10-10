@@ -9,6 +9,7 @@ import (
 	"github.com/robinovitch61/kl/internal/filterable_viewport"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/model"
+	"strings"
 )
 
 var (
@@ -141,6 +142,7 @@ func (p LogsPage) WithDimensions(width, height int) GenericPage {
 func (p LogsPage) Help() string {
 	local := []key.Binding{
 		keymap.WithDesc(p.keyMap.Enter, "zoom on log"),
+		keymap.WithDesc(p.keyMap.Clear, "back to selection"),
 		p.keyMap.Context,
 		p.keyMap.Name,
 		p.keyMap.Timestamps,
@@ -254,7 +256,7 @@ func (p *LogsPage) updateFilterLabel() {
 	if p.logContainer.Ascending() {
 		order = "Ascending"
 	}
-	label := fmt.Sprintf("Logs %s - S for Selection, Enter to Zoom", order)
+	label := fmt.Sprintf("Logs %s - %s for Selection, %s to Zoom", order, strings.ToUpper(p.keyMap.Clear.Help().Key), titleCase(p.keyMap.Enter.Help().Key))
 	p.filterableViewport.Filter.SetLabel(label)
 }
 
@@ -280,4 +282,11 @@ func getContainerName(log model.PageLog, format string) string {
 		name += " [TERMINATED]"
 	}
 	return name
+}
+
+func titleCase(s string) string {
+	if len(s) == 0 {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
 }

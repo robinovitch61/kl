@@ -17,13 +17,13 @@ An interactive Kubernetes log viewer for your terminal.
 <br>
 
 * View logs across multiple containers, pods, namespaces, and clusters
-* Select containers interactively or auto-select by pattern matching
+* Select containers interactively or auto-select by pattern matching against names, labels, and more
 * See cluster changes in real time
 * Navigate interleaved logs from multiple containers, ordered globally by timestamp
 * Search logs by exact string or regex pattern. Include surrounding context or show matching lines only
 * Zoom in and flip through single formatted logs one by one
 * Archive and share: save logs to a local file or copy a log to your clipboard
-* Use your own terminal's color scheme
+* Use your own terminal color scheme
 
 Comparable to:
 
@@ -55,11 +55,14 @@ kl --mown nginx
 # Auto-select all containers with the exact name of `my-container`, limited to 10 selections
 kl --mc "^my-container$" --limit 10
 
+# Auto-select all containers that have labels app=flask and either tier=stage or tier=prod
+kl -l 'app=flask,tier in (stage, prod)'
+
 # Ignore all containers with the exact name of `my-sidecar`
 kl --ic "^my-sidecar$"
 
 # Start on the logs page, ordered by timestamp descending, showing logs from 10 minutes ago onwards
-kl --mc "^my-container$" -l -d --since 10m
+kl --mc "^my-container$" -d --logs-view --since 10m
 ```
 
 ## Installation

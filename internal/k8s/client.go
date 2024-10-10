@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -19,7 +20,13 @@ import (
 // Client is an interface for interacting with a Kubernetes cluster
 type Client interface {
 	// GetContainerListener returns a listener that emits container deltas for a given cluster and namespace
-	GetContainerListener(cluster, namespace string, matchers model.Matchers, podOwnerTypes []string) (model.ContainerListener, error)
+	GetContainerListener(
+		cluster,
+		namespace string,
+		matchers model.Matchers,
+		selector labels.Selector,
+		ignorePodOwnerTypes []string,
+	) (model.ContainerListener, error)
 
 	// CollectContainerDeltasForDuration collects container deltas from a listener for a given duration
 	CollectContainerDeltasForDuration(listener model.ContainerListener, duration time.Duration) (model.ContainerDeltaSet, error)
@@ -47,7 +54,8 @@ func (c clientImpl) GetContainerListener(
 	cluster,
 	namespace string,
 	matchers model.Matchers,
-	podOwnerTypes []string,
+	selector labels.Selector,
+	ignorePodOwnerTypes []string,
 ) (model.ContainerListener, error) {
 	deltaChan := make(chan model.ContainerDelta, 100)
 	stopChan := make(chan struct{})
@@ -67,7 +75,7 @@ func (c clientImpl) GetContainerListener(
 			if !ok {
 				return
 			}
-			deltas := getContainerDeltas(pod, cluster, false, matchers, podOwnerTypes)
+			deltas := getContainerDeltas(pod, cluster, false, matchers, selector, ignorePodOwnerTypes)
 			for _, delta := range deltas {
 				dev.Debug(fmt.Sprintf("listener add container %s, state %s", delta.Container.HumanReadable(), delta.Container.Status.State))
 				deltaChan <- delta
@@ -78,7 +86,7 @@ func (c clientImpl) GetContainerListener(
 			if !ok {
 				return
 			}
-			deltas := getContainerDeltas(pod, cluster, false, matchers, podOwnerTypes)
+			deltas := getContainerDeltas(pod, cluster, false, matchers, selector, ignorePodOwnerTypes)
 			for _, delta := range deltas {
 				dev.Debug(fmt.Sprintf("listener update container %s, state %s", delta.Container.HumanReadable(), delta.Container.Status.State))
 				deltaChan <- delta
@@ -89,7 +97,7 @@ func (c clientImpl) GetContainerListener(
 			if !ok {
 				return
 			}
-			deltas := getContainerDeltas(pod, cluster, true, matchers, podOwnerTypes)
+			deltas := getContainerDeltas(pod, cluster, true, matchers, selector, ignorePodOwnerTypes)
 
 			// sometimes the listener will receive a delete event for pods whose container statuses are not terminated
 			// since we keep these around for a while, manually override the status to terminated
@@ -203,33 +211,42 @@ func getContainerDeltas(
 	cluster string,
 	delete bool,
 	matchers model.Matchers,
-	podOwnerTypes []string,
+	selector labels.Selector,
+	ignorePodOwnerTypes []string,
 ) []model.ContainerDelta {
 	if pod == nil {
 		return nil
 	}
 	now := time.Now()
 	var deltas []model.ContainerDelta
-	containers := getContainers(*pod, cluster, podOwnerTypes)
+	containers := getContainers(*pod, cluster, ignorePodOwnerTypes)
 	for i := range containers {
 		if matchers.IgnoreMatcher.MatchesContainer(containers[i]) {
 			continue
 		}
+		matcherSelectsContainer := matchers.AutoSelectMatcher.MatchesContainer(containers[i])
+		labelSelectorSelectsContainer := !selector.Empty() && selector.Matches(labels.Set(pod.Labels))
 		delta := model.ContainerDelta{
 			Time:      now,
 			Container: containers[i],
 			ToDelete:  delete,
-			Selected:  matchers.AutoSelectMatcher.MatchesContainer(containers[i]),
+			Selected:  matcherSelectsContainer || labelSelectorSelectsContainer,
 		}
 		deltas = append(deltas, delta)
 	}
 	return deltas
 }
 
-func getContainers(pod corev1.Pod, cluster string, podOwnerTypes []string) []model.Container {
+func getContainers(pod corev1.Pod, cluster string, ignorePodOwnerTypes []string) []model.Container {
 	var containers []model.Container
 
-	podOwnerName, ownerRefType := getPodOwnerNameAndOwnerRefType(pod, podOwnerTypes)
+	podOwnerName, ownerRefType := getPodOwnerNameAndOwnerRefType(pod)
+	for _, ignored := range ignorePodOwnerTypes {
+		if ignored != "" && ownerRefType == ignored {
+			dev.Debug(fmt.Sprintf("ignoring pod %s with owner refs %+v", pod.Name, pod.OwnerReferences))
+			return containers
+		}
+	}
 	if podOwnerName == "" {
 		dev.Debug(fmt.Sprintf("skipping pod %s with owner refs %+v", pod.Name, pod.OwnerReferences))
 		return containers
@@ -253,33 +270,23 @@ func getContainers(pod corev1.Pod, cluster string, podOwnerTypes []string) []mod
 	return containers
 }
 
-func getPodOwnerNameAndOwnerRefType(pod corev1.Pod, podOwnerTypes []string) (string, string) {
-	for _, podOwnerType := range podOwnerTypes {
-		if podOwnerName := getPodOwnerNameFromRefType(pod, podOwnerType); podOwnerName != "" {
-			if podOwnerType == "ReplicaSet" {
-				return podOwnerName, "Deployment"
-			}
-			return podOwnerName, podOwnerType
-		}
+func getPodOwnerNameAndOwnerRefType(pod corev1.Pod) (string, string) {
+	if len(pod.OwnerReferences) == 0 {
+		return "unowned", "Unowned"
 	}
-	return "", ""
-}
 
-func getPodOwnerNameFromRefType(pod corev1.Pod, podOwnerType string) string {
-	for _, podOwnerRef := range pod.OwnerReferences {
-		if podOwnerRef.Kind == podOwnerType {
-			if podOwnerRef.Kind == "ReplicaSet" {
-				// assume naming convention is <deployment-name>-<replica-set-hash>
-				parts := strings.Split(podOwnerRef.Name, "-")
-				if len(parts) > 1 {
-					return strings.Join(parts[:len(parts)-1], "-")
-				}
-			}
-			// assume name is itself the pod owner name
-			return podOwnerRef.Name
+	// ignore the fact that pods may have multiple owners for now
+	podOwnerRef := pod.OwnerReferences[0]
+	if strings.ToLower(podOwnerRef.Kind) == "replicaset" {
+		// assume naming convention is <deployment-name>-<replica-set-hash>
+		parts := strings.Split(podOwnerRef.Name, "-")
+		if len(parts) > 1 {
+			return strings.Join(parts[:len(parts)-1], "-"), "Deployment"
 		}
 	}
-	return ""
+
+	// assume name is itself the pod owner name
+	return podOwnerRef.Name, podOwnerRef.Kind
 }
 
 func getStatus(podContainerStatuses []v1.ContainerStatus, containerName string) (model.ContainerStatus, error) {
