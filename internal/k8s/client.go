@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -19,7 +20,13 @@ import (
 // Client is an interface for interacting with a Kubernetes cluster
 type Client interface {
 	// GetContainerListener returns a listener that emits container deltas for a given cluster and namespace
-	GetContainerListener(cluster, namespace string, matchers model.Matchers, ignorePodOwnerTypes []string) (model.ContainerListener, error)
+	GetContainerListener(
+		cluster,
+		namespace string,
+		matchers model.Matchers,
+		selector labels.Selector,
+		ignorePodOwnerTypes []string,
+	) (model.ContainerListener, error)
 
 	// CollectContainerDeltasForDuration collects container deltas from a listener for a given duration
 	CollectContainerDeltasForDuration(listener model.ContainerListener, duration time.Duration) (model.ContainerDeltaSet, error)
@@ -47,6 +54,7 @@ func (c clientImpl) GetContainerListener(
 	cluster,
 	namespace string,
 	matchers model.Matchers,
+	selector labels.Selector,
 	ignorePodOwnerTypes []string,
 ) (model.ContainerListener, error) {
 	deltaChan := make(chan model.ContainerDelta, 100)
@@ -67,7 +75,7 @@ func (c clientImpl) GetContainerListener(
 			if !ok {
 				return
 			}
-			deltas := getContainerDeltas(pod, cluster, false, matchers, ignorePodOwnerTypes)
+			deltas := getContainerDeltas(pod, cluster, false, matchers, selector, ignorePodOwnerTypes)
 			for _, delta := range deltas {
 				dev.Debug(fmt.Sprintf("listener add container %s, state %s", delta.Container.HumanReadable(), delta.Container.Status.State))
 				deltaChan <- delta
@@ -78,7 +86,7 @@ func (c clientImpl) GetContainerListener(
 			if !ok {
 				return
 			}
-			deltas := getContainerDeltas(pod, cluster, false, matchers, ignorePodOwnerTypes)
+			deltas := getContainerDeltas(pod, cluster, false, matchers, selector, ignorePodOwnerTypes)
 			for _, delta := range deltas {
 				dev.Debug(fmt.Sprintf("listener update container %s, state %s", delta.Container.HumanReadable(), delta.Container.Status.State))
 				deltaChan <- delta
@@ -89,7 +97,7 @@ func (c clientImpl) GetContainerListener(
 			if !ok {
 				return
 			}
-			deltas := getContainerDeltas(pod, cluster, true, matchers, ignorePodOwnerTypes)
+			deltas := getContainerDeltas(pod, cluster, true, matchers, selector, ignorePodOwnerTypes)
 
 			// sometimes the listener will receive a delete event for pods whose container statuses are not terminated
 			// since we keep these around for a while, manually override the status to terminated
@@ -203,6 +211,7 @@ func getContainerDeltas(
 	cluster string,
 	delete bool,
 	matchers model.Matchers,
+	selector labels.Selector,
 	ignorePodOwnerTypes []string,
 ) []model.ContainerDelta {
 	if pod == nil {
@@ -215,11 +224,13 @@ func getContainerDeltas(
 		if matchers.IgnoreMatcher.MatchesContainer(containers[i]) {
 			continue
 		}
+		matcherSelectsContainer := matchers.AutoSelectMatcher.MatchesContainer(containers[i])
+		labelSelectorSelectsContainer := !selector.Empty() && selector.Matches(labels.Set(pod.Labels))
 		delta := model.ContainerDelta{
 			Time:      now,
 			Container: containers[i],
 			ToDelete:  delete,
-			Selected:  matchers.AutoSelectMatcher.MatchesContainer(containers[i]),
+			Selected:  matcherSelectsContainer || labelSelectorSelectsContainer,
 		}
 		deltas = append(deltas, delta)
 	}
