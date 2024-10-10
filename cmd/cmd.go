@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"k8s.io/apimachinery/pkg/labels"
 	"os"
 	"path/filepath"
 	"strings"
@@ -39,7 +40,6 @@ var (
 			isBool:        true,
 		},
 		"context": {
-			cliShort:      "",
 			cfgFileEnvVar: "context",
 			description:   `Context(s). Can be a comma-separated list. Defaults to current context`,
 		},
@@ -53,12 +53,10 @@ var (
 			description: `Print usage`,
 		},
 		"ic": {
-			cliShort:      "",
 			cfgFileEnvVar: "ignore-container",
 			description:   `Ignore containers matching this regex pattern`,
 		},
 		"iclust": {
-			cliShort:      "",
 			cfgFileEnvVar: "ignore-cluster",
 			description:   `Ignore containers clusters matching this regex pattern`,
 		},
@@ -67,22 +65,18 @@ var (
 			description:   `Comma-separated list of pod owner types to exclude, e.g. 'Deployment' or 'Job,Unowned,DaemonSet'`,
 		},
 		"ins": {
-			cliShort:      "",
 			cfgFileEnvVar: "ignore-namespace",
 			description:   `Ignore namespaces matching this regex pattern`,
 		},
 		"iown": {
-			cliShort:      "",
 			cfgFileEnvVar: "ignore-pod-owner",
 			description:   `Ignore pod owners matching this regex pattern`,
 		},
 		"ipod": {
-			cliShort:      "",
 			cfgFileEnvVar: "ignore-pod",
 			description:   `Ignore pods matching this regex pattern`,
 		},
 		"kubeconfig": {
-			cliShort:      "",
 			cfgFileEnvVar: "kubeconfig",
 			description:   `Config file path. Defaults to $HOME/.kube/config`,
 		},
@@ -93,33 +87,27 @@ var (
 			defaultIfInt:  -1,
 		},
 		"logs-view": {
-			cliShort:      "l",
 			cfgFileEnvVar: "logs-view",
 			description:   `If present, start with logs view. Default false (selection page)`,
 			isBool:        true,
 		},
 		"mc": {
-			cliShort:      "",
 			cfgFileEnvVar: "match-container",
 			description:   `Auto-select containers matching this regex pattern`,
 		},
 		"mclust": {
-			cliShort:      "",
 			cfgFileEnvVar: "match-cluster",
 			description:   `Auto-select clusters matching this regex pattern`,
 		},
 		"mns": {
-			cliShort:      "",
 			cfgFileEnvVar: "match-namespace",
 			description:   `Auto-select namespaces matching this regex pattern`,
 		},
 		"mown": {
-			cliShort:      "",
 			cfgFileEnvVar: "match-pod-owner",
 			description:   `Auto-select pod owners matching this regex pattern`,
 		},
 		"mpod": {
-			cliShort:      "",
 			cfgFileEnvVar: "match-pod",
 			description:   `Auto-select pods matching this regex pattern`,
 		},
@@ -128,8 +116,12 @@ var (
 			cfgFileEnvVar: "namespace",
 			description:   `Namespace(s). Can be comma-separated list. Defaults to current namespace`,
 		},
+		"selector": {
+			cliShort:      "l",
+			cfgFileEnvVar: "selector",
+			description:   `Auto-select containers matching all these label constraints. E.g. 'app=nginx,env!=dev'`,
+		},
 		"since": {
-			cliShort:      "",
 			cfgFileEnvVar: "since",
 			description:   `Show logs since startup time minus this duration. E.g. 5s, 2m, 1.5h, 2h45m. Default 1m`,
 		},
@@ -186,6 +178,7 @@ func init() {
 		"mown",
 		"mpod",
 		"namespace",
+		"selector",
 		"since",
 	} {
 		c := rootNameToArg[cliLong]
@@ -324,6 +317,15 @@ func getNamespaces(cmd *cobra.Command) string {
 	return cmd.Flags().Lookup("namespace").Value.String()
 }
 
+func getSelector(cmd *cobra.Command) labels.Selector {
+	selector, err := labels.Parse(cmd.Flags().Lookup("selector").Value.String())
+	if err != nil {
+		fmt.Printf("error parsing selector: %v\n", err)
+		os.Exit(1)
+	}
+	return selector
+}
+
 func getSince(cmd *cobra.Command) model.SinceTime {
 	duration := cmd.Flags().Lookup("since").Value.String()
 	if duration == "" {
@@ -377,6 +379,7 @@ func getConfig(cmd *cobra.Command) internal.Config {
 			IgnoreMatcher:     getIgnoreMatchers(cmd),
 		},
 		Namespaces: getNamespaces(cmd),
+		Selector:   getSelector(cmd),
 		SinceTime:  getSince(cmd),
 		Version:    getVersion(),
 	}

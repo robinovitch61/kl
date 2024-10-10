@@ -2,6 +2,7 @@ package internal
 
 import (
 	"github.com/robinovitch61/kl/internal/model"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 type Config struct {
@@ -14,6 +15,7 @@ type Config struct {
 	LogsView         bool
 	Matchers         model.Matchers
 	Namespaces       string
+	Selector         labels.Selector
 	SinceTime        model.SinceTime
 	Version          string
 }

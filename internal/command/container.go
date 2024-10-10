@@ -5,6 +5,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/robinovitch61/kl/internal/k8s"
 	"github.com/robinovitch61/kl/internal/model"
+	"k8s.io/apimachinery/pkg/labels"
 	"time"
 )
 
@@ -17,10 +18,11 @@ func GetContainerListenerCmd(
 	client k8s.Client,
 	cluster, namespace string,
 	matchers model.Matchers,
+	selector labels.Selector,
 	ignorePodOwnerTypes []string,
 ) tea.Cmd {
 	return func() tea.Msg {
-		listener, err := client.GetContainerListener(cluster, namespace, matchers, ignorePodOwnerTypes)
+		listener, err := client.GetContainerListener(cluster, namespace, matchers, selector, ignorePodOwnerTypes)
 		if err != nil {
 			return GetContainerListenerMsg{
 				Err: fmt.Errorf("error subscribing to cluster %s, namespace %s: %v", cluster, namespace, err),
