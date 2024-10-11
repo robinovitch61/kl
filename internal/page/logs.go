@@ -65,12 +65,14 @@ func (p LogsPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if p.HighjackingInput() {
+		// if filter is focused, make sure key presses don't also trigger any other actions
+		if p.filterableViewport.FilterFocused() {
 			p.filterableViewport, cmd = p.filterableViewport.Update(msg)
 			cmds = append(cmds, cmd)
 			return p, tea.Batch(cmds...)
 		}
 
+		// change the timestamp format shown on the logs
 		if key.Matches(msg, p.keyMap.Timestamps) {
 			p.timestampFormatIdx = (p.timestampFormatIdx + 1) % len(timestampFormats)
 			allLogs := p.logContainer.GetOrderedLogs()
@@ -81,6 +83,7 @@ func (p LogsPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
 			return p, nil
 		}
 
+		// change the container name format shown on the logs
 		if key.Matches(msg, p.keyMap.Name) {
 			p.nameFormatIdx = (p.nameFormatIdx + 1) % len(nameFormats)
 			allLogs := p.logContainer.GetOrderedLogs()
@@ -91,6 +94,7 @@ func (p LogsPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
 			return p, nil
 		}
 
+		// change if logs are shown ascending or descending
 		if key.Matches(msg, p.keyMap.ReverseOrder) {
 			// switch the log order
 			p.logContainer.ToggleAscending()
@@ -119,7 +123,11 @@ func (p LogsPage) View() string {
 }
 
 func (p LogsPage) HighjackingInput() bool {
-	return p.filterableViewport.HighjackingInput()
+	return p.filterableViewport.FilterFocused()
+}
+
+func (p LogsPage) HasAppliedFilter() bool {
+	return p.filterableViewport.Filter.Value() != ""
 }
 
 func (p LogsPage) ContentToPersist() []string {

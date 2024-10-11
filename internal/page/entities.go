@@ -79,7 +79,11 @@ func (p EntityPage) View() string {
 }
 
 func (p EntityPage) HighjackingInput() bool {
-	return p.filterableViewport.HighjackingInput()
+	return p.filterableViewport.FilterFocused()
+}
+
+func (p EntityPage) HasAppliedFilter() bool {
+	return p.filterableViewport.Filter.Value() != ""
 }
 
 func (p EntityPage) ContentToPersist() []string {

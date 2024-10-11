@@ -231,12 +231,6 @@ func (m Model[T]) View() string {
 
 	truncateAndAddLinesToViewString(visibleContentLines)
 
-	// get the visible part of each line given the xOffset
-	var linesAccountingForWidth []string
-	for i := range visibleContentLines {
-		linesAccountingForWidth = append(linesAccountingForWidth, m.truncate(visibleContentLines[i]))
-	}
-
 	nVisibleLines := len(strings.Split(viewString, "\n"))
 	if footerLine := m.getFooterLine(); footerLine != "" {
 		// pad so footer shows up at bottom
@@ -392,21 +386,6 @@ func (m *Model[T]) SetHeader(header []string) {
 func (m *Model[T]) ScrollToTop() {
 	m.selectedContentIdxUp(m.selectedItemIdx)
 	m.viewUp(m.selectedItemIdx)
-}
-
-func (m Model[T]) getTruncatedHeaderLines() []string {
-	headerLines := m.getVisibleHeaderLines()
-
-	if !m.wrapText {
-		return headerLines
-	}
-
-	var visibleHeaderLines []string
-	for i := range headerLines {
-		visiblePart := m.truncate(headerLines[i])
-		visibleHeaderLines = append(visibleHeaderLines, visiblePart)
-	}
-	return visibleHeaderLines
 }
 
 func (m Model[T]) maxLineWidth() int {

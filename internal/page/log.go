@@ -64,6 +64,10 @@ func (p SingleLogPage) HighjackingInput() bool {
 	return p.filterableViewport.Filter.Focused()
 }
 
+func (p SingleLogPage) HasAppliedFilter() bool {
+	return p.filterableViewport.Filter.Value() != ""
+}
+
 func (p SingleLogPage) ContentToPersist() []string {
 	header, content := veryNicelyFormatThisLog(p.log)
 	res := []string{header}
@@ -103,10 +107,6 @@ func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
 	}
 	p.filterableViewport.SetAllRows(renderableStrings)
 	return p
-}
-
-func (p SingleLogPage) HasAppliedFilter() bool {
-	return p.filterableViewport.Filter.Value() != ""
 }
 
 func veryNicelyFormatThisLog(log model.PageLog) (string, []string) {

@@ -481,6 +481,13 @@ func (m Model) handleWindowSizeMsg(width, height int) (Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) pressedClearToGoBack(msg tea.KeyMsg) bool {
+	isClear := key.Matches(msg, m.keyMap.Clear)
+	notHighjackingInput := !m.pages[m.currentPageType].HighjackingInput()
+	noAppliedFilter := !m.pages[m.currentPageType].HasAppliedFilter()
+	return isClear && notHighjackingInput && noAppliedFilter
+}
+
 func (m Model) changeCurrentPage(newPage page.Type) (Model, tea.Cmd) {
 	switch newPage {
 	case page.EntitiesPageType:
@@ -556,7 +563,7 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 	// adjust for buffered input from held keys, e.g "kk" or "jjj"
 	msg.Runes = normalizeRunes(msg)
 
-	// if prompt is visible, only allow prompt actions
+	// if prompt, e.g. confirmation modal, is visible, only allow prompt actions
 	if m.prompt.Visible {
 		return m.handlePromptKeyMsg(msg)
 	}
@@ -567,10 +574,6 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 		return m, tea.Batch(cmds...)
 	}
-
-	// update current page
-	m.pages[m.currentPageType], cmd = m.pages[m.currentPageType].Update(msg)
-	cmds = append(cmds, cmd)
 
 	// save content of current page
 	if key.Matches(msg, m.keyMap.Save) {
@@ -584,26 +587,22 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// entities page specific actions
+	// page-specific actions for when more than just page state is required
 	if m.currentPageType == page.EntitiesPageType {
 		m, cmd = m.handleEntitiesPageKeyMsg(msg)
 		cmds = append(cmds, cmd)
-		return m, tea.Batch(cmds...)
-	}
-
-	// logs page specific actions
-	if m.currentPageType == page.LogsPageType {
+	} else if m.currentPageType == page.LogsPageType {
 		m, cmd = m.handleLogsPageKeyMsg(msg)
 		cmds = append(cmds, cmd)
-		return m, tea.Batch(cmds...)
-	}
-
-	// single log page specific actions
-	if m.currentPageType == page.SingleLogPageType {
+	} else if m.currentPageType == page.SingleLogPageType {
 		m, cmd = m.handleSingleLogPageKeyMsg(msg)
 		cmds = append(cmds, cmd)
-		return m, tea.Batch(cmds...)
 	}
+
+	// update current page
+	m.pages[m.currentPageType], cmd = m.pages[m.currentPageType].Update(msg)
+	cmds = append(cmds, cmd)
+
 	return m, tea.Batch(cmds...)
 }
 
@@ -756,11 +755,12 @@ func (m Model) handleLogsPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 	// change to selection page
-	if key.Matches(msg, m.keyMap.Clear) {
+	if m.pressedClearToGoBack(msg) {
 		m, cmd = m.changeCurrentPage(page.EntitiesPageType)
 		cmds = append(cmds, cmd)
 		return m, tea.Batch(cmds...)
 	}
+
 	// change to single log page
 	if key.Matches(msg, m.keyMap.Enter) {
 		selectedLog := m.pages[page.LogsPageType].(page.LogsPage).GetSelectedLog()
@@ -788,17 +788,7 @@ func (m Model) handleSingleLogPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 	// change to logs page
-	if key.Matches(msg, m.keyMap.Clear) {
-		m, cmd = m.changeCurrentPage(page.LogsPageType)
-		cmds = append(cmds, cmd)
-		return m, tea.Batch(cmds...)
-	}
-
-	// handle clear
-	isClear := key.Matches(msg, m.keyMap.Clear)
-	notHighjackingInput := !m.pages[m.currentPageType].HighjackingInput()
-	noAppliedFilter := !m.pages[m.currentPageType].(page.SingleLogPage).HasAppliedFilter()
-	if isClear && notHighjackingInput && noAppliedFilter {
+	if m.pressedClearToGoBack(msg) {
 		m, cmd = m.changeCurrentPage(page.LogsPageType)
 		cmds = append(cmds, cmd)
 		return m, tea.Batch(cmds...)
