@@ -10,12 +10,16 @@ import (
 )
 
 var (
-	testKeyMap     = DefaultKeyMap()
-	downKeyMsg     = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(testKeyMap.Down.Keys()[0])}
-	upKeyMsg       = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(testKeyMap.Up.Keys()[0])}
-	red            = lipgloss.Color("#ff0000")
-	blue           = lipgloss.Color("#0000ff")
-	selectionStyle = renderer().NewStyle().Foreground(blue)
+	testKeyMap       = DefaultKeyMap()
+	downKeyMsg       = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(testKeyMap.Down.Keys()[0])}
+	halfPgDownKeyMsg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(testKeyMap.HalfPageDown.Keys()[0])}
+	fullPgDownKeyMsg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(testKeyMap.PageDown.Keys()[0])}
+	upKeyMsg         = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(testKeyMap.Up.Keys()[0])}
+	halfPgUpKeyMsg   = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(testKeyMap.HalfPageUp.Keys()[0])}
+	fullPgUpKeyMsg   = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(testKeyMap.PageUp.Keys()[0])}
+	red              = lipgloss.Color("#ff0000")
+	blue             = lipgloss.Color("#0000ff")
+	selectionStyle   = renderer().NewStyle().Foreground(blue)
 )
 
 func renderer() *lipgloss.Renderer {
@@ -137,8 +141,82 @@ func TestViewport_SelectionOff_WrapOff_Scrolling(t *testing.T) {
 	})
 	compare(t, expectedView, vp.View())
 
-	// scrolling down past bottom is no-op
+	// scrolling down past bottom when at bottom is no-op
 	vp, _ = vp.Update(downKeyMsg)
+	compare(t, expectedView, vp.View())
+}
+
+// TODO: add to other cases
+func TestViewport_SelectionOff_WrapOff_BulkScrolling(t *testing.T) {
+	w, h := 15, 3
+	vp := newViewport(w, h)
+	vp.SetContent([]RenderableString{
+		{Content: "first"},
+		{Content: "second"},
+		{Content: "third"},
+		{Content: "fourth"},
+		{Content: "fifth"},
+		{Content: "sixth"},
+	})
+	expectedView := pad(w, h, []string{
+		"first",
+		"second",
+		"33% (2/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// full page down
+	vp, _ = vp.Update(fullPgDownKeyMsg)
+	expectedView = pad(w, h, []string{
+		"third",
+		"fourth",
+		"66% (4/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// half page down
+	vp, _ = vp.Update(halfPgDownKeyMsg)
+	expectedView = pad(w, h, []string{
+		"fourth",
+		"fifth",
+		"83% (5/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// full page down
+	vp, _ = vp.Update(fullPgDownKeyMsg)
+	expectedView = pad(w, h, []string{
+		"fifth",
+		"sixth",
+		"100% (6/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// full page up
+	vp, _ = vp.Update(fullPgUpKeyMsg)
+	expectedView = pad(w, h, []string{
+		"third",
+		"fourth",
+		"66% (4/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// half page up
+	vp, _ = vp.Update(halfPgUpKeyMsg)
+	expectedView = pad(w, h, []string{
+		"second",
+		"third",
+		"50% (3/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// full page up
+	vp, _ = vp.Update(halfPgUpKeyMsg)
+	expectedView = pad(w, h, []string{
+		"first",
+		"second",
+		"33% (2/6)",
+	})
 	compare(t, expectedView, vp.View())
 }
 
@@ -328,8 +406,92 @@ func TestViewport_SelectionOn_WrapOff_Scrolling(t *testing.T) {
 	})
 	compare(t, expectedView, vp.View())
 
-	// scrolling down past bottom is no-op
+	// scrolling down past bottom when at bottom is no-op
 	vp, _ = vp.Update(downKeyMsg)
+	compare(t, expectedView, vp.View())
+}
+
+// TODO: add to other cases
+func TestViewport_SelectionOn_WrapOff_BulkScrolling(t *testing.T) {
+	w, h := 15, 3
+	vp := newViewport(w, h)
+	vp.SetSelectionEnabled(true)
+	vp.SetContent([]RenderableString{
+		{Content: "first"},
+		{Content: "second"},
+		{Content: "third"},
+		{Content: "fourth"},
+		{Content: "fifth"},
+		{Content: "sixth"},
+	})
+	expectedView := pad(w, h, []string{
+		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"second",
+		"16% (1/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// full page down
+	vp, _ = vp.Update(fullPgDownKeyMsg)
+	expectedView = pad(w, h, []string{
+		"\x1b[38;2;0;0;255mthird\x1b[0m",
+		"fourth",
+		"50% (3/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// half page down
+	vp, _ = vp.Update(halfPgDownKeyMsg)
+	expectedView = pad(w, h, []string{
+		"\x1b[38;2;0;0;255mfourth\x1b[0m",
+		"fifth",
+		"66% (4/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// full page down
+	vp, _ = vp.Update(fullPgDownKeyMsg)
+	expectedView = pad(w, h, []string{
+		"fifth",
+		"\x1b[38;2;0;0;255msixth\x1b[0m",
+		"100% (6/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// full page up
+	vp, _ = vp.Update(fullPgUpKeyMsg)
+	expectedView = pad(w, h, []string{
+		"third",
+		"\x1b[38;2;0;0;255mfourth\x1b[0m",
+		"66% (4/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// half page up
+	vp, _ = vp.Update(halfPgUpKeyMsg)
+	expectedView = pad(w, h, []string{
+		"second",
+		"\x1b[38;2;0;0;255mthird\x1b[0m",
+		"50% (3/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// full page up
+	vp, _ = vp.Update(halfPgUpKeyMsg)
+	expectedView = pad(w, h, []string{
+		"first",
+		"\x1b[38;2;0;0;255msecond\x1b[0m",
+		"33% (2/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// full page up
+	vp, _ = vp.Update(halfPgUpKeyMsg)
+	expectedView = pad(w, h, []string{
+		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"second",
+		"16% (1/6)",
+	})
 	compare(t, expectedView, vp.View())
 }
 
@@ -607,7 +769,7 @@ func TestViewport_SelectionOff_WrapOn_Scrolling(t *testing.T) {
 	})
 	compare(t, expectedView, vp.View())
 
-	// scrolling down past bottom is no-op
+	// scrolling down past bottom when at bottom is no-op
 	vp, _ = vp.Update(downKeyMsg)
 	compare(t, expectedView, vp.View())
 }
@@ -813,7 +975,7 @@ func TestViewport_SelectionOn_WrapOn_Scrolling(t *testing.T) {
 	})
 	compare(t, expectedView, vp.View())
 
-	// scrolling past bottom is a no-op
+	// scrolling down past bottom when at bottom is no-op
 	vp, _ = vp.Update(downKeyMsg)
 	compare(t, expectedView, vp.View())
 }
@@ -848,8 +1010,8 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	vp, _ = vp.Update(downKeyMsg)
 	expectedView = pad(w, h, []string{
 		"\x1b[38;2;0;0;255msecond lin\x1b[0m",
-		"\x1b[38;2;0;0;255me that is\x1b[0m",
-		"\x1b[38;2;0;0;255meven much\x1b[0m",
+		"\x1b[38;2;0;0;255me that is \x1b[0m",
+		"\x1b[38;2;0;0;255meven much \x1b[0m",
 		"\x1b[38;2;0;0;255mlonger tha\x1b[0m",
 		"33% (2/6)",
 	})
@@ -940,8 +1102,8 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	vp, _ = vp.Update(upKeyMsg)
 	expectedView = pad(w, h, []string{
 		"\x1b[38;2;0;0;255msecond lin\x1b[0m",
-		"\x1b[38;2;0;0;255me that is\x1b[0m",
-		"\x1b[38;2;0;0;255meven much\x1b[0m",
+		"\x1b[38;2;0;0;255me that is \x1b[0m",
+		"\x1b[38;2;0;0;255meven much \x1b[0m",
 		"\x1b[38;2;0;0;255mlonger tha\x1b[0m",
 		"33% (2/6)",
 	})

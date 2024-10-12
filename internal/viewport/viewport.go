@@ -2,14 +2,12 @@ package viewport
 
 import (
 	"fmt"
-	"github.com/robinovitch61/kl/internal/dev"
-	"regexp"
-	"strings"
-	"unicode"
-
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/robinovitch61/kl/internal/dev"
+	"regexp"
+	"strings"
 )
 
 var (
@@ -128,14 +126,14 @@ func (m Model[T]) Update(msg tea.Msg) (Model[T], tea.Cmd) {
 			if m.selectionEnabled {
 				m.selectedContentIdxUp(1)
 			} else {
-				m.viewUp(1)
+				m.scrollUp(1)
 			}
 
 		case key.Matches(msg, m.KeyMap.Down):
 			if m.selectionEnabled {
 				m.selectedContentIdxDown(1)
 			} else {
-				m.viewDown(1)
+				m.scrollDown(1)
 			}
 
 		case key.Matches(msg, m.KeyMap.Left):
@@ -150,29 +148,28 @@ func (m Model[T]) Update(msg tea.Msg) (Model[T], tea.Cmd) {
 
 		case key.Matches(msg, m.KeyMap.HalfPageUp):
 			offset := max(1, m.getNumVisibleItems()/2)
-			m.viewUp(m.numContentLines / 2)
+			m.scrollUp(m.numContentLines / 2)
 			if m.selectionEnabled {
 				m.selectedContentIdxUp(offset)
 			}
 
 		case key.Matches(msg, m.KeyMap.HalfPageDown):
 			offset := max(1, m.getNumVisibleItems()/2)
-			// TODO: bug where scroll past here results in view going past bottom, height getting messed up
-			m.viewDown(m.numContentLines / 2)
+			m.scrollDown(m.numContentLines / 2)
 			if m.selectionEnabled {
 				m.selectedContentIdxDown(offset)
 			}
 
 		case key.Matches(msg, m.KeyMap.PageUp):
 			offset := m.getNumVisibleItems()
-			m.viewUp(m.numContentLines)
+			m.scrollUp(m.numContentLines)
 			if m.selectionEnabled {
 				m.selectedContentIdxUp(offset)
 			}
 
 		case key.Matches(msg, m.KeyMap.PageDown):
 			offset := m.getNumVisibleItems()
-			m.viewDown(m.numContentLines)
+			m.scrollDown(m.numContentLines)
 			if m.selectionEnabled {
 				m.selectedContentIdxDown(offset)
 			}
@@ -189,7 +186,7 @@ func (m Model[T]) Update(msg tea.Msg) (Model[T], tea.Cmd) {
 			if m.selectionEnabled {
 				m.selectedContentIdxDown(len(m.allItems))
 			} else {
-				m.viewDown(len(m.allItems))
+				m.scrollDown(len(m.allItems))
 			}
 		}
 	}
@@ -246,10 +243,11 @@ func (m Model[T]) View() string {
 // SetContent sets the allItems, the selectable set of lines in the viewport
 func (m *Model[T]) SetContent(content []T) {
 	var stayAtTop, stayAtBottom bool
+	maxItemIdx, maxTopItemLineOffset := m.maxItemIdxAndMaxTopLineOffset()
 	if m.topSelectionSticky && m.selectionEnabled && m.selectedItemIdx == 0 {
 		stayAtTop = true
 	}
-	if m.bottomSelectionSticky && m.selectionEnabled && m.selectedItemIdx == m.maxItemIdx() {
+	if m.bottomSelectionSticky && m.selectionEnabled && m.selectedItemIdx == maxItemIdx {
 		stayAtBottom = true
 	}
 
@@ -259,15 +257,15 @@ func (m *Model[T]) SetContent(content []T) {
 	// fix any sort of potential selection issues
 	if m.selectedItemIdx < 0 {
 		m.selectedItemIdx = 0
-	} else if finalContentIdx := m.maxItemIdx(); m.selectedItemIdx > finalContentIdx {
-		m.selectedItemIdx = finalContentIdx
+	} else if m.selectedItemIdx > maxItemIdx {
+		m.selectedItemIdx = maxItemIdx
 	}
 
 	// stay at top, bottom, or maintain previous selection if desired
 	if stayAtTop {
 		m.selectedItemIdx = 0
 	} else if stayAtBottom {
-		m.selectedItemIdx = m.maxItemIdx()
+		m.selectedItemIdx, m.topItemLineOffset = maxItemIdx, maxTopItemLineOffset
 	}
 }
 
@@ -337,7 +335,7 @@ func (m *Model[T]) SetSelectedContentIdx(n int) {
 		return
 	}
 
-	m.selectedItemIdx = clamp(n, 0, m.maxItemIdx())
+	m.selectedItemIdx = clampValMinMax(n, 0, len(m.allItems)-1)
 
 	// ensure selection is always fully in view
 	numLinesInSelection := 1
@@ -387,7 +385,7 @@ func (m *Model[T]) SetHeader(header []string) {
 // ScrollToTop scrolls the viewport to the top
 func (m *Model[T]) ScrollToTop() {
 	m.selectedContentIdxUp(m.selectedItemIdx)
-	m.viewUp(m.selectedItemIdx)
+	m.scrollUp(m.selectedItemIdx)
 }
 
 func (m Model[T]) maxLineWidth() int {
@@ -409,6 +407,17 @@ func (m *Model[T]) setXOffset(n int) {
 	m.xOffset = max(0, min(maxXOffset, n))
 }
 
+func (m *Model[T]) setTopItemIdxAndOffset(topItemIdx, topItemLineOffset int) {
+	maxTopItemIdx, maxTopItemLineOffset := m.maxItemIdxAndMaxTopLineOffset()
+	//println(maxTopItemIdx, maxTopItemLineOffset)
+	//println(topItemIdx, topItemLineOffset)
+	m.topItemIdx = clampValMinMax(topItemIdx, 0, maxTopItemIdx)
+	m.topItemLineOffset = topItemLineOffset
+	if m.topItemIdx == maxTopItemIdx {
+		m.topItemLineOffset = clampValMinMax(topItemLineOffset, 0, maxTopItemLineOffset)
+	}
+}
+
 func (m *Model[T]) updateNumContentLines() {
 	footerLine := m.getTruncatedFooterLine()
 	contentHeight := m.height - len(m.getVisibleHeaderLines())
@@ -426,11 +435,11 @@ func (m *Model[T]) selectedContentIdxUp(n int) {
 	m.SetSelectedContentIdx(m.selectedItemIdx - n)
 }
 
-func (m *Model[T]) viewDown(n int) {
+func (m *Model[T]) scrollDown(n int) {
 	m.scrollByNLines(n)
 }
 
-func (m *Model[T]) viewUp(n int) {
+func (m *Model[T]) scrollUp(n int) {
 	m.scrollByNLines(-n)
 }
 
@@ -458,56 +467,57 @@ func (m *Model[T]) scrollByNLines(n int) {
 		return
 	}
 
+	newTopItemIdx, newTopItemLineOffset := m.topItemIdx, m.topItemLineOffset
 	if !m.wrapText {
-		m.topItemIdx = clamp(m.topItemIdx+n, 0, m.maxItemIdx())
+		newTopItemIdx = m.topItemIdx + n
+		//m.topItemIdx = clampValMinMax(m.topItemIdx+n, 0, m.maxItemIdxAndMaxTopLineOffset())
 	} else {
 		// wrapped
-		if n < 0 {
+		if n < 0 { // negative n, scrolling up
 			// up
-			if m.topItemLineOffset >= -n {
+			if newTopItemLineOffset >= -n {
 				// same item, just change offset
-				m.topItemLineOffset += n
+				newTopItemLineOffset += n
 			} else {
 				// take lines from items until scrolled up desired amount
-				n += m.topItemLineOffset
+				n += newTopItemLineOffset
 				for n < 0 {
-					m.topItemIdx -= 1
-					if m.topItemIdx < 0 {
+					newTopItemIdx -= 1
+					if newTopItemIdx < 0 {
 						// scrolled up past top - stay at top
-						m.topItemIdx = 0
-						m.topItemLineOffset = 0
+						newTopItemIdx = 0
+						newTopItemLineOffset = 0
 						break
 					}
-					numLinesInTopItem := len(wrap(m.allItems[m.topItemIdx].Render(), m.width))
+					numLinesInTopItem := len(wrap(m.allItems[newTopItemIdx].Render(), m.width))
 					for i := range numLinesInTopItem {
 						n += 1
 						if n == 0 {
-							m.topItemLineOffset = numLinesInTopItem - (i + 1)
+							newTopItemLineOffset = numLinesInTopItem - (i + 1)
 							break
 						}
 					}
 				}
 			}
-		} else {
-			// down
-			numLinesInTopItem := len(wrap(m.allItems[m.topItemIdx].Render(), m.width))
-			if m.topItemLineOffset+n < numLinesInTopItem {
+		} else { // positive n, scrolling down
+			numLinesInTopItem := len(wrap(m.allItems[newTopItemIdx].Render(), m.width))
+			if newTopItemLineOffset+n < numLinesInTopItem {
 				// same item, just change offset
-				m.topItemLineOffset += n
+				newTopItemLineOffset += n
 			} else {
 				// take lines from items until scrolled down desired amount
-				n -= numLinesInTopItem - (m.topItemLineOffset + 1)
+				n -= numLinesInTopItem - (newTopItemLineOffset + 1)
 				for n > 0 {
-					m.topItemIdx += 1
-					if m.topItemIdx > m.maxItemIdx() {
-						m.topItemIdx = m.maxItemIdx()
+					newTopItemIdx += 1
+					if newTopItemIdx >= len(m.allItems) {
+						newTopItemIdx = len(m.allItems) - 1
 						break
 					}
-					numLinesInTopItem = len(wrap(m.allItems[m.topItemIdx].Render(), m.width))
+					numLinesInTopItem = len(wrap(m.allItems[newTopItemIdx].Render(), m.width))
 					for i := range numLinesInTopItem {
 						n -= 1
 						if n == 0 {
-							m.topItemLineOffset = i
+							newTopItemLineOffset = i
 							break
 						}
 					}
@@ -515,6 +525,7 @@ func (m *Model[T]) scrollByNLines(n int) {
 			}
 		}
 	}
+	m.setTopItemIdxAndOffset(newTopItemIdx, newTopItemLineOffset)
 }
 
 func (m Model[T]) getVisibleHeaderLines() []string {
@@ -578,7 +589,7 @@ func (m Model[T]) getVisibleContentLines() ([]string, []int) {
 
 		for !done {
 			currItemIdx += 1
-			if currItemIdx > m.maxItemIdx() {
+			if currItemIdx >= len(m.allItems) {
 				done = true
 			} else {
 				currItem = m.allItems[currItemIdx]
@@ -590,7 +601,7 @@ func (m Model[T]) getVisibleContentLines() ([]string, []int) {
 		addLine(currItem.Render(), currItemIdx)
 		for !done {
 			currItemIdx += 1
-			if currItemIdx > m.maxItemIdx() {
+			if currItemIdx >= len(m.allItems) {
 				done = true
 			} else {
 				currItem = m.allItems[currItemIdx]
@@ -604,7 +615,7 @@ func (m Model[T]) getVisibleContentLines() ([]string, []int) {
 func (m Model[T]) getTruncatedFooterLine() string {
 	// one-indexed
 	numerator := m.selectedItemIdx + 1
-	denominator := m.maxItemIdx() + 1
+	denominator := len(m.allItems)
 	visibleContentLines, itemIndexes := m.getVisibleContentLines()
 	if len(visibleContentLines) == 0 {
 		return ""
@@ -628,21 +639,29 @@ func (m Model[T]) getTruncatedFooterLine() string {
 }
 
 func (m Model[T]) isScrolledToBottom() bool {
-	n := m.numContentLines
-	itemIdx := m.topItemIdx
-	numLinesInTopItem := len(wrap(m.allItems[m.topItemIdx].Render(), m.width))
-	n -= numLinesInTopItem - m.topItemLineOffset
-	for n > 0 {
-		itemIdx += 1
-		if itemIdx > m.maxItemIdx() {
-			// scrolled past end of content without reaching limit - at bottom
-			return true
-		}
-		numLinesInTopItem = len(wrap(m.allItems[m.topItemIdx].Render(), m.width))
-		n -= numLinesInTopItem
+	maxItemIdx, maxTopItemLineOffset := m.maxItemIdxAndMaxTopLineOffset()
+	if m.topItemIdx > maxItemIdx {
+		return true
 	}
-	// if n < 0, there are lines in the bottom item that aren't visible
-	return itemIdx == m.maxItemIdx() && n == 0
+	if m.topItemIdx == maxItemIdx {
+		return m.topItemLineOffset >= maxTopItemLineOffset
+	}
+	return false
+	//n := m.numContentLines
+	//itemIdx := m.topItemIdx
+	//numLinesInTopItem := len(wrap(m.allItems[m.topItemIdx].Render(), m.width))
+	//n -= numLinesInTopItem - m.topItemLineOffset
+	//for n > 0 {
+	//	itemIdx += 1
+	//	if itemIdx > m.maxItemIdxAndMaxTopLineOffset() {
+	//		// scrolled past end of content without reaching limit - at bottom
+	//		return true
+	//	}
+	//	numLinesInTopItem = len(wrap(m.allItems[m.topItemIdx].Render(), m.width))
+	//	n -= numLinesInTopItem
+	//}
+	//// if n < 0, there are lines in the bottom item that aren't visible
+	//return itemIdx == m.maxItemIdxAndMaxTopLineOffset() && n == 0
 }
 
 func (m Model[T]) numLinesOfSelectionInView() int {
@@ -656,22 +675,49 @@ func (m Model[T]) numLinesOfSelectionInView() int {
 	return res
 }
 
-func (m Model[T]) maxItemIdx() int {
+func (m Model[T]) maxItemIdxAndMaxTopLineOffset() (int, int) {
 	lenAllItems := len(m.allItems)
 	if lenAllItems == 0 {
-		return 0
+		return 0, 0
 	}
-	return lenAllItems - 1
+	if !m.wrapText {
+		return lenAllItems - m.numContentLines, 0
+	}
+	// wrapped
+	maxTopItemIdx, maxTopItemLineOffset := lenAllItems-1, 0
+	nLinesLastItem := len(wrap(m.allItems[lenAllItems-1].Render(), m.width))
+	if m.numContentLines <= nLinesLastItem {
+		// same item, just change offset
+		maxTopItemLineOffset = nLinesLastItem - m.numContentLines
+	} else {
+		// take lines from items until scrolled up desired amount
+		n := m.numContentLines - nLinesLastItem
+		for n > 0 {
+			maxTopItemIdx -= 1
+			if maxTopItemIdx < 0 {
+				// scrolled up past top - stay at top
+				maxTopItemIdx = 0
+				maxTopItemLineOffset = 0
+				break
+			}
+			numLinesInTopItem := len(wrap(m.allItems[maxTopItemIdx].Render(), m.width))
+			for i := range numLinesInTopItem {
+				n -= 1
+				if n == 0 {
+					maxTopItemLineOffset = numLinesInTopItem - (i + 1)
+					break
+				}
+			}
+		}
+	}
+	return maxTopItemIdx, maxTopItemLineOffset
 }
 
 func (m Model[T]) truncate(line string) string {
-	lineNoTrailingSpace := strings.TrimRightFunc(line, unicode.IsSpace)
-
-	//truncated := truncateLine(lineNoTrailingSpace, m.xOffset, m.width, m.lineContinuationIndicator)
-	//fmt.Println(fmt.Sprintf("truncateLine(%q, %d, %d, %q) = %q", lineNoTrailingSpace, m.xOffset, m.width, m.lineContinuationIndicator, truncated))
+	//truncated := truncateLine(line, m.xOffset, m.width, m.lineContinuationIndicator)
+	//fmt.Println(fmt.Sprintf("truncateLine(%q, %d, %d, %q) = %q", line, m.xOffset, m.width, m.lineContinuationIndicator, truncated))
 	//return truncated
-
-	return truncateLine(lineNoTrailingSpace, m.xOffset, m.width, m.lineContinuationIndicator)
+	return truncateLine(line, m.xOffset, m.width, m.lineContinuationIndicator)
 }
 
 func (m Model[T]) getNumVisibleItems() int {

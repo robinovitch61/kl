@@ -172,6 +172,6 @@ func safeSliceFromIdx(s []string, i int) []string {
 	return s[i:]
 }
 
-func clamp(v, minimum, maximum int) int {
+func clampValMinMax(v, minimum, maximum int) int {
 	return max(minimum, min(maximum, v))
 }
