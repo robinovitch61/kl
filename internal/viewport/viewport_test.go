@@ -395,7 +395,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 	expectedView = pad(w, h, []string{
 		"",
 		"...e first",
-		"\x1b[38;2;0;0;255m\x1b[0m", // TODO: want " " here to indicate where the selection is?
+		"\x1b[38;2;0;0;255m \x1b[0m",
 		"",
 		"50% (3/6)",
 	})
@@ -407,7 +407,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		"",
 		"...e first",
 		"",
-		"\x1b[38;2;0;0;255m\x1b[0m", // TODO: want " " here to indicate where the selection is?
+		"\x1b[38;2;0;0;255m \x1b[0m",
 		"66% (4/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -418,7 +418,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		"...e first",
 		"",
 		"",
-		"\x1b[38;2;0;0;255m\x1b[0m", // TODO: want " " here to indicate where the selection is?
+		"\x1b[38;2;0;0;255m \x1b[0m",
 		"83% (5/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -429,7 +429,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		"",
 		"",
 		"",
-		"\x1b[38;2;0;0;255m\x1b[0m", // TODO: want " " here to indicate where the selection is?
+		"\x1b[38;2;0;0;255m \x1b[0m",
 		"100% (6/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -774,8 +774,8 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	vp, _ = vp.Update(downKeyMsg)
 	expectedView = pad(w, h, []string{
 		"\x1b[38;2;0;0;255msecond lin\x1b[0m",
-		"\x1b[38;2;0;0;255me that is \x1b[0m",
-		"\x1b[38;2;0;0;255meven much \x1b[0m",
+		"\x1b[38;2;0;0;255me that is\x1b[0m",
+		"\x1b[38;2;0;0;255meven much\x1b[0m",
 		"\x1b[38;2;0;0;255mlonger tha\x1b[0m",
 		"33% (2/6)",
 	})
@@ -867,8 +867,8 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	vp, _ = vp.Update(upKeyMsg)
 	expectedView = pad(w, h, []string{
 		"\x1b[38;2;0;0;255msecond lin\x1b[0m",
-		"\x1b[38;2;0;0;255me that is \x1b[0m",
-		"\x1b[38;2;0;0;255meven much \x1b[0m",
+		"\x1b[38;2;0;0;255me that is\x1b[0m",
+		"\x1b[38;2;0;0;255meven much\x1b[0m",
 		"\x1b[38;2;0;0;255mlonger tha\x1b[0m",
 		"33% (2/6)",
 	})

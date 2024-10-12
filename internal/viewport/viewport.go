@@ -202,37 +202,39 @@ func (m Model[T]) Update(msg tea.Msg) (Model[T], tea.Cmd) {
 func (m Model[T]) View() string {
 	var viewString string
 
-	truncateAndAddLineToViewString := func(line string) {
-		viewString += m.truncate(line) + "\n"
-	}
-	truncateAndAddLinesToViewString := func(lines []string) {
-		for i := range lines {
-			truncateAndAddLineToViewString(lines[i])
-		}
-	}
-
 	visibleHeaderLines := m.getVisibleHeaderLines()
-	truncateAndAddLinesToViewString(visibleHeaderLines)
+	for i := range visibleHeaderLines {
+		viewString += m.truncate(visibleHeaderLines[i]) + "\n"
+	}
 
 	//hasStringToHighlight := stringWidth(m.stringToHighlight) != 0
 
 	// get the lines to show based on the topItemIdx and topItemLineOffset
 	visibleContentLines, itemIndexes := m.getVisibleContentLines()
+	truncatedVisibleContentLines := make([]string, len(visibleContentLines))
+	for i := range visibleContentLines {
+		truncatedVisibleContentLines[i] = m.truncate(visibleContentLines[i])
+	}
 	//fmt.Println(fmt.Sprintf("%q", visibleContentLines))
 
 	// add selection style
 	if m.selectionEnabled {
-		for i := range visibleContentLines {
+		for i := range truncatedVisibleContentLines {
 			if itemIndexes[i] == m.selectedItemIdx {
-				visibleContentLines[i] = m.SelectedContentStyle.Render(visibleContentLines[i])
+				if truncatedVisibleContentLines[i] == "" {
+					truncatedVisibleContentLines[i] = " " // ensure selection is visible even if content empty
+				}
+				truncatedVisibleContentLines[i] = m.SelectedContentStyle.Render(truncatedVisibleContentLines[i])
 			}
 		}
 	}
 
-	truncateAndAddLinesToViewString(visibleContentLines)
+	for i := range truncatedVisibleContentLines {
+		viewString += truncatedVisibleContentLines[i] + "\n"
+	}
 
 	nVisibleLines := len(strings.Split(viewString, "\n"))
-	if footerLine := m.getFooterLine(); footerLine != "" {
+	if footerLine := m.getTruncatedFooterLine(); footerLine != "" {
 		// pad so footer shows up at bottom
 		padCount := max(0, m.numContentLines-nVisibleLines-1) // 1 for footer itself
 		viewString += strings.Repeat("\n", padCount)
@@ -392,7 +394,7 @@ func (m Model[T]) maxLineWidth() int {
 	maxLineWidth := 0
 	headerLines := m.getVisibleHeaderLines()
 	contentLines, _ := m.getVisibleContentLines()
-	footerLine := m.getFooterLine()
+	footerLine := m.getTruncatedFooterLine()
 	allVisibleLines := append(append(headerLines, contentLines...), footerLine)
 	for i := range allVisibleLines {
 		if w := stringWidth(allVisibleLines[i]); w > maxLineWidth {
@@ -408,7 +410,7 @@ func (m *Model[T]) setXOffset(n int) {
 }
 
 func (m *Model[T]) updateNumContentLines() {
-	footerLine := m.getFooterLine()
+	footerLine := m.getTruncatedFooterLine()
 	contentHeight := m.height - len(m.getVisibleHeaderLines())
 	if footerLine != "" {
 		contentHeight-- // one for footer
@@ -516,7 +518,7 @@ func (m *Model[T]) scrollByNLines(n int) {
 }
 
 func (m Model[T]) getVisibleHeaderLines() []string {
-	footerLine := m.getFooterLine()
+	footerLine := m.getTruncatedFooterLine()
 	linesForHeader := m.height
 	if footerLine != "" {
 		linesForHeader--
@@ -599,7 +601,7 @@ func (m Model[T]) getVisibleContentLines() ([]string, []int) {
 	return lines, itemIndexes
 }
 
-func (m Model[T]) getFooterLine() string {
+func (m Model[T]) getTruncatedFooterLine() string {
 	// one-indexed
 	numerator := m.selectedItemIdx + 1
 	denominator := m.maxItemIdx() + 1
