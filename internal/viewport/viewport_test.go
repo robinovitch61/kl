@@ -27,7 +27,6 @@ func renderer() *lipgloss.Renderer {
 
 // # SELECTION DISABLED, WRAP OFF
 
-// TODO: add this test to all cases
 func TestViewport_SelectionOff_WrapOff_Empty(t *testing.T) {
 	w, h := 15, 5
 	vp := newViewport(w, h)
@@ -211,7 +210,6 @@ func TestViewport_SelectionOff_WrapOff_Panning(t *testing.T) {
 
 // # SELECTION ENABLED, WRAP OFF
 
-// TODO: add this test to all cases
 func TestViewport_SelectionOn_WrapOff_Empty(t *testing.T) {
 	w, h := 15, 5
 	vp := newViewport(w, h)
@@ -433,9 +431,74 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		"100% (6/6)",
 	})
 	compare(t, expectedView, vp.View())
+
+	// scroll up
+	vp, _ = vp.Update(upKeyMsg)
+	expectedView = pad(w, h, []string{
+		"",
+		"",
+		"\x1b[38;2;0;0;255m \x1b[0m",
+		"",
+		"83% (5/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// scroll up
+	vp, _ = vp.Update(upKeyMsg)
+	expectedView = pad(w, h, []string{
+		"",
+		"\x1b[38;2;0;0;255m \x1b[0m",
+		"",
+		"",
+		"66% (4/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// scroll up
+	vp, _ = vp.Update(upKeyMsg)
+	expectedView = pad(w, h, []string{
+		"\x1b[38;2;0;0;255m \x1b[0m",
+		"",
+		"",
+		"",
+		"50% (3/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// scroll up
+	vp, _ = vp.Update(upKeyMsg)
+	expectedView = pad(w, h, []string{
+		"\x1b[38;2;0;0;255m...e first\x1b[0m",
+		"",
+		"",
+		"",
+		"33% (2/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// scroll up
+	vp, _ = vp.Update(upKeyMsg)
+	expectedView = pad(w, h, []string{
+		"\x1b[38;2;0;0;255m \x1b[0m",
+		"...e first",
+		"",
+		"",
+		"16% (1/6)",
+	})
+	compare(t, expectedView, vp.View())
 }
 
 // # SELECTION DISABLED, WRAP ON
+
+func TestViewport_SelectionOff_WrapOn_Empty(t *testing.T) {
+	w, h := 15, 5
+	vp := newViewport(w, h)
+	vp.SetWrapText(true)
+	expectedView := pad(w, h, []string{})
+	if diff := cmp.Diff(expectedView, vp.View()); diff != "" {
+		t.Errorf("Mismatch (-want +got):\n%s", diff)
+	}
+}
 
 func TestViewport_SelectionOff_WrapOn_Basic(t *testing.T) {
 	w, h := 15, 5
@@ -613,6 +676,17 @@ func TestViewport_SelectionOff_WrapOn_Panning(t *testing.T) {
 }
 
 // # SELECTION ENABLED, WRAP ON
+
+func TestViewport_SelectionOn_WrapOn_Empty(t *testing.T) {
+	w, h := 15, 5
+	vp := newViewport(w, h)
+	vp.SetWrapText(true)
+	vp.SetSelectionEnabled(true)
+	expectedView := pad(w, h, []string{})
+	if diff := cmp.Diff(expectedView, vp.View()); diff != "" {
+		t.Errorf("Mismatch (-want +got):\n%s", diff)
+	}
+}
 
 func TestViewport_SelectionOn_WrapOn_Basic(t *testing.T) {
 	w, h := 15, 5
@@ -829,7 +903,6 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	})
 	compare(t, expectedView, vp.View())
 
-	// TODO: add this to other selection on case
 	// scroll up
 	vp, _ = vp.Update(upKeyMsg)
 	expectedView = pad(w, h, []string{
