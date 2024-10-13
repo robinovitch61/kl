@@ -239,7 +239,7 @@ func (m Model[T]) View() string {
 	}
 
 	// TODO: rm
-	dev.Debug(fmt.Sprintf("LEO numLines=%d, height=%d, numContentLines=%d, numHeaderLines=%d, numContentLines=%d", len(strings.Split(viewString, "\n")), m.height, m.numContentLines, len(visibleHeaderLines), len(truncatedVisibleContentLines)))
+	//dev.Debug(fmt.Sprintf("LEO numLines=%d, height=%d, numContentLines=%d, numHeaderLines=%d, numContentLines=%d", len(strings.Split(viewString, "\n")), m.height, m.numContentLines, len(visibleHeaderLines), len(truncatedVisibleContentLines)))
 
 	return lipgloss.NewStyle().Width(m.width).Height(m.height).Render(viewString)
 }
@@ -270,7 +270,8 @@ func (m *Model[T]) SetContent(content []T) {
 		if stayAtTop {
 			m.selectedItemIdx = 0
 		} else if stayAtBottom {
-			m.selectedItemIdx = len(m.allItems) - 1
+			// TODO: no test catches the max(0, ...) here, write one!
+			m.selectedItemIdx = max(0, len(m.allItems)-1)
 		} else if m.maintainSelection {
 			// TODO: could flag when content is sorted & comparable and use binary search instead
 			for i := range m.allItems {
@@ -415,6 +416,7 @@ func (m *Model[T]) safelySetTopItemIdxAndOffset(topItemIdx, topItemLineOffset in
 	}
 }
 
+// TODO: this isn't getting called everywhere it needs to be...
 func (m *Model[T]) updateNumContentLines() {
 	footerLine := m.getTruncatedFooterLine()
 	contentHeight := m.height - len(m.getVisibleHeaderLines())
@@ -551,14 +553,12 @@ func (m Model[T]) getVisibleHeaderLines() []string {
 	if footerLine != "" {
 		linesForHeader--
 	}
-	dev.Debug(fmt.Sprintf("LEO linesForHeader=%d", linesForHeader))
 
 	if linesForHeader <= 0 {
 		return nil
 	}
 
 	if !m.wrapText {
-		dev.Debug(fmt.Sprintf("LEO header=%q", m.header))
 		return safeSliceUpToIdx(m.header, linesForHeader)
 	} else {
 		// wrapped
