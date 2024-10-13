@@ -146,7 +146,6 @@ func TestViewport_SelectionOff_WrapOff_Scrolling(t *testing.T) {
 	compare(t, expectedView, vp.View())
 }
 
-// TODO: add to other cases
 func TestViewport_SelectionOff_WrapOff_BulkScrolling(t *testing.T) {
 	w, h := 15, 3
 	vp := newViewport(w, h)
@@ -211,7 +210,7 @@ func TestViewport_SelectionOff_WrapOff_BulkScrolling(t *testing.T) {
 	compare(t, expectedView, vp.View())
 
 	// full page up
-	vp, _ = vp.Update(halfPgUpKeyMsg)
+	vp, _ = vp.Update(fullPgUpKeyMsg)
 	expectedView = pad(w, h, []string{
 		"first",
 		"second",
@@ -411,7 +410,6 @@ func TestViewport_SelectionOn_WrapOff_Scrolling(t *testing.T) {
 	compare(t, expectedView, vp.View())
 }
 
-// TODO: add to other cases
 func TestViewport_SelectionOn_WrapOff_BulkScrolling(t *testing.T) {
 	w, h := 15, 3
 	vp := newViewport(w, h)
@@ -476,7 +474,7 @@ func TestViewport_SelectionOn_WrapOff_BulkScrolling(t *testing.T) {
 	})
 	compare(t, expectedView, vp.View())
 
-	// full page up
+	// half page up
 	vp, _ = vp.Update(halfPgUpKeyMsg)
 	expectedView = pad(w, h, []string{
 		"first",
@@ -486,7 +484,7 @@ func TestViewport_SelectionOn_WrapOff_BulkScrolling(t *testing.T) {
 	compare(t, expectedView, vp.View())
 
 	// full page up
-	vp, _ = vp.Update(halfPgUpKeyMsg)
+	vp, _ = vp.Update(fullPgUpKeyMsg)
 	expectedView = pad(w, h, []string{
 		"\x1b[38;2;0;0;255mfirst\x1b[0m",
 		"second",
@@ -774,6 +772,77 @@ func TestViewport_SelectionOff_WrapOn_Scrolling(t *testing.T) {
 	compare(t, expectedView, vp.View())
 }
 
+func TestViewport_SelectionOff_WrapOn_BulkScrolling(t *testing.T) {
+	w, h := 10, 3
+	vp := newViewport(w, h)
+	vp.SetWrapText(true)
+	vp.SetContent([]RenderableString{
+		{Content: "the first line"},
+		{Content: "the second line"},
+		{Content: "the third line"},
+	})
+	expectedView := pad(w, h, []string{
+		"the first",
+		"line",
+		"33% (1/3)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// full page down
+	vp, _ = vp.Update(fullPgDownKeyMsg)
+	expectedView = pad(w, h, []string{
+		"the second",
+		" line",
+		"66% (2/3)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// half page down
+	vp, _ = vp.Update(halfPgDownKeyMsg)
+	expectedView = pad(w, h, []string{
+		" line",
+		"the third ",
+		"99% (3/3)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// full page down
+	vp, _ = vp.Update(fullPgDownKeyMsg)
+	expectedView = pad(w, h, []string{
+		"the third ",
+		"line",
+		"100% (3/3)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// full page up
+	vp, _ = vp.Update(fullPgUpKeyMsg)
+	expectedView = pad(w, h, []string{
+		"the second",
+		" line",
+		"66% (2/3)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// half page up
+	vp, _ = vp.Update(halfPgUpKeyMsg)
+	expectedView = pad(w, h, []string{
+		"line",
+		"the second",
+		"66% (2/3)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// full page up
+	vp, _ = vp.Update(fullPgUpKeyMsg)
+	expectedView = pad(w, h, []string{
+		"the first",
+		"line",
+		"33% (1/3)",
+	})
+	compare(t, expectedView, vp.View())
+}
+
 func TestViewport_SelectionOff_WrapOn_Panning(t *testing.T) {
 	w, h := 10, 5
 	vp := newViewport(w, h)
@@ -977,6 +1046,68 @@ func TestViewport_SelectionOn_WrapOn_Scrolling(t *testing.T) {
 
 	// scrolling down past bottom when at bottom is no-op
 	vp, _ = vp.Update(downKeyMsg)
+	compare(t, expectedView, vp.View())
+}
+
+func TestViewport_SelectionOn_WrapOn_BulkScrolling(t *testing.T) {
+	w, h := 10, 3
+	vp := newViewport(w, h)
+	vp.SetWrapText(true)
+	vp.SetSelectionEnabled(true)
+	vp.SetContent([]RenderableString{
+		{Content: "the first line"},
+		{Content: "the second line"},
+		{Content: "the third line"},
+	})
+	expectedView := pad(w, h, []string{
+		"\x1b[38;2;0;0;255mthe first \x1b[0m",
+		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"33% (1/3)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// full page down
+	vp, _ = vp.Update(fullPgDownKeyMsg)
+	expectedView = pad(w, h, []string{
+		"\x1b[38;2;0;0;255mthe second\x1b[0m",
+		"\x1b[38;2;0;0;255m line\x1b[0m",
+		"66% (2/3)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// half page down
+	vp, _ = vp.Update(halfPgDownKeyMsg)
+	expectedView = pad(w, h, []string{
+		"\x1b[38;2;0;0;255mthe third \x1b[0m",
+		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"100% (3/3)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// half page down
+	vp, _ = vp.Update(halfPgDownKeyMsg)
+	compare(t, expectedView, vp.View())
+
+	// full page up
+	vp, _ = vp.Update(fullPgUpKeyMsg)
+	expectedView = pad(w, h, []string{
+		"\x1b[38;2;0;0;255mthe second\x1b[0m",
+		"\x1b[38;2;0;0;255m line\x1b[0m",
+		"66% (2/3)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// half page up
+	vp, _ = vp.Update(halfPgUpKeyMsg)
+	expectedView = pad(w, h, []string{
+		"\x1b[38;2;0;0;255mthe first \x1b[0m",
+		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"33% (1/3)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// half page up
+	vp, _ = vp.Update(halfPgUpKeyMsg)
 	compare(t, expectedView, vp.View())
 }
 
