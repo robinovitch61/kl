@@ -243,29 +243,39 @@ func (m Model[T]) View() string {
 // SetContent sets the allItems, the selectable set of lines in the viewport
 func (m *Model[T]) SetContent(content []T) {
 	var stayAtTop, stayAtBottom bool
+	var prevSelection T
 	currMaxItemIdx, _ := m.maxItemIdxAndMaxTopLineOffset()
-	if m.topSelectionSticky && m.selectionEnabled && m.selectedItemIdx == 0 {
-		stayAtTop = true
-	}
-	if m.bottomSelectionSticky && m.selectionEnabled && m.selectedItemIdx == currMaxItemIdx {
-		stayAtBottom = true
+	if m.selectionEnabled {
+		if m.topSelectionSticky && m.selectedItemIdx == 0 {
+			stayAtTop = true
+		} else if m.bottomSelectionSticky && m.selectedItemIdx == currMaxItemIdx {
+			stayAtBottom = true
+		} else if m.maintainSelection && 0 <= m.selectedItemIdx && m.selectedItemIdx < len(m.allItems) {
+			prevSelection = m.allItems[m.selectedItemIdx]
+		}
 	}
 
 	m.allItems = content
 	m.updateNumContentLines()
 
-	// fix any sort of potential selection issues
-	if m.selectedItemIdx < 0 {
-		m.selectedItemIdx = 0
-	} else if numItems := len(m.allItems); m.selectedItemIdx > numItems {
-		m.selectedItemIdx = numItems
-	}
-
-	// stay at top, bottom, or maintain previous selection if desired
-	if stayAtTop {
-		m.selectedItemIdx = 0
-	} else if stayAtBottom {
-		m.selectedItemIdx, m.topItemLineOffset = m.maxItemIdxAndMaxTopLineOffset()
+	if m.selectionEnabled {
+		// stay at top, bottom, or maintain previous selection if desired
+		if stayAtTop {
+			m.selectedItemIdx = 0
+		} else if stayAtBottom {
+			m.selectedItemIdx, m.topItemLineOffset = m.maxItemIdxAndMaxTopLineOffset()
+		} else if m.maintainSelection {
+			// TODO: could flag when content is sorted & comparable and use binary search instead
+			for i := range m.allItems {
+				if m.allItems[i].Equals(prevSelection) {
+					m.selectedItemIdx = i
+					break
+				}
+			}
+		} else {
+			m.selectedItemIdx = clampValMinMax(m.selectedItemIdx, 0, len(m.allItems)-1)
+		}
+		m.scrollSoSelectionInView()
 	}
 }
 
@@ -331,31 +341,11 @@ func (m Model[T]) GetHeight() int {
 
 // SetSelectedContentIdx sets the selected context index. Automatically puts selection in view as necessary
 func (m *Model[T]) SetSelectedContentIdx(n int) {
-	if m.numContentLines == 0 {
+	if !m.selectionEnabled || m.numContentLines == 0 {
 		return
 	}
-
 	m.selectedItemIdx = clampValMinMax(n, 0, len(m.allItems)-1)
-
-	// ensure selection is always fully in view
-	numLinesInSelection := 1
-	if m.wrapText {
-		numLinesInSelection = len(wrap(m.allItems[m.selectedItemIdx].Render(), m.width))
-	}
-
-	numLinesOfSelectionInView := m.numLinesOfSelectionInView()
-	if numLinesInSelection != numLinesOfSelectionInView {
-		if m.topItemIdx < m.selectedItemIdx {
-			// if selection is below, scroll until it's fully in view at the bottom
-			// first, put it at the top
-			m.topItemIdx, m.topItemLineOffset = m.selectedItemIdx, 0
-			// then scroll up so that it's at the bottom, unless it already takes up the whole screen
-			m.scrollByNLines(min(0, -(m.numContentLines - numLinesInSelection)))
-		} else {
-			// if selection above, scroll until it's fully in view at the top
-			m.topItemIdx, m.topItemLineOffset = m.selectedItemIdx, 0
-		}
-	}
+	m.scrollSoSelectionInView()
 }
 
 // GetSelectedContentIdx returns the currently selected allItems index
@@ -407,7 +397,7 @@ func (m *Model[T]) setXOffset(n int) {
 	m.xOffset = max(0, min(maxXOffset, n))
 }
 
-func (m *Model[T]) setTopItemIdxAndOffset(topItemIdx, topItemLineOffset int) {
+func (m *Model[T]) safelySetTopItemIdxAndOffset(topItemIdx, topItemLineOffset int) {
 	maxTopItemIdx, maxTopItemLineOffset := m.maxItemIdxAndMaxTopLineOffset()
 	//println(maxTopItemIdx, maxTopItemLineOffset)
 	//println(topItemIdx, topItemLineOffset)
@@ -425,6 +415,29 @@ func (m *Model[T]) updateNumContentLines() {
 		contentHeight-- // one for footer
 	}
 	m.numContentLines = max(0, contentHeight)
+}
+
+func (m *Model[T]) scrollSoSelectionInView() {
+	numLinesInSelection := 1
+	if m.wrapText {
+		numLinesInSelection = len(wrap(m.allItems[m.selectedItemIdx].Render(), m.width))
+	}
+
+	numLinesOfSelectionInView := m.numLinesOfSelectionInView()
+	if numLinesInSelection != numLinesOfSelectionInView {
+		if m.topItemIdx < m.selectedItemIdx {
+			// if selection is below, scroll until it's fully in view at the bottom
+			// first, put it at the top, intentionally not doing it in manner that protects the view going past the bottom
+			m.topItemIdx, m.topItemLineOffset = m.selectedItemIdx, 0
+			// then scroll up so that it's at the bottom, unless it already takes up the whole screen
+			dev.Debug(fmt.Sprintf("LEO SCROLLING UP BY %d", max(0, m.numContentLines-numLinesInSelection)))
+			m.scrollUp(max(0, m.numContentLines-numLinesInSelection))
+		} else {
+			// if selection above, scroll until it's fully in view at the top
+			dev.Debug("LEO SCROLLING DOWN")
+			m.topItemIdx, m.topItemLineOffset = m.selectedItemIdx, 0
+		}
+	}
 }
 
 func (m *Model[T]) selectedContentIdxDown(n int) {
@@ -470,7 +483,6 @@ func (m *Model[T]) scrollByNLines(n int) {
 	newTopItemIdx, newTopItemLineOffset := m.topItemIdx, m.topItemLineOffset
 	if !m.wrapText {
 		newTopItemIdx = m.topItemIdx + n
-		//m.topItemIdx = clampValMinMax(m.topItemIdx+n, 0, m.maxItemIdxAndMaxTopLineOffset())
 	} else {
 		// wrapped
 		if n < 0 { // negative n, scrolling up
@@ -525,7 +537,7 @@ func (m *Model[T]) scrollByNLines(n int) {
 			}
 		}
 	}
-	m.setTopItemIdxAndOffset(newTopItemIdx, newTopItemLineOffset)
+	m.safelySetTopItemIdxAndOffset(newTopItemIdx, newTopItemLineOffset)
 }
 
 func (m Model[T]) getVisibleHeaderLines() []string {
@@ -598,7 +610,7 @@ func (m Model[T]) getVisibleContentLines() ([]string, []int) {
 			}
 		}
 	} else {
-		addLine(currItem.Render(), currItemIdx)
+		done = addLine(currItem.Render(), currItemIdx)
 		for !done {
 			currItemIdx += 1
 			if currItemIdx >= len(m.allItems) {
@@ -647,21 +659,6 @@ func (m Model[T]) isScrolledToBottom() bool {
 		return m.topItemLineOffset >= maxTopItemLineOffset
 	}
 	return false
-	//n := m.numContentLines
-	//itemIdx := m.topItemIdx
-	//numLinesInTopItem := len(wrap(m.allItems[m.topItemIdx].Render(), m.width))
-	//n -= numLinesInTopItem - m.topItemLineOffset
-	//for n > 0 {
-	//	itemIdx += 1
-	//	if itemIdx > m.maxItemIdxAndMaxTopLineOffset() {
-	//		// scrolled past end of content without reaching limit - at bottom
-	//		return true
-	//	}
-	//	numLinesInTopItem = len(wrap(m.allItems[m.topItemIdx].Render(), m.width))
-	//	n -= numLinesInTopItem
-	//}
-	//// if n < 0, there are lines in the bottom item that aren't visible
-	//return itemIdx == m.maxItemIdxAndMaxTopLineOffset() && n == 0
 }
 
 func (m Model[T]) numLinesOfSelectionInView() int {

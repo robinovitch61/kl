@@ -654,6 +654,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 	validate(expectedView)
 
 	// scroll down
+	println("HERE")
 	vp, _ = vp.Update(downKeyMsg)
 	expectedView = pad(w, h, []string{
 		"header ...",
@@ -736,6 +737,50 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		"16% (1/6)",
 	})
 	validate(expectedView)
+}
+
+func TestViewport_SelectionOn_WrapOff_MaintainSelection(t *testing.T) {
+	w, h := 15, 4
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetSelectionEnabled(true)
+	vp.SetMaintainSelection(true)
+	vp.SetContent([]RenderableString{
+		{Content: "first"},
+	})
+	expectedView := pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+	})
+	compare(t, expectedView, vp.View())
+
+	// add content
+	vp.SetContent([]RenderableString{
+		{Content: "second"},
+		{Content: "first"},
+	})
+	expectedView = pad(w, h, []string{
+		"header",
+		"second",
+		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+	})
+	compare(t, expectedView, vp.View())
+
+	// add content
+	vp.SetContent([]RenderableString{
+		{Content: "third"},
+		{Content: "second"},
+		{Content: "first"},
+	})
+	expectedView = pad(w, h, []string{
+		"header",
+		"second",
+		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"100% (3/3)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// TODO: add content lines below, add this test to other selectionOn case
 }
 
 // # SELECTION DISABLED, WRAP ON
@@ -1446,11 +1491,11 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 }
 
 // TODO:
+// adding new allItems should preserve selected line when maintain selection enabled and selection should stay in view
+// stay at top/bottom
 // transitioning between wrap/no wrap should preserve selection + position relative to top
-// adding new allItems should preserve selected line when maintain selection enabled
-// test with a bunch of spaces at end of line(s)
-// test string to highlight
+// test string to highlight (should work when truncated or wrapped)
 // zero & one width/height viewport in each case
 // go to top/bottom
-// ... instead of empty when fully truncated
+// "..." instead of empty when fully truncated
 // set content again to remove longest line when xOffset maxed out
