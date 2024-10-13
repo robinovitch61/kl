@@ -3,7 +3,6 @@ package viewport
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/google/go-cmp/cmp"
 	"github.com/muesli/termenv"
 	"io"
 	"testing"
@@ -35,14 +34,16 @@ func TestViewport_SelectionOff_WrapOff_Empty(t *testing.T) {
 	w, h := 15, 5
 	vp := newViewport(w, h)
 	expectedView := pad(w, h, []string{})
-	if diff := cmp.Diff(expectedView, vp.View()); diff != "" {
-		t.Errorf("Mismatch (-want +got):\n%s", diff)
-	}
+	compare(t, expectedView, vp.View())
+	vp.SetHeader([]string{"header"})
+	expectedView = pad(w, h, []string{"header"})
+	compare(t, expectedView, vp.View())
 }
 
 func TestViewport_SelectionOff_WrapOff_Basic(t *testing.T) {
-	w, h := 15, 5
+	w, h := 15, 6
 	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
 	vp.SetContent([]RenderableString{
 		{Content: "first line"},
 		{Content: renderer().NewStyle().Foreground(red).Render("second") + " line"},
@@ -50,24 +51,25 @@ func TestViewport_SelectionOff_WrapOff_Basic(t *testing.T) {
 		{Content: renderer().NewStyle().Foreground(red).Render("a") + " really really long line"},
 	})
 	expectedView := pad(w, h, []string{
+		"header",
 		"first line",
 		"\x1b[38;2;255;0;0msecond\x1b[0m line",
 		"\x1b[38;2;255;0;0ma really rea...\x1b[0m",
 		"\x1b[38;2;255;0;0ma\x1b[0m really rea...",
 	})
-	if diff := cmp.Diff(expectedView, vp.View()); diff != "" {
-		t.Errorf("Mismatch (-want +got):\n%s", diff)
-	}
+	compare(t, expectedView, vp.View())
 }
 
 func TestViewport_SelectionOff_WrapOff_OverflowLine(t *testing.T) {
 	w, h := 15, 5
 	vp := newViewport(w, h)
+	vp.SetHeader([]string{"long header overflows"})
 	vp.SetContent([]RenderableString{
 		{Content: "123456789012345"},
 		{Content: "1234567890123456"},
 	})
 	expectedView := pad(w, h, []string{
+		"long header ...",
 		"123456789012345",
 		"123456789012...",
 	})
@@ -75,8 +77,9 @@ func TestViewport_SelectionOff_WrapOff_OverflowLine(t *testing.T) {
 }
 
 func TestViewport_SelectionOff_WrapOff_OverflowHeight(t *testing.T) {
-	w, h := 15, 5
+	w, h := 15, 6
 	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
 	vp.SetContent([]RenderableString{
 		{Content: "123456789012345"},
 		{Content: "1234567890123456"},
@@ -86,6 +89,7 @@ func TestViewport_SelectionOff_WrapOff_OverflowHeight(t *testing.T) {
 		{Content: "1234567890123456"},
 	})
 	expectedView := pad(w, h, []string{
+		"header",
 		"123456789012345",
 		"123456789012...",
 		"123456789012...",
@@ -96,59 +100,73 @@ func TestViewport_SelectionOff_WrapOff_OverflowHeight(t *testing.T) {
 }
 
 func TestViewport_SelectionOff_WrapOff_Scrolling(t *testing.T) {
-	w, h := 15, 5
+	w, h := 15, 6
 	vp := newViewport(w, h)
-	vp.SetContent([]RenderableString{
-		{Content: "first"},
-		{Content: "second"},
-		{Content: "third"},
-		{Content: "fourth"},
-		{Content: "fifth"},
-		{Content: "sixth"},
-	})
+	vp.SetHeader([]string{"header"})
+	setContent := func() {
+		vp.SetContent([]RenderableString{
+			{Content: "first"},
+			{Content: "second"},
+			{Content: "third"},
+			{Content: "fourth"},
+			{Content: "fifth"},
+			{Content: "sixth"},
+		})
+	}
+	validate := func(expectedView string) {
+		// set content multiple times to confirm no side effects of doing it
+		compare(t, expectedView, vp.View())
+		setContent()
+		compare(t, expectedView, vp.View())
+	}
+	setContent()
 	expectedView := pad(w, h, []string{
+		"header",
 		"first",
 		"second",
 		"third",
 		"fourth",
 		"66% (4/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scrolling up past top is no-op
 	vp, _ = vp.Update(upKeyMsg)
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scrolling down by one
 	vp, _ = vp.Update(downKeyMsg)
 	expectedView = pad(w, h, []string{
+		"header",
 		"second",
 		"third",
 		"fourth",
 		"fifth",
 		"83% (5/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scrolling down by one again
 	vp, _ = vp.Update(downKeyMsg)
 	expectedView = pad(w, h, []string{
+		"header",
 		"third",
 		"fourth",
 		"fifth",
 		"sixth",
 		"100% (6/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scrolling down past bottom when at bottom is no-op
 	vp, _ = vp.Update(downKeyMsg)
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 }
 
 func TestViewport_SelectionOff_WrapOff_BulkScrolling(t *testing.T) {
-	w, h := 15, 3
+	w, h := 15, 4
 	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
 	vp.SetContent([]RenderableString{
 		{Content: "first"},
 		{Content: "second"},
@@ -158,6 +176,7 @@ func TestViewport_SelectionOff_WrapOff_BulkScrolling(t *testing.T) {
 		{Content: "sixth"},
 	})
 	expectedView := pad(w, h, []string{
+		"header",
 		"first",
 		"second",
 		"33% (2/6)",
@@ -167,6 +186,7 @@ func TestViewport_SelectionOff_WrapOff_BulkScrolling(t *testing.T) {
 	// full page down
 	vp, _ = vp.Update(fullPgDownKeyMsg)
 	expectedView = pad(w, h, []string{
+		"header",
 		"third",
 		"fourth",
 		"66% (4/6)",
@@ -176,6 +196,7 @@ func TestViewport_SelectionOff_WrapOff_BulkScrolling(t *testing.T) {
 	// half page down
 	vp, _ = vp.Update(halfPgDownKeyMsg)
 	expectedView = pad(w, h, []string{
+		"header",
 		"fourth",
 		"fifth",
 		"83% (5/6)",
@@ -185,6 +206,7 @@ func TestViewport_SelectionOff_WrapOff_BulkScrolling(t *testing.T) {
 	// full page down
 	vp, _ = vp.Update(fullPgDownKeyMsg)
 	expectedView = pad(w, h, []string{
+		"header",
 		"fifth",
 		"sixth",
 		"100% (6/6)",
@@ -194,6 +216,7 @@ func TestViewport_SelectionOff_WrapOff_BulkScrolling(t *testing.T) {
 	// full page up
 	vp, _ = vp.Update(fullPgUpKeyMsg)
 	expectedView = pad(w, h, []string{
+		"header",
 		"third",
 		"fourth",
 		"66% (4/6)",
@@ -203,6 +226,7 @@ func TestViewport_SelectionOff_WrapOff_BulkScrolling(t *testing.T) {
 	// half page up
 	vp, _ = vp.Update(halfPgUpKeyMsg)
 	expectedView = pad(w, h, []string{
+		"header",
 		"second",
 		"third",
 		"50% (3/6)",
@@ -212,6 +236,7 @@ func TestViewport_SelectionOff_WrapOff_BulkScrolling(t *testing.T) {
 	// full page up
 	vp, _ = vp.Update(fullPgUpKeyMsg)
 	expectedView = pad(w, h, []string{
+		"header",
 		"first",
 		"second",
 		"33% (2/6)",
@@ -220,69 +245,84 @@ func TestViewport_SelectionOff_WrapOff_BulkScrolling(t *testing.T) {
 }
 
 func TestViewport_SelectionOff_WrapOff_Panning(t *testing.T) {
-	w, h := 10, 5
+	w, h := 10, 6
 	vp := newViewport(w, h)
-	vp.SetContent([]RenderableString{
-		{Content: "first line that is fairly long"},
-		{Content: "second line that is even much longer than the first"},
-		{Content: "third line that is fairly long"},
-		{Content: "fourth"},
-		{Content: "fifth line that is fairly long"},
-		{Content: "sixth"},
-	})
+	vp.SetHeader([]string{"header long"})
+	setContent := func() {
+		vp.SetContent([]RenderableString{
+			{Content: "first line that is fairly long"},
+			{Content: "second line that is even much longer than the first"},
+			{Content: "third line that is fairly long"},
+			{Content: "fourth"},
+			{Content: "fifth line that is fairly long"},
+			{Content: "sixth"},
+		})
+	}
+	validate := func(expectedView string) {
+		// set content multiple times to confirm no side effects of doing it
+		compare(t, expectedView, vp.View())
+		setContent()
+		compare(t, expectedView, vp.View())
+	}
+	setContent()
 	expectedView := pad(w, h, []string{
+		"header ...",
 		"first l...",
 		"second ...",
 		"third l...",
 		"fourth",
 		"66% (4/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// pan right
 	vp.setXOffset(5)
 	expectedView = pad(w, h, []string{
+		"header ...",
 		"...ne t...",
 		"...ine ...",
 		"...ne t...",
 		".",
 		"66% (4/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll down
 	vp, _ = vp.Update(downKeyMsg)
 	expectedView = pad(w, h, []string{
+		"header ...",
 		"...ine ...",
 		"...ne t...",
 		".",
 		"...ne t...",
 		"83% (5/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// pan all the way right
 	vp.setXOffset(41)
 	expectedView = pad(w, h, []string{
+		"header ...",
 		"...e first",
 		"",
 		"",
 		"",
 		"83% (5/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll down
 	// TODO LEO: should these be ...?
 	vp, _ = vp.Update(downKeyMsg)
 	expectedView = pad(w, h, []string{
+		"header ...",
 		"",
 		"",
 		"",
 		"",
 		"100% (6/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 }
 
 // # SELECTION ENABLED, WRAP OFF
@@ -292,14 +332,16 @@ func TestViewport_SelectionOn_WrapOff_Empty(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetSelectionEnabled(true)
 	expectedView := pad(w, h, []string{})
-	if diff := cmp.Diff(expectedView, vp.View()); diff != "" {
-		t.Errorf("Mismatch (-want +got):\n%s", diff)
-	}
+	compare(t, expectedView, vp.View())
+	vp.SetHeader([]string{"header"})
+	expectedView = pad(w, h, []string{"header"})
+	compare(t, expectedView, vp.View())
 }
 
 func TestViewport_SelectionOn_WrapOff_Basic(t *testing.T) {
-	w, h := 15, 5
+	w, h := 15, 6
 	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
 	vp.SetContent([]RenderableString{
 		{Content: "first line"},
@@ -308,14 +350,13 @@ func TestViewport_SelectionOn_WrapOff_Basic(t *testing.T) {
 		{Content: renderer().NewStyle().Foreground(red).Render("a") + " really really long line"},
 	})
 	expectedView := pad(w, h, []string{
+		"header",
 		"\x1b[38;2;0;0;255mfirst line\x1b[0m",
 		"\x1b[38;2;255;0;0msecond\x1b[0m line",
 		"\x1b[38;2;255;0;0ma really rea...\x1b[0m",
 		"\x1b[38;2;255;0;0ma\x1b[0m really rea...",
 	})
-	if diff := cmp.Diff(expectedView, vp.View()); diff != "" {
-		t.Errorf("Mismatch (-want +got):\n%s", diff)
-	}
+	compare(t, expectedView, vp.View())
 }
 
 func TestViewport_SelectionOn_WrapOff_OverflowLine(t *testing.T) {
@@ -359,14 +400,23 @@ func TestViewport_SelectionOn_WrapOff_Scrolling(t *testing.T) {
 	w, h := 15, 5
 	vp := newViewport(w, h)
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{Content: "first"},
-		{Content: "second"},
-		{Content: "third"},
-		{Content: "fourth"},
-		{Content: "fifth"},
-		{Content: "sixth"},
-	})
+	setContent := func() {
+		vp.SetContent([]RenderableString{
+			{Content: "first"},
+			{Content: "second"},
+			{Content: "third"},
+			{Content: "fourth"},
+			{Content: "fifth"},
+			{Content: "sixth"},
+		})
+	}
+	validate := func(expectedView string) {
+		// set content multiple times to confirm no side effects of doing it
+		compare(t, expectedView, vp.View())
+		setContent()
+		compare(t, expectedView, vp.View())
+	}
+	setContent()
 	expectedView := pad(w, h, []string{
 		"\x1b[38;2;0;0;255mfirst\x1b[0m",
 		"second",
@@ -374,11 +424,11 @@ func TestViewport_SelectionOn_WrapOff_Scrolling(t *testing.T) {
 		"fourth",
 		"16% (1/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scrolling up past top is no-op
 	vp, _ = vp.Update(upKeyMsg)
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scrolling down by one
 	vp, _ = vp.Update(downKeyMsg)
@@ -389,7 +439,7 @@ func TestViewport_SelectionOn_WrapOff_Scrolling(t *testing.T) {
 		"fourth",
 		"33% (2/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scrolling to bottom
 	vp, _ = vp.Update(downKeyMsg)
@@ -403,11 +453,11 @@ func TestViewport_SelectionOn_WrapOff_Scrolling(t *testing.T) {
 		"\x1b[38;2;0;0;255msixth\x1b[0m",
 		"100% (6/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scrolling down past bottom when at bottom is no-op
 	vp, _ = vp.Update(downKeyMsg)
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 }
 
 func TestViewport_SelectionOn_WrapOff_BulkScrolling(t *testing.T) {
@@ -497,14 +547,23 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 	w, h := 10, 5
 	vp := newViewport(w, h)
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{Content: "first line that is fairly long"},
-		{Content: "second line that is even much longer than the first"},
-		{Content: "third line that is fairly long"},
-		{Content: "fourth"},
-		{Content: "fifth line that is fairly long"},
-		{Content: "sixth"},
-	})
+	setContent := func() {
+		vp.SetContent([]RenderableString{
+			{Content: "first line that is fairly long"},
+			{Content: "second line that is even much longer than the first"},
+			{Content: "third line that is fairly long"},
+			{Content: "fourth"},
+			{Content: "fifth line that is fairly long"},
+			{Content: "sixth"},
+		})
+	}
+	validate := func(expectedView string) {
+		// set content multiple times to confirm no side effects of doing it
+		compare(t, expectedView, vp.View())
+		setContent()
+		compare(t, expectedView, vp.View())
+	}
+	setContent()
 	expectedView := pad(w, h, []string{
 		"\x1b[38;2;0;0;255mfirst l...\x1b[0m",
 		"second ...",
@@ -512,7 +571,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		"fourth",
 		"16% (1/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// pan right
 	vp.setXOffset(5)
@@ -523,7 +582,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		".",
 		"16% (1/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll down
 	vp, _ = vp.Update(downKeyMsg)
@@ -534,7 +593,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		".",
 		"33% (2/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// pan all the way right
 	vp.setXOffset(41)
@@ -545,7 +604,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		"",
 		"33% (2/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll down
 	// TODO LEO: should these be ...?
@@ -557,7 +616,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		"",
 		"50% (3/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll down
 	vp, _ = vp.Update(downKeyMsg)
@@ -568,7 +627,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		"\x1b[38;2;0;0;255m \x1b[0m",
 		"66% (4/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll down
 	vp, _ = vp.Update(downKeyMsg)
@@ -579,7 +638,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		"\x1b[38;2;0;0;255m \x1b[0m",
 		"83% (5/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll down
 	vp, _ = vp.Update(downKeyMsg)
@@ -590,7 +649,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		"\x1b[38;2;0;0;255m \x1b[0m",
 		"100% (6/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll up
 	vp, _ = vp.Update(upKeyMsg)
@@ -601,7 +660,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		"",
 		"83% (5/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll up
 	vp, _ = vp.Update(upKeyMsg)
@@ -612,7 +671,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		"",
 		"66% (4/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll up
 	vp, _ = vp.Update(upKeyMsg)
@@ -623,7 +682,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		"",
 		"50% (3/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll up
 	vp, _ = vp.Update(upKeyMsg)
@@ -634,7 +693,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		"",
 		"33% (2/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll up
 	vp, _ = vp.Update(upKeyMsg)
@@ -645,7 +704,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		"",
 		"16% (1/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 }
 
 // # SELECTION DISABLED, WRAP ON
@@ -655,9 +714,10 @@ func TestViewport_SelectionOff_WrapOn_Empty(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetWrapText(true)
 	expectedView := pad(w, h, []string{})
-	if diff := cmp.Diff(expectedView, vp.View()); diff != "" {
-		t.Errorf("Mismatch (-want +got):\n%s", diff)
-	}
+	compare(t, expectedView, vp.View())
+	vp.SetHeader([]string{"header"})
+	expectedView = pad(w, h, []string{"header"})
+	compare(t, expectedView, vp.View())
 }
 
 func TestViewport_SelectionOff_WrapOn_Basic(t *testing.T) {
@@ -677,9 +737,7 @@ func TestViewport_SelectionOff_WrapOn_Basic(t *testing.T) {
 		"\x1b[38;2;255;0;0m long line\x1b[0m",
 		"75% (3/4)",
 	})
-	if diff := cmp.Diff(expectedView, vp.View()); diff != "" {
-		t.Errorf("Mismatch (-want +got):\n%s", diff)
-	}
+	compare(t, expectedView, vp.View())
 }
 
 func TestViewport_SelectionOff_WrapOn_OverflowLine(t *testing.T) {
@@ -724,14 +782,23 @@ func TestViewport_SelectionOff_WrapOn_Scrolling(t *testing.T) {
 	w, h := 15, 5
 	vp := newViewport(w, h)
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{Content: "first"},
-		{Content: "second"},
-		{Content: "third"},
-		{Content: "fourth"},
-		{Content: "fifth"},
-		{Content: "sixth"},
-	})
+	setContent := func() {
+		vp.SetContent([]RenderableString{
+			{Content: "first"},
+			{Content: "second"},
+			{Content: "third"},
+			{Content: "fourth"},
+			{Content: "fifth"},
+			{Content: "sixth"},
+		})
+	}
+	validate := func(expectedView string) {
+		// set content multiple times to confirm no side effects of doing it
+		compare(t, expectedView, vp.View())
+		setContent()
+		compare(t, expectedView, vp.View())
+	}
+	setContent()
 	expectedView := pad(w, h, []string{
 		"first",
 		"second",
@@ -739,11 +806,11 @@ func TestViewport_SelectionOff_WrapOn_Scrolling(t *testing.T) {
 		"fourth",
 		"66% (4/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scrolling up past top is no-op
 	vp, _ = vp.Update(upKeyMsg)
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scrolling down by one
 	vp, _ = vp.Update(downKeyMsg)
@@ -754,7 +821,7 @@ func TestViewport_SelectionOff_WrapOn_Scrolling(t *testing.T) {
 		"fifth",
 		"83% (5/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scrolling down by one again
 	vp, _ = vp.Update(downKeyMsg)
@@ -765,11 +832,11 @@ func TestViewport_SelectionOff_WrapOn_Scrolling(t *testing.T) {
 		"sixth",
 		"100% (6/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scrolling down past bottom when at bottom is no-op
 	vp, _ = vp.Update(downKeyMsg)
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 }
 
 func TestViewport_SelectionOff_WrapOn_BulkScrolling(t *testing.T) {
@@ -847,14 +914,23 @@ func TestViewport_SelectionOff_WrapOn_Panning(t *testing.T) {
 	w, h := 10, 5
 	vp := newViewport(w, h)
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{Content: "first line that is fairly long"},
-		{Content: "second line that is even much longer than the first"},
-		{Content: "third line that is fairly long"},
-		{Content: "fourth"},
-		{Content: "fifth line that is fairly long"},
-		{Content: "sixth"},
-	})
+	setContent := func() {
+		vp.SetContent([]RenderableString{
+			{Content: "first line that is fairly long"},
+			{Content: "second line that is even much longer than the first"},
+			{Content: "third line that is fairly long"},
+			{Content: "fourth"},
+			{Content: "fifth line that is fairly long"},
+			{Content: "sixth"},
+		})
+	}
+	validate := func(expectedView string) {
+		// set content multiple times to confirm no side effects of doing it
+		compare(t, expectedView, vp.View())
+		setContent()
+		compare(t, expectedView, vp.View())
+	}
+	setContent()
 	expectedView := pad(w, h, []string{
 		"first line",
 		" that is f",
@@ -862,11 +938,11 @@ func TestViewport_SelectionOff_WrapOn_Panning(t *testing.T) {
 		"second lin",
 		"33% (2/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// pan right
 	vp.setXOffset(5)
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll down
 	vp, _ = vp.Update(downKeyMsg)
@@ -877,11 +953,11 @@ func TestViewport_SelectionOff_WrapOn_Panning(t *testing.T) {
 		"e that is ",
 		"33% (2/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// pan all the way right
 	vp.setXOffset(41)
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll down
 	vp, _ = vp.Update(downKeyMsg)
@@ -892,7 +968,7 @@ func TestViewport_SelectionOff_WrapOn_Panning(t *testing.T) {
 		"even much",
 		"33% (2/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll down
 	vp, _ = vp.Update(downKeyMsg)
@@ -903,7 +979,7 @@ func TestViewport_SelectionOff_WrapOn_Panning(t *testing.T) {
 		"longer tha",
 		"33% (2/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 }
 
 // # SELECTION ENABLED, WRAP ON
@@ -914,9 +990,10 @@ func TestViewport_SelectionOn_WrapOn_Empty(t *testing.T) {
 	vp.SetWrapText(true)
 	vp.SetSelectionEnabled(true)
 	expectedView := pad(w, h, []string{})
-	if diff := cmp.Diff(expectedView, vp.View()); diff != "" {
-		t.Errorf("Mismatch (-want +got):\n%s", diff)
-	}
+	compare(t, expectedView, vp.View())
+	vp.SetHeader([]string{"header"})
+	expectedView = pad(w, h, []string{"header"})
+	compare(t, expectedView, vp.View())
 }
 
 func TestViewport_SelectionOn_WrapOn_Basic(t *testing.T) {
@@ -937,9 +1014,7 @@ func TestViewport_SelectionOn_WrapOn_Basic(t *testing.T) {
 		"\x1b[38;2;255;0;0m long line\x1b[0m",
 		"25% (1/4)",
 	})
-	if diff := cmp.Diff(expectedView, vp.View()); diff != "" {
-		t.Errorf("Mismatch (-want +got):\n%s", diff)
-	}
+	compare(t, expectedView, vp.View())
 }
 
 func TestViewport_SelectionOn_WrapOn_OverflowLine(t *testing.T) {
@@ -988,14 +1063,23 @@ func TestViewport_SelectionOn_WrapOn_Scrolling(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetWrapText(true)
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{Content: "first"},
-		{Content: "second"},
-		{Content: "third"},
-		{Content: "fourth"},
-		{Content: "fifth"},
-		{Content: "sixth"},
-	})
+	setContent := func() {
+		vp.SetContent([]RenderableString{
+			{Content: "first"},
+			{Content: "second"},
+			{Content: "third"},
+			{Content: "fourth"},
+			{Content: "fifth"},
+			{Content: "sixth"},
+		})
+	}
+	validate := func(expectedView string) {
+		// set content multiple times to confirm no side effects of doing it
+		compare(t, expectedView, vp.View())
+		setContent()
+		compare(t, expectedView, vp.View())
+	}
+	setContent()
 	expectedView := pad(w, h, []string{
 		"\x1b[38;2;0;0;255mfirst\x1b[0m",
 		"second",
@@ -1003,11 +1087,11 @@ func TestViewport_SelectionOn_WrapOn_Scrolling(t *testing.T) {
 		"fourth",
 		"16% (1/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scrolling up past top is no-op
 	vp, _ = vp.Update(upKeyMsg)
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scrolling down by one
 	vp, _ = vp.Update(downKeyMsg)
@@ -1018,7 +1102,7 @@ func TestViewport_SelectionOn_WrapOn_Scrolling(t *testing.T) {
 		"fourth",
 		"33% (2/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scrolling down by one again
 	vp, _ = vp.Update(downKeyMsg)
@@ -1029,7 +1113,7 @@ func TestViewport_SelectionOn_WrapOn_Scrolling(t *testing.T) {
 		"fourth",
 		"50% (3/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll to bottom
 	vp, _ = vp.Update(downKeyMsg)
@@ -1042,11 +1126,11 @@ func TestViewport_SelectionOn_WrapOn_Scrolling(t *testing.T) {
 		"\x1b[38;2;0;0;255msixth\x1b[0m",
 		"100% (6/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scrolling down past bottom when at bottom is no-op
 	vp, _ = vp.Update(downKeyMsg)
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 }
 
 func TestViewport_SelectionOn_WrapOn_BulkScrolling(t *testing.T) {
@@ -1116,14 +1200,23 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetWrapText(true)
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{Content: "first line that is fairly long"},
-		{Content: "second line that is even much longer than the first"},
-		{Content: "third line that is fairly long as well"},
-		{Content: "fourth kinda long"},
-		{Content: "fifth kinda long too"},
-		{Content: "sixth"},
-	})
+	setContent := func() {
+		vp.SetContent([]RenderableString{
+			{Content: "first line that is fairly long"},
+			{Content: "second line that is even much longer than the first"},
+			{Content: "third line that is fairly long as well"},
+			{Content: "fourth kinda long"},
+			{Content: "fifth kinda long too"},
+			{Content: "sixth"},
+		})
+	}
+	validate := func(expectedView string) {
+		// set content multiple times to confirm no side effects of doing it
+		compare(t, expectedView, vp.View())
+		setContent()
+		compare(t, expectedView, vp.View())
+	}
+	setContent()
 	expectedView := pad(w, h, []string{
 		"\x1b[38;2;0;0;255mfirst line\x1b[0m",
 		"\x1b[38;2;0;0;255m that is f\x1b[0m",
@@ -1131,11 +1224,11 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 		"second lin",
 		"16% (1/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// pan right
 	vp.setXOffset(5)
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll down
 	vp, _ = vp.Update(downKeyMsg)
@@ -1146,11 +1239,11 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 		"\x1b[38;2;0;0;255mlonger tha\x1b[0m",
 		"33% (2/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// pan all the way right
 	vp.setXOffset(41)
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll down
 	vp, _ = vp.Update(downKeyMsg)
@@ -1161,7 +1254,7 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 		"\x1b[38;2;0;0;255m as well\x1b[0m",
 		"50% (3/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll down
 	vp, _ = vp.Update(downKeyMsg)
@@ -1172,7 +1265,7 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 		"\x1b[38;2;0;0;255mda long\x1b[0m",
 		"66% (4/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll down
 	vp, _ = vp.Update(downKeyMsg)
@@ -1183,7 +1276,7 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 		"\x1b[38;2;0;0;255ma long too\x1b[0m",
 		"83% (5/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll down
 	vp, _ = vp.Update(downKeyMsg)
@@ -1194,7 +1287,7 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 		"\x1b[38;2;0;0;255msixth\x1b[0m",
 		"100% (6/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll up
 	vp, _ = vp.Update(upKeyMsg)
@@ -1205,7 +1298,7 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 		"sixth",
 		"83% (5/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll up
 	vp, _ = vp.Update(upKeyMsg)
@@ -1216,7 +1309,7 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 		"a long too",
 		"66% (4/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll up
 	vp, _ = vp.Update(upKeyMsg)
@@ -1227,7 +1320,7 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 		"\x1b[38;2;0;0;255m as well\x1b[0m",
 		"50% (3/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll up
 	vp, _ = vp.Update(upKeyMsg)
@@ -1238,7 +1331,7 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 		"\x1b[38;2;0;0;255mlonger tha\x1b[0m",
 		"33% (2/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 
 	// scroll up
 	vp, _ = vp.Update(upKeyMsg)
@@ -1249,7 +1342,7 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 		"second lin",
 		"16% (1/6)",
 	})
-	compare(t, expectedView, vp.View())
+	validate(expectedView)
 }
 
 // TODO:
@@ -1260,3 +1353,5 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 // test string to highlight
 // zero & one width/height viewport in each case
 // go to top/bottom
+// ... instead of empty when fully truncated
+// set content again to remove longest line when xOffset maxed out

@@ -201,7 +201,7 @@ func (m Model[T]) View() string {
 
 	visibleHeaderLines := m.getVisibleHeaderLines()
 	for i := range visibleHeaderLines {
-		viewString += m.truncate(visibleHeaderLines[i]) + "\n"
+		viewString += m.truncateNoXOffset(visibleHeaderLines[i]) + "\n"
 	}
 
 	//hasStringToHighlight := stringWidth(m.stringToHighlight) != 0
@@ -243,11 +243,11 @@ func (m Model[T]) View() string {
 // SetContent sets the allItems, the selectable set of lines in the viewport
 func (m *Model[T]) SetContent(content []T) {
 	var stayAtTop, stayAtBottom bool
-	maxItemIdx, maxTopItemLineOffset := m.maxItemIdxAndMaxTopLineOffset()
+	currMaxItemIdx, _ := m.maxItemIdxAndMaxTopLineOffset()
 	if m.topSelectionSticky && m.selectionEnabled && m.selectedItemIdx == 0 {
 		stayAtTop = true
 	}
-	if m.bottomSelectionSticky && m.selectionEnabled && m.selectedItemIdx == maxItemIdx {
+	if m.bottomSelectionSticky && m.selectionEnabled && m.selectedItemIdx == currMaxItemIdx {
 		stayAtBottom = true
 	}
 
@@ -257,15 +257,15 @@ func (m *Model[T]) SetContent(content []T) {
 	// fix any sort of potential selection issues
 	if m.selectedItemIdx < 0 {
 		m.selectedItemIdx = 0
-	} else if m.selectedItemIdx > maxItemIdx {
-		m.selectedItemIdx = maxItemIdx
+	} else if numItems := len(m.allItems); m.selectedItemIdx > numItems {
+		m.selectedItemIdx = numItems
 	}
 
 	// stay at top, bottom, or maintain previous selection if desired
 	if stayAtTop {
 		m.selectedItemIdx = 0
 	} else if stayAtBottom {
-		m.selectedItemIdx, m.topItemLineOffset = maxItemIdx, maxTopItemLineOffset
+		m.selectedItemIdx, m.topItemLineOffset = m.maxItemIdxAndMaxTopLineOffset()
 	}
 }
 
@@ -681,7 +681,7 @@ func (m Model[T]) maxItemIdxAndMaxTopLineOffset() (int, int) {
 		return 0, 0
 	}
 	if !m.wrapText {
-		return lenAllItems - m.numContentLines, 0
+		return max(0, lenAllItems-m.numContentLines), 0
 	}
 	// wrapped
 	maxTopItemIdx, maxTopItemLineOffset := lenAllItems-1, 0
@@ -710,7 +710,7 @@ func (m Model[T]) maxItemIdxAndMaxTopLineOffset() (int, int) {
 			}
 		}
 	}
-	return maxTopItemIdx, maxTopItemLineOffset
+	return max(0, maxTopItemIdx), max(0, maxTopItemLineOffset)
 }
 
 func (m Model[T]) truncate(line string) string {
@@ -718,6 +718,10 @@ func (m Model[T]) truncate(line string) string {
 	//fmt.Println(fmt.Sprintf("truncateLine(%q, %d, %d, %q) = %q", line, m.xOffset, m.width, m.lineContinuationIndicator, truncated))
 	//return truncated
 	return truncateLine(line, m.xOffset, m.width, m.lineContinuationIndicator)
+}
+
+func (m Model[T]) truncateNoXOffset(line string) string {
+	return truncateLine(line, 0, m.width, m.lineContinuationIndicator)
 }
 
 func (m Model[T]) getNumVisibleItems() int {
