@@ -811,6 +811,112 @@ func TestViewport_SelectionOn_WrapOff_MaintainSelection(t *testing.T) {
 	compare(t, expectedView, vp.View())
 }
 
+func TestViewport_SelectionOn_WrapOff_StickyTop(t *testing.T) {
+	w, h := 15, 4
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetSelectionEnabled(true)
+	// stickyness should override maintain selection
+	vp.SetMaintainSelection(true)
+	vp.SetTopSticky(true)
+	vp.SetContent([]RenderableString{
+		{Content: "first"},
+	})
+	expectedView := pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+	})
+	compare(t, expectedView, vp.View())
+
+	// add content
+	vp.SetContent([]RenderableString{
+		{Content: "second"},
+		{Content: "first"},
+	})
+	expectedView = pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255msecond\x1b[0m",
+		"first",
+	})
+	compare(t, expectedView, vp.View())
+
+	// de-activate by moving selection down
+	vp, _ = vp.Update(downKeyMsg)
+	expectedView = pad(w, h, []string{
+		"header",
+		"second",
+		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+	})
+	compare(t, expectedView, vp.View())
+
+	// add content
+	vp.SetContent([]RenderableString{
+		{Content: "second"},
+		{Content: "first"},
+		{Content: "third"},
+	})
+	expectedView = pad(w, h, []string{
+		"header",
+		"second",
+		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"66% (2/3)",
+	})
+	compare(t, expectedView, vp.View())
+}
+
+func TestViewport_SelectionOn_WrapOff_StickyBottom(t *testing.T) {
+	w, h := 15, 4
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetSelectionEnabled(true)
+	// stickyness should override maintain selection
+	vp.SetMaintainSelection(true)
+	vp.SetBottomSticky(true)
+	vp.SetContent([]RenderableString{
+		{Content: "first"},
+	})
+	expectedView := pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+	})
+	compare(t, expectedView, vp.View())
+
+	// add content
+	vp.SetContent([]RenderableString{
+		{Content: "second"},
+		{Content: "first"},
+	})
+	expectedView = pad(w, h, []string{
+		"header",
+		"second",
+		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+	})
+	compare(t, expectedView, vp.View())
+
+	// de-activate by moving selection up
+	vp, _ = vp.Update(upKeyMsg)
+	expectedView = pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255msecond\x1b[0m",
+		"first",
+	})
+	compare(t, expectedView, vp.View())
+
+	// add content
+	vp.SetContent([]RenderableString{
+		{Content: "second"},
+		{Content: "first"},
+		{Content: "third"},
+	})
+	expectedView = pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255msecond\x1b[0m",
+		"first",
+		"33% (1/3)",
+	})
+	compare(t, expectedView, vp.View())
+}
+
 func TestViewport_SelectionOn_WrapOff_StickyTopBottom(t *testing.T) {
 	w, h := 15, 4
 	vp := newViewport(w, h)
@@ -861,6 +967,31 @@ func TestViewport_SelectionOn_WrapOff_StickyTopBottom(t *testing.T) {
 		"first",
 		"\x1b[38;2;0;0;255mthird\x1b[0m",
 		"100% (3/3)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// de-activate by moving selection up
+	vp, _ = vp.Update(upKeyMsg)
+	expectedView = pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"third",
+		"66% (2/3)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// add content
+	vp.SetContent([]RenderableString{
+		{Content: "second"},
+		{Content: "first"},
+		{Content: "third"},
+		{Content: "fourth"},
+	})
+	expectedView = pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"third",
+		"50% (2/4)",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -1652,6 +1783,120 @@ func TestViewport_SelectionOn_WrapOn_MaintainSelection(t *testing.T) {
 	compare(t, expectedView, vp.View())
 }
 
+func TestViewport_SelectionOn_WrapOn_StickyTop(t *testing.T) {
+	w, h := 10, 4
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetWrapText(true)
+	vp.SetSelectionEnabled(true)
+	// stickyness should override maintain selection
+	vp.SetMaintainSelection(true)
+	vp.SetTopSticky(true)
+	vp.SetContent([]RenderableString{
+		{Content: "the first line"},
+	})
+	expectedView := pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255mthe first \x1b[0m",
+		"\x1b[38;2;0;0;255mline\x1b[0m",
+	})
+	compare(t, expectedView, vp.View())
+
+	// add content
+	vp.SetContent([]RenderableString{
+		{Content: "the second line"},
+		{Content: "the first line"},
+	})
+	expectedView = pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255mthe second\x1b[0m",
+		"\x1b[38;2;0;0;255m line\x1b[0m",
+		"50% (1/2)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// de-activate by moving selection down
+	vp, _ = vp.Update(downKeyMsg)
+	expectedView = pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255mthe first \x1b[0m",
+		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"100% (2/2)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// add content
+	vp.SetContent([]RenderableString{
+		{Content: "the second line"},
+		{Content: "the first line"},
+		{Content: "the third line"},
+	})
+	expectedView = pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255mthe first \x1b[0m",
+		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"66% (2/3)",
+	})
+	compare(t, expectedView, vp.View())
+}
+
+func TestViewport_SelectionOn_WrapOn_StickyBottom(t *testing.T) {
+	w, h := 10, 4
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetWrapText(true)
+	vp.SetSelectionEnabled(true)
+	// stickyness should override maintain selection
+	vp.SetMaintainSelection(true)
+	vp.SetBottomSticky(true)
+	vp.SetContent([]RenderableString{
+		{Content: "the first line"},
+	})
+	expectedView := pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255mthe first \x1b[0m",
+		"\x1b[38;2;0;0;255mline\x1b[0m",
+	})
+	compare(t, expectedView, vp.View())
+
+	// add content
+	vp.SetContent([]RenderableString{
+		{Content: "the second line"},
+		{Content: "the first line"},
+	})
+	expectedView = pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255mthe first \x1b[0m",
+		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"100% (2/2)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// de-activate by moving selection up
+	vp, _ = vp.Update(upKeyMsg)
+	expectedView = pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255mthe second\x1b[0m",
+		"\x1b[38;2;0;0;255m line\x1b[0m",
+		"50% (1/2)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// add content
+	vp.SetContent([]RenderableString{
+		{Content: "the second line"},
+		{Content: "the first line"},
+		{Content: "the third line"},
+	})
+	expectedView = pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255mthe second\x1b[0m",
+		"\x1b[38;2;0;0;255m line\x1b[0m",
+		"33% (1/3)",
+	})
+	compare(t, expectedView, vp.View())
+}
+
 func TestViewport_SelectionOn_WrapOn_StickyTopBottom(t *testing.T) {
 	w, h := 10, 4
 	vp := newViewport(w, h)
@@ -1708,12 +1953,38 @@ func TestViewport_SelectionOn_WrapOn_StickyTopBottom(t *testing.T) {
 		"100% (3/3)",
 	})
 	compare(t, expectedView, vp.View())
+
+	// de-activate by moving selection up
+	vp, _ = vp.Update(upKeyMsg)
+	expectedView = pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255mthe first \x1b[0m",
+		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"66% (2/3)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// add content
+	vp.SetContent([]RenderableString{
+		{Content: "the second line"},
+		{Content: "the first line"},
+		{Content: "the third line"},
+		{Content: "the fourth line"},
+	})
+	expectedView = pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255mthe first \x1b[0m",
+		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"50% (2/4)",
+	})
+	compare(t, expectedView, vp.View())
 }
 
 // TODO:
 // removing logs when selection at bottom
 // transitioning between wrap/no wrap should preserve selection + position relative to top
 // test string to highlight (should work when truncated or wrapped)
+// when change width/height of viewport, ensure doesn't scroll past bottom, maintains selection etc
 // zero & one width/height viewport in each case
 // go to top/bottom
 // "..." instead of empty when fully truncated

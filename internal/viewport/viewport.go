@@ -237,6 +237,10 @@ func (m Model[T]) View() string {
 		viewString += strings.Repeat("\n", padCount)
 		viewString += footerLine
 	}
+
+	// TODO: rm
+	dev.Debug(fmt.Sprintf("LEO numLines=%d, height=%d, numContentLines=%d, numHeaderLines=%d, numContentLines=%d", len(strings.Split(viewString, "\n")), m.height, m.numContentLines, len(visibleHeaderLines), len(truncatedVisibleContentLines)))
+
 	return lipgloss.NewStyle().Width(m.width).Height(m.height).Render(viewString)
 }
 
@@ -245,15 +249,15 @@ func (m *Model[T]) SetContent(content []T) {
 	var stayAtTop, stayAtBottom bool
 	var prevSelection T
 	if m.selectionEnabled {
-		dev.Debug(fmt.Sprintf("LEO len(allItems)=%d, selectedItemIdx=%d, bottomSelectionsticky=%t, topSelectionSticky=%t", len(m.allItems), m.selectedItemIdx, m.bottomSelectionSticky, m.topSelectionSticky))
+		//dev.Debug(fmt.Sprintf("LEO len(allItems)=%d, selectedItemIdx=%d, bottomSelectionsticky=%t, topSelectionSticky=%t", len(m.allItems), m.selectedItemIdx, m.bottomSelectionSticky, m.topSelectionSticky))
 		if m.topSelectionSticky && len(m.allItems) > 0 && m.selectedItemIdx == 0 {
-			dev.Debug("LEO stay at top")
+			//dev.Debug("LEO stay at top")
 			stayAtTop = true
 		} else if m.bottomSelectionSticky && (len(m.allItems) == 0 || (m.selectedItemIdx == len(m.allItems)-1)) {
-			dev.Debug("LEO stay at bottom")
+			//dev.Debug("LEO stay at bottom")
 			stayAtBottom = true
 		} else if m.maintainSelection && 0 <= m.selectedItemIdx && m.selectedItemIdx < len(m.allItems) {
-			dev.Debug("LEO maintain selection")
+			//dev.Debug("LEO maintain selection")
 			prevSelection = m.allItems[m.selectedItemIdx]
 		}
 	}
@@ -547,12 +551,14 @@ func (m Model[T]) getVisibleHeaderLines() []string {
 	if footerLine != "" {
 		linesForHeader--
 	}
+	dev.Debug(fmt.Sprintf("LEO linesForHeader=%d", linesForHeader))
 
 	if linesForHeader <= 0 {
 		return nil
 	}
 
 	if !m.wrapText {
+		dev.Debug(fmt.Sprintf("LEO header=%q", m.header))
 		return safeSliceUpToIdx(m.header, linesForHeader)
 	} else {
 		// wrapped
