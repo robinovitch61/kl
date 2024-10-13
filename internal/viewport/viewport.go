@@ -244,11 +244,10 @@ func (m Model[T]) View() string {
 func (m *Model[T]) SetContent(content []T) {
 	var stayAtTop, stayAtBottom bool
 	var prevSelection T
-	currMaxItemIdx, _ := m.maxItemIdxAndMaxTopLineOffset()
 	if m.selectionEnabled {
 		if m.topSelectionSticky && m.selectedItemIdx == 0 {
 			stayAtTop = true
-		} else if m.bottomSelectionSticky && m.selectedItemIdx == currMaxItemIdx {
+		} else if m.bottomSelectionSticky && m.selectedItemIdx == len(m.allItems)-1 {
 			stayAtBottom = true
 		} else if m.maintainSelection && 0 <= m.selectedItemIdx && m.selectedItemIdx < len(m.allItems) {
 			prevSelection = m.allItems[m.selectedItemIdx]
@@ -263,7 +262,7 @@ func (m *Model[T]) SetContent(content []T) {
 		if stayAtTop {
 			m.selectedItemIdx = 0
 		} else if stayAtBottom {
-			m.selectedItemIdx, m.topItemLineOffset = m.maxItemIdxAndMaxTopLineOffset()
+			m.selectedItemIdx = len(m.allItems) - 1
 		} else if m.maintainSelection {
 			// TODO: could flag when content is sorted & comparable and use binary search instead
 			for i := range m.allItems {
