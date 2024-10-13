@@ -245,11 +245,15 @@ func (m *Model[T]) SetContent(content []T) {
 	var stayAtTop, stayAtBottom bool
 	var prevSelection T
 	if m.selectionEnabled {
-		if m.topSelectionSticky && m.selectedItemIdx == 0 {
+		dev.Debug(fmt.Sprintf("LEO len(allItems)=%d, selectedItemIdx=%d, bottomSelectionsticky=%t, topSelectionSticky=%t", len(m.allItems), m.selectedItemIdx, m.bottomSelectionSticky, m.topSelectionSticky))
+		if m.topSelectionSticky && len(m.allItems) > 0 && m.selectedItemIdx == 0 {
+			dev.Debug("LEO stay at top")
 			stayAtTop = true
-		} else if m.bottomSelectionSticky && m.selectedItemIdx == len(m.allItems)-1 {
+		} else if m.bottomSelectionSticky && (len(m.allItems) == 0 || (m.selectedItemIdx == len(m.allItems)-1)) {
+			dev.Debug("LEO stay at bottom")
 			stayAtBottom = true
 		} else if m.maintainSelection && 0 <= m.selectedItemIdx && m.selectedItemIdx < len(m.allItems) {
+			dev.Debug("LEO maintain selection")
 			prevSelection = m.allItems[m.selectedItemIdx]
 		}
 	}
@@ -428,12 +432,10 @@ func (m *Model[T]) scrollSoSelectionInView() {
 			// if selection is below, scroll until it's fully in view at the bottom
 			// first, put it at the top, intentionally not doing it in manner that protects the view going past the bottom
 			m.topItemIdx, m.topItemLineOffset = m.selectedItemIdx, 0
-			// then scroll up so that it's at the bottom, unless it already takes up the whole screen
-			dev.Debug(fmt.Sprintf("LEO SCROLLING UP BY %d", max(0, m.numContentLines-numLinesInSelection)))
+			// then scroll up so that selection is at the bottom, unless it already takes up the whole screen
 			m.scrollUp(max(0, m.numContentLines-numLinesInSelection))
 		} else {
 			// if selection above, scroll until it's fully in view at the top
-			dev.Debug("LEO SCROLLING DOWN")
 			m.topItemIdx, m.topItemLineOffset = m.selectedItemIdx, 0
 		}
 	}
@@ -588,6 +590,9 @@ func (m Model[T]) getVisibleContentLines() ([]string, []int) {
 	}
 
 	currItemIdx := m.topItemIdx
+	if currItemIdx < 0 || currItemIdx >= len(m.allItems) {
+		return lines, itemIndexes
+	}
 	currItem := m.allItems[currItemIdx]
 	done := m.numContentLines <= 0
 	if done {

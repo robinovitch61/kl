@@ -654,7 +654,6 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 	validate(expectedView)
 
 	// scroll down
-	println("HERE")
 	vp, _ = vp.Update(downKeyMsg)
 	expectedView = pad(w, h, []string{
 		"header ...",
@@ -812,7 +811,6 @@ func TestViewport_SelectionOn_WrapOff_MaintainSelection(t *testing.T) {
 	compare(t, expectedView, vp.View())
 }
 
-// TODO: add this to other selectionOn case
 func TestViewport_SelectionOn_WrapOff_StickyTopBottom(t *testing.T) {
 	w, h := 15, 4
 	vp := newViewport(w, h)
@@ -853,7 +851,6 @@ func TestViewport_SelectionOn_WrapOff_StickyTopBottom(t *testing.T) {
 	compare(t, expectedView, vp.View())
 
 	// add content
-	println("HERE")
 	vp.SetContent([]RenderableString{
 		{Content: "second"},
 		{Content: "first"},
@@ -1655,8 +1652,65 @@ func TestViewport_SelectionOn_WrapOn_MaintainSelection(t *testing.T) {
 	compare(t, expectedView, vp.View())
 }
 
+func TestViewport_SelectionOn_WrapOn_StickyTopBottom(t *testing.T) {
+	w, h := 10, 4
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetWrapText(true)
+	vp.SetSelectionEnabled(true)
+	// stickyness should override maintain selection
+	vp.SetMaintainSelection(true)
+	vp.SetTopSticky(true)
+	vp.SetBottomSticky(true)
+	vp.SetContent([]RenderableString{
+		{Content: "the first line"},
+	})
+	expectedView := pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255mthe first \x1b[0m",
+		"\x1b[38;2;0;0;255mline\x1b[0m",
+	})
+	compare(t, expectedView, vp.View())
+
+	// add content, top sticky wins out arbitrarily when both set
+	vp.SetContent([]RenderableString{
+		{Content: "the second line"},
+		{Content: "the first line"},
+	})
+	expectedView = pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255mthe second\x1b[0m",
+		"\x1b[38;2;0;0;255m line\x1b[0m",
+		"50% (1/2)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// selection to bottom
+	vp, _ = vp.Update(downKeyMsg)
+	expectedView = pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255mthe first \x1b[0m",
+		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"100% (2/2)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// add content
+	vp.SetContent([]RenderableString{
+		{Content: "the second line"},
+		{Content: "the first line"},
+		{Content: "the third line"},
+	})
+	expectedView = pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255mthe third \x1b[0m",
+		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"100% (3/3)",
+	})
+	compare(t, expectedView, vp.View())
+}
+
 // TODO:
-// stay at top/bottom
 // removing logs when selection at bottom
 // transitioning between wrap/no wrap should preserve selection + position relative to top
 // test string to highlight (should work when truncated or wrapped)
