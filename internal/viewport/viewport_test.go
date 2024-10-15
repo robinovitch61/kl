@@ -28,6 +28,12 @@ func renderer() *lipgloss.Renderer {
 	return r
 }
 
+func newViewport(width, height int) Model[RenderableString] {
+	vp := New[RenderableString](width, height)
+	vp.SelectedContentStyle = selectionStyle
+	return vp
+}
+
 // # SELECTION DISABLED, WRAP OFF
 
 func TestViewport_SelectionOff_WrapOff_Empty(t *testing.T) {
@@ -917,6 +923,36 @@ func TestViewport_SelectionOn_WrapOff_StickyBottom(t *testing.T) {
 	compare(t, expectedView, vp.View())
 }
 
+func TestViewport_SelectionOn_WrapOff_StickyBottomOverflowHeight(t *testing.T) {
+	w, h := 15, 4
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetSelectionEnabled(true)
+	// stickyness should override maintain selection
+	vp.SetMaintainSelection(true)
+	vp.SetBottomSticky(true)
+
+	// test covers case where first set content to empty, then overflow height
+	vp.SetContent([]RenderableString{})
+	expectedView := pad(w, h, []string{
+		"header",
+	})
+	compare(t, expectedView, vp.View())
+
+	vp.SetContent([]RenderableString{
+		{Content: "second"},
+		{Content: "first"},
+		{Content: "third"},
+	})
+	expectedView = pad(w, h, []string{
+		"header",
+		"first",
+		"\x1b[38;2;0;0;255mthird\x1b[0m",
+		"100% (3/3)",
+	})
+	compare(t, expectedView, vp.View())
+}
+
 func TestViewport_SelectionOn_WrapOff_StickyTopBottom(t *testing.T) {
 	w, h := 15, 4
 	vp := newViewport(w, h)
@@ -995,6 +1031,11 @@ func TestViewport_SelectionOn_WrapOff_StickyTopBottom(t *testing.T) {
 	})
 	compare(t, expectedView, vp.View())
 }
+
+// TODO impl
+//func TestViewport_SelectionOn_WrapOff_RemoveLogsWhenSelectionAtBottom(t *testing.T) {
+//
+//}
 
 // # SELECTION DISABLED, WRAP ON
 
@@ -1893,6 +1934,37 @@ func TestViewport_SelectionOn_WrapOn_StickyBottom(t *testing.T) {
 		"\x1b[38;2;0;0;255mthe second\x1b[0m",
 		"\x1b[38;2;0;0;255m line\x1b[0m",
 		"33% (1/3)",
+	})
+	compare(t, expectedView, vp.View())
+}
+
+func TestViewport_SelectionOn_WrapOn_StickyBottomOverflowHeight(t *testing.T) {
+	w, h := 10, 4
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetWrapText(true)
+	vp.SetSelectionEnabled(true)
+	// stickyness should override maintain selection
+	vp.SetMaintainSelection(true)
+	vp.SetBottomSticky(true)
+
+	// test covers case where first set content to empty, then overflow height
+	vp.SetContent([]RenderableString{})
+	expectedView := pad(w, h, []string{
+		"header",
+	})
+	compare(t, expectedView, vp.View())
+
+	vp.SetContent([]RenderableString{
+		{Content: "the second line"},
+		{Content: "the first line"},
+		{Content: "the third line"},
+	})
+	expectedView = pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255mthe third \x1b[0m",
+		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"100% (3/3)",
 	})
 	compare(t, expectedView, vp.View())
 }

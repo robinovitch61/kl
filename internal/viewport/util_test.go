@@ -38,12 +38,6 @@ func TestPad_Ansi(t *testing.T) {
 	}
 }
 
-func newViewport(width, height int) Model[RenderableString] {
-	vp := New[RenderableString](width, height)
-	vp.SelectedContentStyle = selectionStyle
-	return vp
-}
-
 func TestTruncateLine(t *testing.T) {
 	tests := []struct {
 		name                      string

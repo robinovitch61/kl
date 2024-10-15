@@ -416,7 +416,6 @@ func (m *Model[T]) safelySetTopItemIdxAndOffset(topItemIdx, topItemLineOffset in
 	}
 }
 
-// TODO: this isn't getting called everywhere it needs to be...
 func (m *Model[T]) updateNumContentLines() {
 	footerLine := m.getTruncatedFooterLine()
 	contentHeight := m.height - len(m.getVisibleHeaderLines())
@@ -427,6 +426,11 @@ func (m *Model[T]) updateNumContentLines() {
 }
 
 func (m *Model[T]) scrollSoSelectionInView() {
+	if len(m.allItems) == 0 {
+		m.safelySetTopItemIdxAndOffset(0, 0)
+		return
+	}
+
 	numLinesInSelection := 1
 	if m.wrapText {
 		numLinesInSelection = len(wrap(m.allItems[m.selectedItemIdx].Render(), m.width))
@@ -435,6 +439,7 @@ func (m *Model[T]) scrollSoSelectionInView() {
 	numLinesOfSelectionInView := m.numLinesOfSelectionInView()
 	if numLinesInSelection != numLinesOfSelectionInView {
 		if m.topItemIdx < m.selectedItemIdx {
+			//dev.Debug(fmt.Sprintf("LEO topItemIdx=%d, selectedItemIdx=%d, numLinesInSelection=%d, numLinesOfSelectionInView=%d", m.topItemIdx, m.selectedItemIdx, numLinesInSelection, numLinesOfSelectionInView))
 			// if selection is below, scroll until it's fully in view at the bottom
 			// first, put it at the top, intentionally not doing it in manner that protects the view going past the bottom
 			m.topItemIdx, m.topItemLineOffset = m.selectedItemIdx, 0
