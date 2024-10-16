@@ -588,15 +588,21 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 	}
 
 	// page-specific actions for when more than just page state is required
-	if m.currentPageType == page.EntitiesPageType {
+	currentPage := m.currentPageType
+	if currentPage == page.EntitiesPageType {
 		m, cmd = m.handleEntitiesPageKeyMsg(msg)
 		cmds = append(cmds, cmd)
-	} else if m.currentPageType == page.LogsPageType {
+	} else if currentPage == page.LogsPageType {
 		m, cmd = m.handleLogsPageKeyMsg(msg)
 		cmds = append(cmds, cmd)
-	} else if m.currentPageType == page.SingleLogPageType {
+	} else if currentPage == page.SingleLogPageType {
 		m, cmd = m.handleSingleLogPageKeyMsg(msg)
 		cmds = append(cmds, cmd)
+	}
+
+	// if action caused page to change, exit before propagating to new page
+	if currentPage != m.currentPageType {
+		return m, tea.Batch(cmds...)
 	}
 
 	// update current page
@@ -787,6 +793,7 @@ func (m Model) handleLogsPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 func (m Model) handleSingleLogPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
+
 	// change to logs page
 	if m.pressedClearToGoBack(msg) {
 		m, cmd = m.changeCurrentPage(page.LogsPageType)
