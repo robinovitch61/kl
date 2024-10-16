@@ -263,6 +263,9 @@ func (m *Model[T]) SetContent(content []T) {
 	}
 
 	m.allItems = content
+
+	// ensure topItemIdx and topItemLineOffset are valid given new content
+	m.safelySetTopItemIdxAndOffset(m.topItemIdx, m.topItemLineOffset)
 	m.updateNumContentLines()
 
 	if m.selectionEnabled {
