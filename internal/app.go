@@ -202,7 +202,7 @@ func (m Model) View() string {
 		return lipgloss.JoinVertical(
 			lipgloss.Left,
 			"Error - if this seems wrong, consider opening an issue",
-			"https://github.com/robino61/kl/issues/new",
+			"https://github.com/robinovitch61/kl/issues/new",
 			"",
 			"ctrl+c to quit",
 			"",
