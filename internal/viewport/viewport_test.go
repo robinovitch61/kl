@@ -2138,6 +2138,7 @@ func TestViewport_SelectionOn_WrapOn_RemoveLogsWhenSelectionBottom(t *testing.T)
 }
 
 // TODO:
+// when logs getting added quickly and sticky bottom set, scrolling one up causes the screen to jump
 // transitioning between wrap/no wrap should preserve selection + position relative to top
 // test string to highlight (should work when truncated or wrapped)
 // when change width/height of viewport, ensure doesn't scroll past bottom, maintains selection etc
