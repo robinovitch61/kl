@@ -578,6 +578,10 @@ func (m Model[T]) getVisibleHeaderLines() []string {
 
 // getVisibleContentLines returns the lines of content that are visible in the viewport given vertical scroll position
 // and the content. It also returns the item index for each associated visible line
+
+// TODO: do not consider footer in this function. Return m.height - len(m.getVisibleHeaderLines()) lines,
+//
+//	then replace the last line with the footer outside of this function if there is not enough vertical height
 func (m Model[T]) getVisibleContentLines() ([]string, []int) {
 	if len(m.allItems) == 0 {
 		return nil, nil
