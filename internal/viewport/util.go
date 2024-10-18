@@ -152,12 +152,12 @@ func compare(t *testing.T, expected, actual string) {
 	}
 }
 
-func safeSliceUpToIdx(s []string, i int) []string {
+func safeSliceUpToIdx[T any](s []T, i int) []T {
 	if i > len(s) {
 		return s
 	}
 	if i < 0 {
-		return []string{}
+		return []T{}
 	}
 	return s[:i]
 }
