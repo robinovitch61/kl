@@ -100,8 +100,7 @@ type Model[T RenderableComparable] struct {
 
 // New creates a new viewport model with reasonable defaults
 func New[T RenderableComparable](width, height int) (m Model[T]) {
-	m.width, m.height = width, height
-	m.updateNumContentLines()
+	m.setWidthHeight(width, height)
 
 	m.selectionEnabled = false
 	m.wrapText = false
@@ -263,9 +262,9 @@ func (m *Model[T]) SetContent(content []T) {
 	}
 
 	m.allItems = content
-
 	// ensure topItemIdx and topItemLineOffset are valid given new content
 	m.safelySetTopItemIdxAndOffset(m.topItemIdx, m.topItemLineOffset)
+	// num content lines depends on the footer existing, which depends on the items
 	m.updateNumContentLines()
 
 	if m.selectionEnabled {
@@ -330,8 +329,7 @@ func (m Model[T]) GetWrapText() bool {
 
 // SetWidth sets the viewport's width
 func (m *Model[T]) SetWidth(width int) {
-	m.width = width
-	m.updateNumContentLines()
+	m.setWidthHeight(width, m.height)
 }
 
 // GetWidth returns the viewport's width
@@ -341,8 +339,7 @@ func (m Model[T]) GetWidth() int {
 
 // SetHeight sets the viewport's height, including header and footer
 func (m *Model[T]) SetHeight(height int) {
-	m.height = height
-	m.updateNumContentLines()
+	m.setWidthHeight(m.width, height)
 }
 
 // GetHeight returns the viewport's height
@@ -408,6 +405,11 @@ func (m *Model[T]) setXOffset(n int) {
 	m.xOffset = max(0, min(maxXOffset, n))
 }
 
+func (m *Model[T]) setWidthHeight(width, height int) {
+	m.width, m.height = max(0, width), max(0, height)
+	m.updateNumContentLines()
+}
+
 func (m *Model[T]) safelySetTopItemIdxAndOffset(topItemIdx, topItemLineOffset int) {
 	maxTopItemIdx, maxTopItemLineOffset := m.maxItemIdxAndMaxTopLineOffset()
 	//println(maxTopItemIdx, maxTopItemLineOffset)
@@ -420,8 +422,8 @@ func (m *Model[T]) safelySetTopItemIdxAndOffset(topItemIdx, topItemLineOffset in
 }
 
 func (m *Model[T]) updateNumContentLines() {
-	footerLine := m.getTruncatedFooterLine()
 	contentHeight := m.height - len(m.getVisibleHeaderLines())
+	footerLine := m.getTruncatedFooterLine()
 	if footerLine != "" {
 		contentHeight-- // one for footer
 	}
@@ -555,31 +557,27 @@ func (m *Model[T]) scrollByNLines(n int) {
 	m.safelySetTopItemIdxAndOffset(newTopItemIdx, newTopItemLineOffset)
 }
 
+// getVisibleHeaderLines returns the lines of header that are visible in the viewport
+// header lines will take precedence over content and footer if there is not enough vertical height
 func (m Model[T]) getVisibleHeaderLines() []string {
-	footerLine := m.getTruncatedFooterLine()
-	linesForHeader := m.height
-	if footerLine != "" {
-		linesForHeader--
-	}
-
-	if linesForHeader <= 0 {
+	if m.height == 0 {
 		return nil
 	}
 
 	if !m.wrapText {
-		return safeSliceUpToIdx(m.header, linesForHeader)
+		return safeSliceUpToIdx(m.header, m.height)
 	} else {
 		// wrapped
 		var wrappedHeaderLines []string
 		for _, s := range m.header {
 			wrappedHeaderLines = append(wrappedHeaderLines, wrap(s, m.width)...)
 		}
-		return safeSliceUpToIdx(wrappedHeaderLines, linesForHeader)
+		return safeSliceUpToIdx(wrappedHeaderLines, m.height)
 	}
 }
 
-// getVisibleContentLines returns the lines of content that are visible in the viewport as well as the item index for
-// each associated line
+// getVisibleContentLines returns the lines of content that are visible in the viewport given vertical scroll position
+// and the content. It also returns the item index for each associated visible line
 func (m Model[T]) getVisibleContentLines() ([]string, []int) {
 	if len(m.allItems) == 0 {
 		return nil, nil
@@ -643,8 +641,7 @@ func (m Model[T]) getVisibleContentLines() ([]string, []int) {
 }
 
 func (m Model[T]) getTruncatedFooterLine() string {
-	// one-indexed
-	numerator := m.selectedItemIdx + 1
+	numerator := m.selectedItemIdx + 1 // 0th line is 1st
 	denominator := len(m.allItems)
 	visibleContentLines, itemIndexes := m.getVisibleContentLines()
 	if len(visibleContentLines) == 0 {

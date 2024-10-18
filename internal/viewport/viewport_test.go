@@ -2137,12 +2137,116 @@ func TestViewport_SelectionOn_WrapOn_RemoveLogsWhenSelectionBottom(t *testing.T)
 	compare(t, expectedView, vp.View())
 }
 
+// # SELECTION ENABLED, TOGGLE WRAP
+func TestViewport_SelectionOn_ToggleWrap_PreserveSelection(t *testing.T) {
+	w, h := 15, 6
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetSelectionEnabled(true)
+	vp.SetContent([]RenderableString{
+		{Content: "first line that is fairly long"},
+		{Content: "second line that is even much longer than the first"},
+		{Content: "third line that is fairly long"},
+		{Content: "fourth"},
+		{Content: "fifth line that is fairly long"},
+		{Content: "sixth"},
+	})
+
+	// Initial state: wrap off, selection on first line
+	expectedView := pad(w, h, []string{
+		"header",
+		"\x1b[38;2;0;0;255mfirst line t...\x1b[0m",
+		"second line ...",
+		"third line t...",
+		"fourth",
+		"16% (1/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// Move selection to third line
+	vp, _ = vp.Update(downKeyMsg)
+	vp, _ = vp.Update(downKeyMsg)
+	expectedView = pad(w, h, []string{
+		"header",
+		"first line t...",
+		"second line ...",
+		"\x1b[38;2;0;0;255mthird line t...\x1b[0m",
+		"fourth",
+		"50% (3/6)",
+	})
+	compare(t, expectedView, vp.View())
+
+	//// Toggle wrap on
+	//vp.SetWrapText(true)
+	//expectedView = pad(w, h, []string{
+	//	"header",
+	//	"second line ",
+	//	"that is even ",
+	//	"\x1b[38;2;0;0;255mthird line \x1b[0m",
+	//	"\x1b[38;2;0;0;255mthat is \x1b[0m",
+	//	"50% (3/6)",
+	//})
+	//compare(t, expectedView, vp.View())
+	//
+	//// Toggle wrap off
+	//vp.SetWrapText(false)
+	//expectedView = pad(w, h, []string{
+	//	"header",
+	//	"first line t...",
+	//	"second line ...",
+	//	"\x1b[38;2;0;0;255mthird line t...\x1b[0m",
+	//	"fourth",
+	//	"50% (3/6)",
+	//})
+	//compare(t, expectedView, vp.View())
+	//
+	//// Move selection to last line
+	//vp, _ = vp.Update(downKeyMsg)
+	//vp, _ = vp.Update(downKeyMsg)
+	//vp, _ = vp.Update(downKeyMsg)
+	//expectedView = pad(w, h, []string{
+	//	"header",
+	//	"third line t...",
+	//	"fourth",
+	//	"fifth line t...",
+	//	"\x1b[38;2;0;0;255msixth\x1b[0m",
+	//	"100% (6/6)",
+	//})
+	//compare(t, expectedView, vp.View())
+	//
+	//// Toggle wrap on
+	//vp.SetWrapText(true)
+	//expectedView = pad(w, h, []string{
+	//	"header",
+	//	"fifth line ",
+	//	"that is ",
+	//	"fairly long",
+	//	"\x1b[38;2;0;0;255msixth\x1b[0m",
+	//	"100% (6/6)",
+	//})
+	//compare(t, expectedView, vp.View())
+	//
+	//// Toggle wrap off
+	//vp.SetWrapText(false)
+	//expectedView = pad(w, h, []string{
+	//	"header",
+	//	"third line t...",
+	//	"fourth",
+	//	"fifth line t...",
+	//	"\x1b[38;2;0;0;255msixth\x1b[0m",
+	//	"100% (6/6)",
+	//})
+	//compare(t, expectedView, vp.View())
+}
+
 // TODO:
-// when logs getting added quickly and sticky bottom set, scrolling one up causes the screen to jump
+// toggling wrapped -> not wrapped doesn't scroll past end
 // transitioning between wrap/no wrap should preserve selection + position relative to top
-// test string to highlight (should work when truncated or wrapped)
+// when logs getting added quickly and sticky bottom set, scrolling one up causes the screen to jump so selection at bottom
+// string to highlight (should work when truncated or wrapped)
 // when change width/height of viewport, ensure doesn't scroll past bottom, maintains selection etc
-// zero & one width/height viewport in each case
+// zero, one, & 2 width/height viewport in each case
+// setting content preserves relative position of selection on screen
 // go to top/bottom
 // "..." instead of empty when fully truncated
-// set content again to remove longest line when xOffset maxed out
+// set content again to remove longest line when xOffset maxed out (panning)
