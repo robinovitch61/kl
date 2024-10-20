@@ -136,7 +136,7 @@ kubectl --context k3d-test2 -n otherns port-forward services/frontend-service 80
 open http://localhost:8080
 
 # browser console one-liner to click button every second to generate logs
-setInterval(() => { document.getElementsByTagName("button")[0].click();}, 1000);
+setInterval(() => { document.getElementsByTagName("button")[0].click(); }, 1000);
 
 # or make requests directly to flask from the terminal
 kubectl --context k3d-test2 port-forward services/flask-service 5000:5000
