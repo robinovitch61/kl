@@ -233,8 +233,7 @@ func (m Model[T]) View() string {
 		viewString += truncatedVisibleContentLines[i] + "\n"
 	}
 
-	// TODO: use len(visibleContentLines.lines)?
-	nVisibleLines := len(strings.Split(viewString, "\n"))
+	nVisibleLines := len(visibleContentLines.lines)
 	if visibleContentLines.showFooter {
 		// pad so footer shows up at bottom
 		padCount := max(0, m.getNumContentLines()-nVisibleLines-1) // 1 for footer itself
