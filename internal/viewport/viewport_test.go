@@ -1086,7 +1086,6 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 	compare(t, expectedView, vp.View())
 }
 
-// TODO: test selection getting removed
 func TestViewport_SelectionOn_WrapOff_MaintainSelection(t *testing.T) {
 	w, h := 15, 5
 	vp := newViewport(w, h)
@@ -1169,6 +1168,21 @@ func TestViewport_SelectionOn_WrapOff_MaintainSelection(t *testing.T) {
 		"\x1b[38;2;0;0;255mseventh\x1b[0m",
 		"eighth",
 		"43% (7/16)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// remove the selected item
+	vp.SetContent([]RenderableString{
+		{Content: "first"},
+		{Content: "second"},
+		{Content: "third"},
+	})
+	expectedView = pad(vp.width, vp.height, []string{
+		"header",
+		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"second",
+		"third",
+		"33% (1/3)",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -1779,18 +1793,17 @@ func TestViewport_SelectionOff_WrapOn_ShowFooter(t *testing.T) {
 	})
 	compare(t, expectedView, vp.View())
 
-	//vp.SetHeight(9)
-	//expectedView = pad(vp.width, vp.height, []string{
-	//	"header",
-	//	"first line",
-	//	"\x1b[38;2;255;0;0msecond\x1b[0m line",
-	//	"\x1b[38;2;255;0;0ma really really\x1b[0m",
-	//	"\x1b[38;2;255;0;0m long line\x1b[0m",
-	//	"\x1b[38;2;255;0;0ma\x1b[0m really really",
-	//	"\x1b[38;2;255;0;0m \x1b[0mlong line", // TODO this is wrong, should have no space
-	//
-	//})
-	//compare(t, expectedView, vp.View())
+	vp.SetHeight(9)
+	expectedView = pad(vp.width, vp.height, []string{
+		"header",
+		"first line",
+		"\x1b[38;2;255;0;0msecond\x1b[0m line",
+		"\x1b[38;2;255;0;0ma really really\x1b[0m",
+		"\x1b[38;2;255;0;0m long line\x1b[0m",
+		"\x1b[38;2;255;0;0ma\x1b[0m really really",
+		"\x1b[38;2;255;0;0m\x1b[0m long line",
+	})
+	compare(t, expectedView, vp.View())
 }
 
 func TestViewport_SelectionOff_WrapOn_OverflowLine(t *testing.T) {
@@ -2756,7 +2769,6 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	validate(expectedView)
 }
 
-// TODO: test selection getting removed
 func TestViewport_SelectionOn_WrapOn_MaintainSelection(t *testing.T) {
 	w, h := 10, 6
 	vp := newViewport(w, h)
@@ -2844,6 +2856,22 @@ func TestViewport_SelectionOn_WrapOn_MaintainSelection(t *testing.T) {
 		"\x1b[38;2;0;0;255mem\x1b[0m",
 		"eighth ite",
 		"43% (7/16)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// remove the selected item
+	vp.SetContent([]RenderableString{
+		{Content: "first item"},
+		{Content: "second item"},
+		{Content: "third item"},
+	})
+	expectedView = pad(vp.width, vp.height, []string{
+		"header",
+		"\x1b[38;2;0;0;255mfirst item\x1b[0m",
+		"second ite",
+		"m",
+		"third item",
+		"33% (1/3)",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -3565,5 +3593,4 @@ func TestViewport_SelectionOn_ToggleWrap_ScrollInBounds(t *testing.T) {
 		"66% (4/6)",
 	})
 	compare(t, expectedView, vp.View())
-
 }

@@ -276,16 +276,19 @@ func (m *Model[T]) SetContent(content []T) {
 			m.selectedItemIdx = max(0, len(m.allItems)-1)
 		} else if m.maintainSelection {
 			// TODO: could flag when content is sorted & comparable and use binary search instead
+			found := false
 			for i := range m.allItems {
 				if m.allItems[i].Equals(prevSelection) {
 					m.selectedItemIdx = i
+					found = true
 					break
 				}
 			}
-		} else {
-			// TODO: move this out of else block, add failing test first
-			m.selectedItemIdx = clampValMinMax(m.selectedItemIdx, 0, len(m.allItems)-1)
+			if !found {
+				m.selectedItemIdx = 0
+			}
 		}
+		m.selectedItemIdx = clampValMinMax(m.selectedItemIdx, 0, len(m.allItems)-1)
 		m.scrollSoSelectionInView()
 		newNumLinesAboveSelection := m.getNumLinesAboveSelection()
 		m.scrollUp(initialNumLinesAboveSelection - newNumLinesAboveSelection)
@@ -421,7 +424,9 @@ func (m *Model[T]) safelySetXOffset(n int) {
 
 func (m *Model[T]) setWidthHeight(width, height int) {
 	m.width, m.height = max(0, width), max(0, height)
-	m.scrollSoSelectionInView()
+	if m.selectionEnabled {
+		m.scrollSoSelectionInView()
+	}
 	m.safelySetTopItemIdxAndOffset(m.topItemIdx, m.topItemLineOffset)
 }
 
@@ -446,7 +451,7 @@ func (m *Model[T]) getNumContentLines() int {
 
 func (m *Model[T]) scrollSoSelectionInView() {
 	if !m.selectionEnabled {
-		return
+		panic("scrollSoSelectionInView called when selection is not enabled")
 	}
 
 	if len(m.allItems) == 0 {
@@ -456,13 +461,6 @@ func (m *Model[T]) scrollSoSelectionInView() {
 
 	numLinesInSelection := 1
 	if m.wrapText {
-		// TODO: ensure selectedItemIdx is valid, add test
-		// can repro with:
-		// - lots of containers selected
-		// - wrap on
-		// - short names showing
-		// - exact filter e.g. fl..-2
-		// - toggle x when selection not on fl..-2 line, somewhere near middle
 		numLinesInSelection = len(wrap(m.allItems[m.selectedItemIdx].Render(), m.width))
 	}
 
