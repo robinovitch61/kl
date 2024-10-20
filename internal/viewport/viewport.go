@@ -207,27 +207,26 @@ func (m Model[T]) View() string {
 	for i := range visibleContentLines.lines {
 		isSelection := m.selectionEnabled && visibleContentLines.itemIndexes[i] == m.selectedItemIdx
 		if isSelection {
+			// style entire selected line
 			visibleContentLines.lines[i] = m.styleSelection(visibleContentLines.lines[i])
 		}
+
 		truncated := m.truncate(visibleContentLines.lines[i])
+
 		if m.xOffset > 0 && lipgloss.Width(truncated) == 0 && lipgloss.Width(visibleContentLines.lines[i]) > 0 {
+			// if panned right past where line ends, show continuation indicator
 			truncated = m.truncateNoXOffset(m.getLineContinuationIndicator())
 			if isSelection {
 				truncated = m.styleSelection(truncated)
 			}
 		}
-		truncatedVisibleContentLines[i] = truncated
-	}
 
-	// add selection style
-	if m.selectionEnabled {
-		for i := range truncatedVisibleContentLines {
-			if visibleContentLines.itemIndexes[i] == m.selectedItemIdx {
-				if truncatedVisibleContentLines[i] == "" {
-					truncatedVisibleContentLines[i] = " " // ensure selection is visible even if content empty
-				}
-			}
+		if isSelection && truncated == "" {
+			// ensure selection is visible even if content empty
+			truncated = " "
 		}
+
+		truncatedVisibleContentLines[i] = truncated
 	}
 
 	for i := range truncatedVisibleContentLines {
