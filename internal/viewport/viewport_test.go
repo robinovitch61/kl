@@ -1086,6 +1086,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 	compare(t, expectedView, vp.View())
 }
 
+// TODO: test selection getting removed
 func TestViewport_SelectionOn_WrapOff_MaintainSelection(t *testing.T) {
 	w, h := 15, 5
 	vp := newViewport(w, h)
@@ -1662,6 +1663,7 @@ func TestViewport_SelectionOn_WrapOff_StringToHighlight(t *testing.T) {
 	compare(t, expectedView, vp.View())
 }
 
+// TODO: test nested ansi
 func TestViewport_SelectionOn_WrapOff_AnsiOnSelection(t *testing.T) {
 	w, h := 20, 5
 	vp := newViewport(w, h)
@@ -2754,6 +2756,7 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	validate(expectedView)
 }
 
+// TODO: test selection getting removed
 func TestViewport_SelectionOn_WrapOn_MaintainSelection(t *testing.T) {
 	w, h := 10, 6
 	vp := newViewport(w, h)

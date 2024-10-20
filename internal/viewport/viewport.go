@@ -283,6 +283,7 @@ func (m *Model[T]) SetContent(content []T) {
 				}
 			}
 		} else {
+			// TODO: move this out of else block, add failing test first
 			m.selectedItemIdx = clampValMinMax(m.selectedItemIdx, 0, len(m.allItems)-1)
 		}
 		m.scrollSoSelectionInView()
@@ -461,7 +462,7 @@ func (m *Model[T]) scrollSoSelectionInView() {
 		// - wrap on
 		// - short names showing
 		// - exact filter e.g. fl..-2
-		// - toggle logs with x at different selection positions
+		// - toggle x when selection not on fl..-2 line, somewhere near middle
 		numLinesInSelection = len(wrap(m.allItems[m.selectedItemIdx].Render(), m.width))
 	}
 
