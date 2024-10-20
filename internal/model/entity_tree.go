@@ -517,6 +517,7 @@ func (et *entityTreeImpl) GetEntity(container Container) *Entity {
 }
 
 func (et *entityTreeImpl) UpdatePrettyPrintPrefixes(filter filter.Model) {
+	// TODO: consider using lipgloss's tree functionality?
 	et.isVisibleCache = isVisibleCache{}
 
 	visibleEntities := et.GetVisibleEntities(filter)
