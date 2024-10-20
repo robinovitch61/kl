@@ -239,7 +239,7 @@ func (m Model[T]) View() string {
 		// pad so footer shows up at bottom
 		padCount := max(0, m.getNumContentLines()-nVisibleLines-1) // 1 for footer itself
 		viewString += strings.Repeat("\n", padCount)
-		viewString += m.getTruncatedFooterLine()
+		viewString += m.getTruncatedFooterLine(visibleContentLines)
 	} else {
 		viewString = strings.TrimSuffix(viewString, "\n")
 	}
@@ -404,7 +404,7 @@ func (m Model[T]) maxLineWidth() int {
 	visibleContentLines := m.getVisibleContentLines()
 	allVisibleLines := append(headerLines, visibleContentLines.lines...)
 	if visibleContentLines.showFooter {
-		allVisibleLines = append(allVisibleLines, m.getTruncatedFooterLine())
+		allVisibleLines = append(allVisibleLines, m.getTruncatedFooterLine(visibleContentLines))
 	}
 	for i := range allVisibleLines {
 		if w := lipgloss.Width(allVisibleLines[i]); w > maxLineWidth {
@@ -705,11 +705,9 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 	return visibleContentLinesResult{lines: contentLines, itemIndexes: itemIndexes, showFooter: showFooter}
 }
 
-// TODO: pass visibleContentLines into this
-func (m Model[T]) getTruncatedFooterLine() string {
+func (m Model[T]) getTruncatedFooterLine(visibleContentLines visibleContentLinesResult) string {
 	numerator := m.selectedItemIdx + 1 // 0th line is 1st
 	denominator := len(m.allItems)
-	visibleContentLines := m.getVisibleContentLines()
 	if !visibleContentLines.showFooter {
 		panic("getTruncatedFooterLine called when footer should not be shown")
 	}
