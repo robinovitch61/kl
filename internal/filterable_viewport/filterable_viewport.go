@@ -38,7 +38,7 @@ func NewFilterableViewport[T viewport.RenderableComparable](
 
 	var vp = viewport.New[T](width, height-f.ViewHeight())
 	vp.FooterStyle = style.Bold
-	vp.SelectedContentStyle = style.Inverse
+	vp.SelectedItemStyle = style.Inverse
 	vp.HighlightStyle = style.Inverse
 
 	vp.SetSelectionEnabled(selectionEnabled)
@@ -72,7 +72,7 @@ func (p FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.C
 		if p.Filter.Focused() {
 			if key.Matches(msg, p.keyMap.Enter) {
 				// done editing
-				p.viewport.SelectedContentStyle = style.Inverse
+				p.viewport.SelectedItemStyle = style.Inverse
 				p.Filter.Blur()
 				p.Filter.UpdateLabelAndSuffix()
 			}
@@ -92,7 +92,7 @@ func (p FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.C
 				} else if key.Matches(msg, p.Filter.KeyMap.FilterPrevRow) {
 					p.Filter.DecrementFilteredSelectionNum()
 				}
-				p.scrollViewportToContentIdx(p.Filter.GetContextualMatchIdx())
+				p.scrollViewportToItemIdx(p.Filter.GetContextualMatchIdx())
 			}
 
 			// focus filter and start editing
@@ -108,7 +108,7 @@ func (p FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.C
 				}
 
 				// change the color of the selection
-				p.viewport.SelectedContentStyle = style.AltInverse
+				p.viewport.SelectedItemStyle = style.AltInverse
 				return p, textinput.Blink
 			}
 
@@ -132,7 +132,7 @@ func (p FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.C
 			// if filtering with context, reset the match number and scroll to the first match
 			if p.Filter.FilteringWithContext {
 				p.Filter.ResetContextualFilterMatchNum()
-				p.scrollViewportToContentIdx(p.Filter.GetContextualMatchIdx())
+				p.scrollViewportToItemIdx(p.Filter.GetContextualMatchIdx())
 			}
 		}
 
@@ -166,15 +166,15 @@ func (p FilterableViewport[T]) WithDimensions(width, height int) FilterableViewp
 }
 
 func (p FilterableViewport[T]) GetSelection() *T {
-	return p.viewport.GetSelectedContent()
+	return p.viewport.GetSelectedItem()
 }
 
 func (p FilterableViewport[T]) GetSelectionIdx() int {
-	return p.viewport.GetSelectedContentIdx()
+	return p.viewport.GetSelectedItemIdx()
 }
 
 func (p FilterableViewport[T]) SetSelectedContentIdx(idx int) {
-	p.viewport.SetSelectedContentIdx(idx)
+	p.viewport.SetSelectedItemIdx(idx)
 }
 
 func (p *FilterableViewport[T]) SetAllRows(allRows []T) {
@@ -257,11 +257,15 @@ func (p *FilterableViewport[T]) updateVisibleRows() {
 func (p *FilterableViewport[T]) clearFilter() {
 	p.Filter.BlurAndClear()
 	p.viewport.SetStringToHighlight("")
-	p.viewport.SelectedContentStyle = style.Inverse
+	p.viewport.SelectedItemStyle = style.Inverse
 	p.updateVisibleRows()
 }
 
-func (p *FilterableViewport[T]) scrollViewportToContentIdx(contentIdx int) {
-	p.viewport.SetSelectedContentIdx(contentIdx)
+func (p *FilterableViewport[T]) scrollViewportToItemIdx(itemIdx int) {
+	if p.viewport.GetSelectionEnabled() {
+		p.viewport.SetSelectedItemIdx(itemIdx)
+	} else {
+		p.viewport.ScrollSoItemIdxInView(itemIdx)
+	}
 	p.Filter.UpdateLabelAndSuffix()
 }
