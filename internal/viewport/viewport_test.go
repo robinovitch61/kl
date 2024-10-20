@@ -1280,6 +1280,19 @@ func TestViewport_SelectionOn_WrapOff_StickyBottom(t *testing.T) {
 		"33% (1/3)",
 	})
 	compare(t, expectedView, vp.View())
+
+	// specific sequence to test selectedItemIdx is set correctly
+	vp.SetContent([]RenderableString{})
+	vp.SetContent([]RenderableString{})
+	vp.SetBottomSticky(false)
+	vp.SetContent([]RenderableString{
+		{Content: "first"},
+	})
+	expectedView = pad(vp.width, vp.height, []string{
+		"header",
+		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+	})
+	compare(t, expectedView, vp.View())
 }
 
 func TestViewport_SelectionOn_WrapOff_StickyBottomOverflowHeight(t *testing.T) {
@@ -2944,6 +2957,21 @@ func TestViewport_SelectionOn_WrapOn_StickyBottom(t *testing.T) {
 		"\x1b[38;2;0;0;255mthe second\x1b[0m",
 		"\x1b[38;2;0;0;255m line\x1b[0m",
 		"33% (1/3)",
+	})
+	compare(t, expectedView, vp.View())
+
+	// specific sequence to test selectedItemIdx is set correctly
+	vp.SetContent([]RenderableString{})
+	vp.SetContent([]RenderableString{})
+	vp.SetBottomSticky(false)
+	vp.SetContent([]RenderableString{
+		{Content: "the first line"},
+	})
+	expectedView = pad(vp.width, vp.height, []string{
+		"header",
+		"\x1b[38;2;0;0;255mthe first \x1b[0m",
+		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"100% (1/1)",
 	})
 	compare(t, expectedView, vp.View())
 }

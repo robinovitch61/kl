@@ -274,7 +274,6 @@ func (m *Model[T]) SetContent(content []T) {
 		if stayAtTop {
 			m.selectedItemIdx = 0
 		} else if stayAtBottom {
-			// TODO: no test catches the max(0, ...) here, write one!
 			m.selectedItemIdx = max(0, len(m.allItems)-1)
 		} else if m.maintainSelection {
 			// TODO: could flag when content is sorted & comparable and use binary search instead
