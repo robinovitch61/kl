@@ -33,11 +33,10 @@ func (l PageLog) Render() string {
 	}
 	label := ""
 	if l.CurrentName != "" {
-		currentName := lipgloss.NewStyle().Background(l.Color).Foreground(lipgloss.Color("#000000")).Render(l.CurrentName)
 		if ts == "" {
-			label = "|" + currentName + "|"
+			label = "|" + l.RenderName(l.CurrentName) + "|"
 		} else {
-			label = currentName + "|"
+			label = l.RenderName(l.CurrentName) + "|"
 		}
 	}
 	prefix := ts + label
@@ -55,6 +54,10 @@ func (l PageLog) Equals(other interface{}) bool {
 		return false
 	}
 	return l.Log == otherLog.Log && l.Timestamps.Full == otherLog.Timestamps.Full
+}
+
+func (l PageLog) RenderName(name string) string {
+	return lipgloss.NewStyle().Background(l.Color).Foreground(lipgloss.Color("#000000")).Render(name)
 }
 
 type PageLogContainer struct {
