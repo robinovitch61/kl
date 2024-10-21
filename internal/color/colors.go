@@ -1,8 +1,13 @@
-package constants
+package color
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"crypto/md5"
+	"encoding/hex"
+	"fmt"
+	"github.com/charmbracelet/lipgloss"
+)
 
-var ContainerNameColors = []lipgloss.Color{
+var containerNameColors = []lipgloss.Color{
 	lipgloss.Color("#58A2EE"), // blue
 	lipgloss.Color("#3FE34B"), // bright green
 	lipgloss.Color("#7c60d7"), // purple
@@ -16,4 +21,15 @@ var ContainerNameColors = []lipgloss.Color{
 	lipgloss.Color("#D6A112"), // gold
 	lipgloss.Color("#FFDAB9"), // beige
 	lipgloss.Color("#FF7E6A"), // tomato
+}
+
+func ContainerColor(name string) lipgloss.Color {
+	hash := md5.Sum([]byte(name))
+	hashStr := hex.EncodeToString(hash[:])
+	var hashValue int64
+	_, err := fmt.Sscanf(hashStr[:8], "%x", &hashValue)
+	if err != nil {
+		return containerNameColors[0]
+	}
+	return containerNameColors[hashValue%int64(len(containerNameColors))]
 }

@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/wrap"
+	"github.com/robinovitch61/kl/internal/color"
 	"github.com/robinovitch61/kl/internal/command"
 	"github.com/robinovitch61/kl/internal/constants"
 	"github.com/robinovitch61/kl/internal/dev"
@@ -1166,8 +1167,8 @@ func (m Model) doUpdateSinceTime() (Model, tea.Cmd) {
 func (m Model) withUpdatedContainerShortNames() Model {
 	containers := m.entityTree.GetContainerEntities()
 	m.containerIdToColor = make(map[string]lipgloss.Color)
-	for i, containerEntity := range containers {
-		m.containerIdToColor[containerEntity.Container.ID()] = constants.ContainerNameColors[i%len(constants.ContainerNameColors)]
+	for _, containerEntity := range containers {
+		m.containerIdToColor[containerEntity.Container.ID()] = color.ContainerColor(containerEntity.Container.ID())
 	}
 	m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithContainerColors(m.containerIdToColor)
 
