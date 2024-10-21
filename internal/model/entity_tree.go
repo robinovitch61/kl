@@ -602,7 +602,6 @@ func (et entityTreeImpl) ContainerToShortName(minCharsEachSide int) func(Contain
 	activeNamespaces := make(map[string]bool)
 	activePodOwners := make(map[string]bool)
 	activePods := make(map[string]bool)
-	activeContainers := make(map[string]bool)
 	for _, e := range entities {
 		if !e.IsSelected() {
 			continue
@@ -611,14 +610,12 @@ func (et entityTreeImpl) ContainerToShortName(minCharsEachSide int) func(Contain
 		activeNamespaces[e.Container.Namespace] = true
 		activePodOwners[e.Container.PodOwner] = true
 		activePods[e.Container.Pod] = true
-		activeContainers[e.Container.Name] = true
 	}
 
 	shortNameFromCluster := util.GetUniqueShortNamesFromEdges(activeClusters, minCharsEachSide)
 	shortNameFromNamespace := util.GetUniqueShortNamesFromEdges(activeNamespaces, minCharsEachSide)
 	shortNameFromPodOwner := util.GetUniqueShortNamesFromEdges(activePodOwners, minCharsEachSide)
 	shortNameFromPod := util.GetUniqueShortNamesFromEdges(activePods, minCharsEachSide)
-	shortNameFromContainer := util.GetUniqueShortNamesFromEdges(activeContainers, minCharsEachSide)
 	specFromContainerId := make(map[string]Container)
 	for _, e := range entities {
 		specFromContainerId[e.Container.ID()] = e.Container
@@ -646,20 +643,16 @@ func (et entityTreeImpl) ContainerToShortName(minCharsEachSide int) func(Contain
 		if len(shortNameFromPod) == 1 {
 			shortPod = ""
 		}
-		shortContainer := shortNameFromContainer[c.Name]
-		if len(shortNameFromContainer) == 1 {
-			shortContainer = ""
-		}
 		var toJoin []string
-		for _, v := range []string{shortCluster, shortNamespace, shortPodOwner, shortPod, shortContainer} {
+		for _, v := range []string{shortCluster, shortNamespace, shortPodOwner, shortPod} {
 			if v != "" {
 				toJoin = append(toJoin, v)
 			}
 		}
 		if len(toJoin) == 0 {
-			// if no short name, show just the container name, abbreviated
-			return c.Name[:minCharsEachSide] + ".." + c.Name[len(c.Name)-minCharsEachSide:], nil
+			// if no short name, show just the container name
+			return container.Name, nil
 		}
-		return strings.Join(toJoin, "/"), nil
+		return strings.Join(toJoin, "/") + "/" + container.Name, nil
 	}
 }

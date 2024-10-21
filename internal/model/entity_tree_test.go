@@ -578,26 +578,48 @@ func TestEntityTreeImpl_UpdatePrettyPrintPrefixes_Multi(t *testing.T) {
 }
 
 func TestEntityTreeImpl_ContainerToShortName(t *testing.T) {
-	tree := newTree()
-	for _, e := range []Entity{container1Cluster1, container1Cluster2, container2Cluster1} {
-		e.LogScanner = &LogScanner{}
-		tree.AddOrReplace(e)
+	compare := func(f func(Container) (string, error), expected map[Container]string) {
+		for c, short := range expected {
+			n, err := f(c)
+			if err != nil {
+				t.Errorf("Expected no error, got %v", err)
+			}
+			if n != short {
+				t.Errorf("Expected short name %s, got %s", short, n)
+			}
+		}
 	}
+
+	tree := newTree()
+	c1cl1 := container1Cluster1
+	c1cl1.LogScanner = &LogScanner{}
+	tree.AddOrReplace(c1cl1)
 	f := tree.ContainerToShortName(3)
 	expected := map[Container]string{
-		container1Cluster1.Container: "clu..er1/nam..ce1/pod..er1/pod1/con..er1",
-		container1Cluster2.Container: "clu..er2/nam..ce2/pod..er2/pod2/con..er1",
-		container2Cluster1.Container: "clu..er1/nam..ce1/pod..er1/pod1/con..er2",
+		c1cl1.Container: "container1",
 	}
-	for c, short := range expected {
-		n, err := f(c)
-		if err != nil {
-			t.Errorf("Expected no error, got %v", err)
-		}
-		if n != short {
-			t.Errorf("Expected short name %s, got %s", short, n)
-		}
+	compare(f, expected)
+
+	c2cl1 := container2Cluster1
+	c2cl1.LogScanner = &LogScanner{}
+	tree.AddOrReplace(c2cl1)
+	f = tree.ContainerToShortName(3)
+	expected = map[Container]string{
+		c1cl1.Container: "container1",
+		c2cl1.Container: "container2",
 	}
+	compare(f, expected)
+
+	c1cl2 := container1Cluster2
+	c1cl2.LogScanner = &LogScanner{}
+	tree.AddOrReplace(c1cl2)
+	f = tree.ContainerToShortName(3)
+	expected = map[Container]string{
+		c1cl1.Container: "clu..er1/nam..ce1/pod..er1/pod1/container1",
+		c2cl1.Container: "clu..er1/nam..ce1/pod..er1/pod1/container2",
+		c1cl2.Container: "clu..er2/nam..ce2/pod..er2/pod2/container1",
+	}
+	compare(f, expected)
 	_, err := f(Container{Name: "doesntexist"})
 	if err == nil {
 		t.Errorf("Expected error, got nil")
