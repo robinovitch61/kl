@@ -15,7 +15,7 @@ import (
 
 var (
 	timestampFormats = []string{"none", "short", "full"}
-	nameFormats      = []string{"none", "short", "full"}
+	nameFormats      = []string{"short", "none", "full"}
 )
 
 type LogsPage struct {
