@@ -1,6 +1,7 @@
 package model
 
 import (
+	"github.com/charmbracelet/lipgloss"
 	"github.com/emirpasic/gods/trees/redblacktree"
 	"github.com/robinovitch61/kl/internal/dev"
 )
@@ -17,6 +18,7 @@ type PageLogTimestamps struct {
 
 type PageLog struct {
 	Log              Log
+	Color            lipgloss.Color
 	ContainerNames   PageLogContainerNames
 	CurrentName      string
 	Timestamps       PageLogTimestamps
@@ -31,10 +33,11 @@ func (l PageLog) Render() string {
 	}
 	label := ""
 	if l.CurrentName != "" {
+		currentName := lipgloss.NewStyle().Background(l.Color).Foreground(lipgloss.Color("#000000")).Render(l.CurrentName)
 		if ts == "" {
-			label = "|" + l.CurrentName + "|"
+			label = "|" + currentName + "|"
 		} else {
-			label = l.CurrentName + "|"
+			label = currentName + "|"
 		}
 	}
 	prefix := ts + label
