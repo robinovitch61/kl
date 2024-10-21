@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/lucasb-eyer/go-colorful"
 	"github.com/muesli/reflow/wrap"
 	"github.com/robinovitch61/kl/internal/command"
 	"github.com/robinovitch61/kl/internal/constants"
@@ -1166,10 +1165,9 @@ func (m Model) doUpdateSinceTime() (Model, tea.Cmd) {
 // it should be called every time the set of active containers changes
 func (m Model) withUpdatedContainerShortNames() Model {
 	containers := m.entityTree.GetContainerEntities()
-	newColors := colorful.FastHappyPalette(len(containers))
 	m.containerIdToColor = make(map[string]lipgloss.Color)
 	for i, containerEntity := range containers {
-		m.containerIdToColor[containerEntity.Container.ID()] = lipgloss.Color(newColors[i].Hex())
+		m.containerIdToColor[containerEntity.Container.ID()] = constants.ContainerNameColors[i%len(constants.ContainerNameColors)]
 	}
 	m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithContainerColors(m.containerIdToColor)
 
