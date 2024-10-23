@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"unicode"
 )
 
 func wrap(line string, width int) []string {
@@ -13,7 +14,15 @@ func wrap(line string, width int) []string {
 		return []string{}
 	}
 
-	line = strings.TrimRight(line, " ")
+	// if line has non-whitespace, trim trailing spaces
+	if strings.TrimSpace(line) != "" {
+		line = strings.TrimRightFunc(line, unicode.IsSpace)
+	}
+
+	// preserve empty lines
+	if line == "" {
+		return []string{line}
+	}
 
 	var res []string
 	lineWidth := lipgloss.Width(line)

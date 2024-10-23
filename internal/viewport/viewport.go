@@ -223,7 +223,7 @@ func (m Model[T]) View() string {
 
 		if isSelection && truncated == "" {
 			// ensure selection is visible even if content empty
-			truncated = " "
+			truncated = m.styleSelection(" ")
 		}
 
 		truncatedVisibleContentLines[i] = truncated

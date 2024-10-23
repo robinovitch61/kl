@@ -1688,6 +1688,21 @@ func TestViewport_SelectionOn_WrapOff_AnsiOnSelection(t *testing.T) {
 	compare(t, expectedView, vp.View())
 }
 
+func TestViewport_SelectionOn_WrapOff_SelectionEmpty(t *testing.T) {
+	w, h := 20, 5
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetSelectionEnabled(true)
+	vp.SetContent([]RenderableString{
+		{Content: ""},
+	})
+	expectedView := pad(vp.width, vp.height, []string{
+		"header",
+		"\x1b[38;2;0;0;255m \x1b[0m",
+	})
+	compare(t, expectedView, vp.View())
+}
+
 // # SELECTION DISABLED, WRAP ON
 
 func TestViewport_SelectionOff_WrapOn_Empty(t *testing.T) {
@@ -3392,6 +3407,22 @@ func TestViewport_SelectionOn_WrapOn_AnsiOnSelection(t *testing.T) {
 	compare(t, expectedView, vp.View())
 }
 
+func TestViewport_SelectionOn_WrapOn_SelectionEmpty(t *testing.T) {
+	w, h := 20, 5
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetSelectionEnabled(true)
+	vp.SetWrapText(true)
+	vp.SetContent([]RenderableString{
+		{Content: ""},
+	})
+	expectedView := pad(vp.width, vp.height, []string{
+		"header",
+		"\x1b[38;2;0;0;255m \x1b[0m",
+	})
+	compare(t, expectedView, vp.View())
+}
+
 // # OTHER
 
 func TestViewport_SelectionOn_ToggleWrap_PreserveSelection(t *testing.T) {
@@ -3584,5 +3615,4 @@ func TestViewport_SelectionOn_ToggleWrap_ScrollInBounds(t *testing.T) {
 		"66% (4/6)",
 	})
 	compare(t, expectedView, vp.View())
-
 }
