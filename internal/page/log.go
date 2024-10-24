@@ -101,10 +101,11 @@ func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
 	}
 	p.log = log
 	header, content := veryNicelyFormatThisLog(log)
-	renderableStrings := []viewport.RenderableString{{Content: header}}
+	var renderableStrings []viewport.RenderableString
 	for _, c := range content {
 		renderableStrings = append(renderableStrings, viewport.RenderableString{Content: c})
 	}
+	p.filterableViewport.SetHeader([]string{header})
 	p.filterableViewport.SetAllRows(renderableStrings)
 	return p
 }

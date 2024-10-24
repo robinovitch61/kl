@@ -177,6 +177,10 @@ func (p FilterableViewport[T]) SetSelectedContentIdx(idx int) {
 	p.viewport.SetSelectedItemIdx(idx)
 }
 
+func (p FilterableViewport[T]) SetHeader(header []string) {
+	p.viewport.SetHeader(header)
+}
+
 func (p *FilterableViewport[T]) SetAllRows(allRows []T) {
 	p.allRows = allRows
 	p.updateVisibleRows()
