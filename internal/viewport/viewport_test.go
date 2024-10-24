@@ -1,5 +1,7 @@
 package viewport
 
+// TODO: test remainder of public methods on viewport
+
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -32,7 +34,7 @@ func renderer() *lipgloss.Renderer {
 
 func newViewport(width, height int) Model[RenderableString] {
 	vp := New[RenderableString](width, height)
-	vp.SelectedContentStyle = selectionStyle
+	vp.SelectedItemStyle = selectionStyle
 	return vp
 }
 
@@ -1438,7 +1440,7 @@ func TestViewport_SelectionOn_WrapOff_RemoveLogsWhenSelectionBottom(t *testing.T
 	compare(t, expectedView, vp.View())
 
 	// selection to bottom
-	vp.SetSelectedContentIdx(3)
+	vp.SetSelectedItemIdx(3)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"\x1b[38;2;0;0;255mfourth\x1b[0m",
@@ -1594,7 +1596,7 @@ func TestViewport_SelectionOn_WrapOff_ChangeContent(t *testing.T) {
 	compare(t, expectedView, vp.View())
 
 	// move selection to bottom
-	vp.SetSelectedContentIdx(5)
+	vp.SetSelectedItemIdx(5)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"fourth",
@@ -2453,7 +2455,7 @@ func TestViewport_SelectionOn_WrapOn_OverflowHeight(t *testing.T) {
 		{Content: "1234567890123456"},
 		{Content: "1234567890123456"},
 	})
-	vp.SetSelectedContentIdx(1)
+	vp.SetSelectedItemIdx(1)
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
 		"123456789012345",
@@ -3150,7 +3152,7 @@ func TestViewport_SelectionOn_WrapOn_RemoveLogsWhenSelectionBottom(t *testing.T)
 	compare(t, expectedView, vp.View())
 
 	// selection to bottom
-	vp.SetSelectedContentIdx(3)
+	vp.SetSelectedItemIdx(3)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"\x1b[38;2;0;0;255mthe fourth\x1b[0m",
@@ -3290,7 +3292,7 @@ func TestViewport_SelectionOn_WrapOn_ChangeContent(t *testing.T) {
 	compare(t, expectedView, vp.View())
 
 	// move selection to bottom
-	vp.SetSelectedContentIdx(5)
+	vp.SetSelectedItemIdx(5)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"line",
@@ -3537,7 +3539,7 @@ func TestViewport_SelectionOn_ToggleWrap_PreserveSelectionInView(t *testing.T) {
 		{Content: "second line that is even much longer than the first"},
 		{Content: "third line that is fairly long"},
 	})
-	vp.SetSelectedContentIdx(3)
+	vp.SetSelectedItemIdx(3)
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
 		"a really rea...",
@@ -3589,7 +3591,7 @@ func TestViewport_SelectionOn_ToggleWrap_ScrollInBounds(t *testing.T) {
 	})
 
 	// scroll to bottom with selection at top of that view
-	vp.SetSelectedContentIdx(5)
+	vp.SetSelectedItemIdx(5)
 	vp, _ = vp.Update(upKeyMsg)
 	vp, _ = vp.Update(upKeyMsg)
 	expectedView := pad(vp.width, vp.height, []string{
