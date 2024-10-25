@@ -578,7 +578,7 @@ func TestEntityTreeImpl_UpdatePrettyPrintPrefixes_Multi(t *testing.T) {
 }
 
 func TestEntityTreeImpl_ContainerToShortName(t *testing.T) {
-	compare := func(f func(Container) (string, error), expected map[Container]string) {
+	compare := func(f func(Container) (PageLogContainerName, error), expected map[Container]PageLogContainerName) {
 		for c, short := range expected {
 			n, err := f(c)
 			if err != nil {
@@ -595,8 +595,11 @@ func TestEntityTreeImpl_ContainerToShortName(t *testing.T) {
 	c1cl1.LogScanner = &LogScanner{}
 	tree.AddOrReplace(c1cl1)
 	f := tree.ContainerToShortName(3)
-	expected := map[Container]string{
-		c1cl1.Container: "container1",
+	expected := map[Container]PageLogContainerName{
+		c1cl1.Container: {
+			Prefix:        "",
+			ContainerName: "container1",
+		},
 	}
 	compare(f, expected)
 
@@ -604,9 +607,15 @@ func TestEntityTreeImpl_ContainerToShortName(t *testing.T) {
 	c2cl1.LogScanner = &LogScanner{}
 	tree.AddOrReplace(c2cl1)
 	f = tree.ContainerToShortName(3)
-	expected = map[Container]string{
-		c1cl1.Container: "container1",
-		c2cl1.Container: "container2",
+	expected = map[Container]PageLogContainerName{
+		c1cl1.Container: {
+			Prefix:        "",
+			ContainerName: "container1",
+		},
+		c2cl1.Container: {
+			Prefix:        "",
+			ContainerName: "container2",
+		},
 	}
 	compare(f, expected)
 
@@ -614,10 +623,19 @@ func TestEntityTreeImpl_ContainerToShortName(t *testing.T) {
 	c1cl2.LogScanner = &LogScanner{}
 	tree.AddOrReplace(c1cl2)
 	f = tree.ContainerToShortName(3)
-	expected = map[Container]string{
-		c1cl1.Container: "clu..er1/nam..ce1/pod..er1/pod1/container1",
-		c2cl1.Container: "clu..er1/nam..ce1/pod..er1/pod1/container2",
-		c1cl2.Container: "clu..er2/nam..ce2/pod..er2/pod2/container1",
+	expected = map[Container]PageLogContainerName{
+		c1cl1.Container: {
+			Prefix:        "clu..er1/nam..ce1/pod..er1/pod1",
+			ContainerName: "container1",
+		},
+		c2cl1.Container: {
+			Prefix:        "clu..er1/nam..ce1/pod..er1/pod1",
+			ContainerName: "container2",
+		},
+		c1cl2.Container: {
+			Prefix:        "clu..er2/nam..ce2/pod..er2/pod2",
+			ContainerName: "container1",
+		},
 	}
 	compare(f, expected)
 	_, err := f(Container{Name: "doesntexist"})

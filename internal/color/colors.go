@@ -23,7 +23,7 @@ var containerNameColors = []lipgloss.Color{
 	lipgloss.Color("#FF7E6A"), // tomato
 }
 
-func ContainerColor(name string) lipgloss.Color {
+func GetColor(name string) lipgloss.Color {
 	hash := md5.Sum([]byte(name))
 	hashStr := hex.EncodeToString(hash[:])
 	var hashValue int64

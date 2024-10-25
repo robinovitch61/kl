@@ -1,6 +1,7 @@
 package model
 
 import (
+	"github.com/charmbracelet/lipgloss"
 	"strings"
 )
 
@@ -14,6 +15,10 @@ type Container struct {
 
 func (c Container) ID() string {
 	return strings.Join([]string{c.Cluster, c.Namespace, c.PodOwner, c.Pod, c.Name}, idSeparator)
+}
+
+func (c Container) IDWithoutContainerName() string {
+	return strings.Join([]string{c.Cluster, c.Namespace, c.PodOwner, c.Pod}, idSeparator)
 }
 
 func (c Container) HumanReadable() string {
@@ -45,4 +50,11 @@ func (c Container) inPodOwnerOf(other Container) bool {
 
 func (c Container) inPodOf(other Container) bool {
 	return c.Cluster == other.Cluster && c.Namespace == other.Namespace && c.PodOwner == other.PodOwner && c.Pod == other.Pod
+}
+
+type ContainerColors struct {
+	// the entire container's ID (full specification)
+	ID lipgloss.Color
+	// just the container name
+	Name lipgloss.Color
 }

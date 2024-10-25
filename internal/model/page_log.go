@@ -6,9 +6,14 @@ import (
 	"github.com/robinovitch61/kl/internal/dev"
 )
 
+type PageLogContainerName struct {
+	Prefix        string
+	ContainerName string
+}
+
 type PageLogContainerNames struct {
-	Short string
-	Full  string
+	Short PageLogContainerName
+	Full  PageLogContainerName
 }
 
 type PageLogTimestamps struct {
@@ -18,9 +23,9 @@ type PageLogTimestamps struct {
 
 type PageLog struct {
 	Log              Log
-	Color            lipgloss.Color
+	ContainerColors  ContainerColors
 	ContainerNames   PageLogContainerNames
-	CurrentName      string
+	CurrentName      PageLogContainerName
 	Timestamps       PageLogTimestamps
 	CurrentTimestamp string
 	Terminated       bool
@@ -32,7 +37,7 @@ func (l PageLog) Render() string {
 		ts = "|" + l.CurrentTimestamp + "|"
 	}
 	label := ""
-	if l.CurrentName != "" {
+	if l.CurrentName.ContainerName != "" {
 		if ts == "" {
 			label = "|" + l.RenderName(l.CurrentName) + "|"
 		} else {
@@ -56,8 +61,13 @@ func (l PageLog) Equals(other interface{}) bool {
 	return l.Log == otherLog.Log && l.Timestamps.Full == otherLog.Timestamps.Full
 }
 
-func (l PageLog) RenderName(name string) string {
-	return lipgloss.NewStyle().Background(l.Color).Foreground(lipgloss.Color("#000000")).Render(name)
+func (l PageLog) RenderName(name PageLogContainerName) string {
+	renderedPrefix := lipgloss.NewStyle().Background(l.ContainerColors.ID).Foreground(lipgloss.Color("#000000")).Render(name.Prefix)
+	renderedName := lipgloss.NewStyle().Background(l.ContainerColors.Name).Foreground(lipgloss.Color("#000000")).Render(name.ContainerName)
+	if lipgloss.Width(renderedPrefix) == 0 {
+		return renderedName
+	}
+	return renderedPrefix + "/" + renderedName
 }
 
 type PageLogContainer struct {

@@ -60,7 +60,7 @@ type EntityTree interface {
 
 	// ContainerToShortName returns a function mapping a container to its short name
 	// Short names are unique identifiers given all the other containers in the tree
-	ContainerToShortName(minCharsEachSide int) func(Container) (string, error)
+	ContainerToShortName(minCharsEachSide int) func(Container) (PageLogContainerName, error)
 }
 
 type entityNode struct {
@@ -595,7 +595,7 @@ func (et *entityTreeImpl) UpdatePrettyPrintPrefixes(filter filter.Model) {
 	}
 }
 
-func (et entityTreeImpl) ContainerToShortName(minCharsEachSide int) func(Container) (string, error) {
+func (et entityTreeImpl) ContainerToShortName(minCharsEachSide int) func(Container) (PageLogContainerName, error) {
 	entities := et.GetContainerEntities()
 
 	activeClusters := make(map[string]bool)
@@ -621,10 +621,10 @@ func (et entityTreeImpl) ContainerToShortName(minCharsEachSide int) func(Contain
 		specFromContainerId[e.Container.ID()] = e.Container
 	}
 
-	return func(container Container) (string, error) {
+	return func(container Container) (PageLogContainerName, error) {
 		c, ok := specFromContainerId[container.ID()]
 		if !ok {
-			return "", fmt.Errorf("container not found when getting short name: %s", container.HumanReadable())
+			return PageLogContainerName{}, fmt.Errorf("container not found when getting short name: %s", container.HumanReadable())
 		}
 
 		shortCluster := shortNameFromCluster[c.Cluster]
@@ -649,10 +649,10 @@ func (et entityTreeImpl) ContainerToShortName(minCharsEachSide int) func(Contain
 				toJoin = append(toJoin, v)
 			}
 		}
-		if len(toJoin) == 0 {
-			// if no short name, show just the container name
-			return container.Name, nil
+		name := PageLogContainerName{
+			Prefix:        strings.Join(toJoin, "/"),
+			ContainerName: container.Name,
 		}
-		return strings.Join(toJoin, "/") + "/" + container.Name, nil
+		return name, nil
 	}
 }

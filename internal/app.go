@@ -45,8 +45,8 @@ type Model struct {
 	whenPromptConfirm    func() (Model, tea.Cmd)
 	err                  error
 	entityTree           model.EntityTree
-	containerToShortName func(model.Container) (string, error)
-	containerIdToColor   map[string]lipgloss.Color
+	containerToShortName func(model.Container) (model.PageLogContainerName, error)
+	containerIdToColors  map[string]model.ContainerColors
 	pageLogBuffer        []model.PageLog
 	client               k8s.Client
 	cancel               context.CancelFunc
@@ -1086,7 +1086,7 @@ func (m Model) handleNewLogsMsg(msg command.GetNewLogsMsg) (Model, tea.Cmd) {
 	var err error
 	var newLogs []model.PageLog
 	for _, log := range msg.NewLogs {
-		shortName := ""
+		shortName := model.PageLogContainerName{}
 		if m.containerToShortName != nil {
 			shortName, err = m.containerToShortName(log.Container)
 			if err != nil {
@@ -1094,17 +1094,21 @@ func (m Model) handleNewLogsMsg(msg command.GetNewLogsMsg) (Model, tea.Cmd) {
 				return m, nil
 			}
 		}
-		var color lipgloss.Color
-		if m.containerIdToColor != nil {
-			color = m.containerIdToColor[log.Container.ID()]
+		fullName := model.PageLogContainerName{
+			Prefix:        log.Container.IDWithoutContainerName(),
+			ContainerName: log.Container.Name,
+		}
+		var containerColors model.ContainerColors
+		if m.containerIdToColors != nil {
+			containerColors = m.containerIdToColors[log.Container.ID()]
 		}
 		localTime := log.Timestamp.Local()
 		newLog := model.PageLog{
-			Log:   log,
-			Color: color,
+			Log:             log,
+			ContainerColors: containerColors,
 			ContainerNames: model.PageLogContainerNames{
 				Short: shortName,
-				Full:  log.Container.HumanReadable(),
+				Full:  fullName,
 			},
 			Timestamps: model.PageLogTimestamps{
 				Short: localTime.Format(time.TimeOnly),
@@ -1166,11 +1170,14 @@ func (m Model) doUpdateSinceTime() (Model, tea.Cmd) {
 // it should be called every time the set of active containers changes
 func (m Model) withUpdatedContainerShortNames() Model {
 	containers := m.entityTree.GetContainerEntities()
-	m.containerIdToColor = make(map[string]lipgloss.Color)
+	m.containerIdToColors = make(map[string]model.ContainerColors)
 	for _, containerEntity := range containers {
-		m.containerIdToColor[containerEntity.Container.ID()] = color.ContainerColor(containerEntity.Container.ID())
+		m.containerIdToColors[containerEntity.Container.ID()] = model.ContainerColors{
+			ID:   color.GetColor(containerEntity.Container.ID()),
+			Name: color.GetColor(containerEntity.Container.Name),
+		}
 	}
-	m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithContainerColors(m.containerIdToColor)
+	m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithContainerColors(m.containerIdToColors)
 
 	m.containerToShortName = m.entityTree.ContainerToShortName(constants.MinCharsEachSideShortNames)
 	newLogsPage, err := m.pages[page.LogsPageType].(page.LogsPage).WithUpdatedShortNames(m.containerToShortName)

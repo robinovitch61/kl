@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/filter"
 	"github.com/robinovitch61/kl/internal/filterable_viewport"
@@ -193,19 +192,19 @@ func (p LogsPage) WithAppendedLogs(logs []model.PageLog) LogsPage {
 	return p
 }
 
-func (p LogsPage) WithContainerColors(containerIdToColor map[string]lipgloss.Color) LogsPage {
+func (p LogsPage) WithContainerColors(containerIdToColor map[string]model.ContainerColors) LogsPage {
 	allLogs := p.logContainer.GetOrderedLogs()
 	for i := range allLogs {
 		color, ok := containerIdToColor[allLogs[i].Log.Container.ID()]
 		if ok {
-			allLogs[i].Color = color
+			allLogs[i].ContainerColors = color
 		}
 	}
 	p.setLogs(allLogs)
 	return p
 }
 
-func (p LogsPage) WithUpdatedShortNames(f func(model.Container) (string, error)) (LogsPage, error) {
+func (p LogsPage) WithUpdatedShortNames(f func(model.Container) (model.PageLogContainerName, error)) (LogsPage, error) {
 	allLogs := p.logContainer.GetOrderedLogs()
 	for i := range allLogs {
 		short, err := f(allLogs[i].Log.Container)
@@ -291,16 +290,16 @@ func getLogTimestamp(log model.PageLog, format string) string {
 	return ""
 }
 
-func getContainerName(log model.PageLog, format string) string {
-	var name string
+func getContainerName(log model.PageLog, format string) model.PageLogContainerName {
+	var name model.PageLogContainerName
 	if format == "short" {
 		name = log.ContainerNames.Short
 	}
 	if format == "full" {
 		name = log.ContainerNames.Full
 	}
-	if log.Terminated && len(name) > 0 {
-		name += " [TERMINATED]"
+	if log.Terminated && len(name.ContainerName) > 0 {
+		name.ContainerName += " [TERMINATED]"
 	}
 	return name
 }
