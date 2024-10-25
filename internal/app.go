@@ -446,6 +446,10 @@ func (m Model) initialize() (Model, tea.Cmd) {
 	m.pages[page.LogsPageType] = page.NewLogsPage(m.keyMap, m.width, contentHeight, m.config.Descending)
 	m.pages[page.SingleLogPageType] = page.NewSingleLogPage(m.keyMap, m.width, contentHeight)
 
+	if m.config.LogFilter.Value != "" {
+		m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithLogFilter(m.config.LogFilter)
+	}
+
 	m.initialized = true
 
 	// #1: For each namespace in each cluster, subscribe to pod changes that are mapped into container deltas and

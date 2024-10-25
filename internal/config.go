@@ -13,6 +13,7 @@ type Config struct {
 	IgnoreOwnerTypes []string
 	KubeConfigPath   string
 	LogsView         bool
+	LogFilter        model.LogFilter
 	Matchers         model.Matchers
 	Namespaces       string
 	Selector         labels.Selector

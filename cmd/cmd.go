@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -90,6 +91,16 @@ var (
 			cfgFileEnvVar: "logs-view",
 			description:   `If present, start with logs view. Default false (selection page)`,
 			isBool:        true,
+		},
+		"log-filter": {
+			cliShort:      "f",
+			cfgFileEnvVar: "log-filter",
+			description:   `Filter logs by this string on startup. Default no filter`,
+		},
+		"log-regex": {
+			cliShort:      "r",
+			cfgFileEnvVar: "log-regex",
+			description:   `Filter logs by this regex pattern on startup. Default no regex pattern`,
 		},
 		"mc": {
 			cfgFileEnvVar: "match-container",
@@ -172,6 +183,8 @@ func init() {
 		"kubeconfig",
 		"limit",
 		"logs-view",
+		"log-filter",
+		"log-regex",
 		"mc",
 		"mclust",
 		"mns",
@@ -303,7 +316,7 @@ func getIgnoreMatchers(cmd *cobra.Command) model.Matcher {
 		},
 	)
 	if err != nil {
-		fmt.Printf("ignore error: %v\n", err)
+		fmt.Printf("error ignoring: %v\n", err)
 		os.Exit(1)
 	}
 	return *ignoreMatchers
@@ -311,6 +324,33 @@ func getIgnoreMatchers(cmd *cobra.Command) model.Matcher {
 
 func getLogsView(cmd *cobra.Command) bool {
 	return cmd.Flags().Lookup("logs-view").Value.String() == "true"
+}
+
+func getLogFilter(cmd *cobra.Command) model.LogFilter {
+	filter := cmd.Flags().Lookup("log-filter").Value.String()
+	regex := cmd.Flags().Lookup("log-regex").Value.String()
+	if filter != "" && regex != "" {
+		fmt.Println("error: cannot specify both log-filter and log-regex")
+		os.Exit(1)
+	}
+	if filter != "" {
+		return model.LogFilter{
+			Value:   filter,
+			IsRegex: false,
+		}
+	}
+	if regex != "" {
+		_, err := regexp.Compile(regex)
+		if err != nil {
+			fmt.Printf("error compiling log regex: %v\n", err)
+			os.Exit(1)
+		}
+		return model.LogFilter{
+			Value:   regex,
+			IsRegex: true,
+		}
+	}
+	return model.LogFilter{}
 }
 
 func getNamespaces(cmd *cobra.Command) string {
@@ -374,6 +414,7 @@ func getConfig(cmd *cobra.Command) internal.Config {
 		IgnoreOwnerTypes: getIgnoreOwnerTypes(cmd),
 		KubeConfigPath:   getKubeConfigPath(cmd),
 		LogsView:         getLogsView(cmd),
+		LogFilter:        getLogFilter(cmd),
 		Matchers: model.Matchers{
 			AutoSelectMatcher: getAutoSelectMatchers(cmd),
 			IgnoreMatcher:     getIgnoreMatchers(cmd),

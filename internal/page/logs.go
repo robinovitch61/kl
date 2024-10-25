@@ -164,6 +164,12 @@ func (p LogsPage) Help() string {
 	)
 }
 
+func (p LogsPage) WithLogFilter(lf model.LogFilter) LogsPage {
+	p.filterableViewport.Filter.SetValue(lf.Value)
+	p.filterableViewport.Filter.SetIsRegex(lf.IsRegex)
+	return p
+}
+
 func (p LogsPage) GetSelectedLog() *model.PageLog {
 	return p.filterableViewport.GetSelection()
 }
