@@ -154,7 +154,7 @@ func (p FilterableViewport[T]) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left, p.Filter.View(), viewportView)
 }
 
-func (p FilterableViewport[T]) FilterFocused() bool {
+func (p FilterableViewport[T]) HighjackingInput() bool {
 	return p.Filter.Focused()
 }
 

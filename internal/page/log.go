@@ -26,7 +26,7 @@ var _ GenericPage = SingleLogPage{}
 
 func NewSingleLogPage(keyMap keymap.KeyMap, width, height int) SingleLogPage {
 	filterableViewport := filterable_viewport.NewFilterableViewport[viewport.RenderableString](
-		fmt.Sprintf("Single Log - %s for Logs", strings.ToUpper(keyMap.Clear.Help().Key)),
+		"Single Log",
 		true,
 		false,
 		keyMap,
@@ -64,10 +64,6 @@ func (p SingleLogPage) HighjackingInput() bool {
 	return p.filterableViewport.Filter.Focused()
 }
 
-func (p SingleLogPage) HasAppliedFilter() bool {
-	return p.filterableViewport.Filter.Value() != ""
-}
-
 func (p SingleLogPage) ContentToPersist() []string {
 	header, content := veryNicelyFormatThisLog(p.log)
 	res := []string{header}
@@ -81,8 +77,8 @@ func (p SingleLogPage) WithDimensions(width, height int) GenericPage {
 
 func (p SingleLogPage) Help() string {
 	local := []key.Binding{
-		keymap.WithDesc(p.keyMap.Clear, "back to logs"),
 		p.keyMap.Copy,
+		keymap.WithDesc(p.keyMap.Clear, "back to logs"),
 		p.keyMap.PrevLog,
 		p.keyMap.NextLog,
 		key.NewBinding(key.WithHelp("shift+↑/k", "scroll up within log")),
@@ -108,6 +104,10 @@ func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
 	p.filterableViewport.SetHeader([]string{header})
 	p.filterableViewport.SetAllRows(renderableStrings)
 	return p
+}
+
+func (p SingleLogPage) HasAppliedFilter() bool {
+	return p.filterableViewport.Filter.Value() != ""
 }
 
 func veryNicelyFormatThisLog(log model.PageLog) (string, []string) {

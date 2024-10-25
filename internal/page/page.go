@@ -9,7 +9,6 @@ type GenericPage interface {
 	View() string
 	ContentToPersist() []string
 	HighjackingInput() bool
-	HasAppliedFilter() bool
 	WithDimensions(width, height int) GenericPage
 	Help() string
 }

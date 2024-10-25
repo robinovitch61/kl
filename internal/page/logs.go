@@ -9,7 +9,6 @@ import (
 	"github.com/robinovitch61/kl/internal/filterable_viewport"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/model"
-	"strings"
 )
 
 var (
@@ -65,14 +64,12 @@ func (p LogsPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		// if filter is focused, make sure key presses don't also trigger any other actions
-		if p.filterableViewport.FilterFocused() {
+		if p.HighjackingInput() {
 			p.filterableViewport, cmd = p.filterableViewport.Update(msg)
 			cmds = append(cmds, cmd)
 			return p, tea.Batch(cmds...)
 		}
 
-		// change the timestamp format shown on the logs
 		if key.Matches(msg, p.keyMap.Timestamps) {
 			p.timestampFormatIdx = (p.timestampFormatIdx + 1) % len(timestampFormats)
 			allLogs := p.logContainer.GetOrderedLogs()
@@ -83,7 +80,6 @@ func (p LogsPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
 			return p, nil
 		}
 
-		// change the container name format shown on the logs
 		if key.Matches(msg, p.keyMap.Name) {
 			p.nameFormatIdx = (p.nameFormatIdx + 1) % len(nameFormats)
 			allLogs := p.logContainer.GetOrderedLogs()
@@ -94,7 +90,6 @@ func (p LogsPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
 			return p, nil
 		}
 
-		// change if logs are shown ascending or descending
 		if key.Matches(msg, p.keyMap.ReverseOrder) {
 			// switch the log order
 			p.logContainer.ToggleAscending()
@@ -123,11 +118,7 @@ func (p LogsPage) View() string {
 }
 
 func (p LogsPage) HighjackingInput() bool {
-	return p.filterableViewport.FilterFocused()
-}
-
-func (p LogsPage) HasAppliedFilter() bool {
-	return p.filterableViewport.Filter.Value() != ""
+	return p.filterableViewport.HighjackingInput()
 }
 
 func (p LogsPage) ContentToPersist() []string {
@@ -150,7 +141,6 @@ func (p LogsPage) WithDimensions(width, height int) GenericPage {
 func (p LogsPage) Help() string {
 	local := []key.Binding{
 		keymap.WithDesc(p.keyMap.Enter, "zoom on log"),
-		keymap.WithDesc(p.keyMap.Clear, "back to selection"),
 		p.keyMap.Context,
 		p.keyMap.Name,
 		p.keyMap.Timestamps,
@@ -282,7 +272,7 @@ func (p *LogsPage) updateFilterLabel() {
 	if p.logContainer.Ascending() {
 		order = "Ascending"
 	}
-	label := fmt.Sprintf("Logs %s - %s for Selection, %s to Zoom", order, strings.ToUpper(p.keyMap.Clear.Help().Key), titleCase(p.keyMap.Enter.Help().Key))
+	label := fmt.Sprintf("Logs %s - S for Selection, Enter to Zoom", order)
 	p.filterableViewport.Filter.SetLabel(label)
 }
 
@@ -308,11 +298,4 @@ func getContainerName(log model.PageLog, format string) model.PageLogContainerNa
 		name.ContainerName += " [TERMINATED]"
 	}
 	return name
-}
-
-func titleCase(s string) string {
-	if len(s) == 0 {
-		return s
-	}
-	return strings.ToUpper(s[:1]) + s[1:]
 }
