@@ -29,6 +29,7 @@ func NewSingleLogPage(keyMap keymap.KeyMap, width, height int) SingleLogPage {
 		"Single Log",
 		true,
 		false,
+		true,
 		keyMap,
 		width,
 		height,

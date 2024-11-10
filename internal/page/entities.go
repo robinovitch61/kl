@@ -42,6 +42,7 @@ func NewEntitiesPage(
 		"Select with Enter - L to View Logs",
 		false,
 		true,
+		false,
 		keyMap,
 		width,
 		height,

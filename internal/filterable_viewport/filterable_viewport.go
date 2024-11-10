@@ -26,7 +26,8 @@ type FilterableViewport[T viewport.RenderableComparable] struct {
 func NewFilterableViewport[T viewport.RenderableComparable](
 	filterLabel string,
 	filterWithContext bool,
-	selectionEnabled bool,
+	startSelectionEnabled bool,
+	startWrapOn bool,
 	km keymap.KeyMap,
 	width, height int,
 	allRows []T,
@@ -41,7 +42,8 @@ func NewFilterableViewport[T viewport.RenderableComparable](
 	vp.SelectedItemStyle = style.Inverse
 	vp.HighlightStyle = style.Inverse
 
-	vp.SetSelectionEnabled(selectionEnabled)
+	vp.SetSelectionEnabled(startSelectionEnabled)
+	vp.SetWrapText(startWrapOn)
 
 	return FilterableViewport[T]{
 		Filter:            f,

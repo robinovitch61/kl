@@ -33,6 +33,7 @@ func NewLogsPage(keyMap keymap.KeyMap, width, height int, descending bool) LogsP
 		"", // set by updateFilterLabel below
 		true,
 		true,
+		false,
 		keyMap,
 		width,
 		height,
