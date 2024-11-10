@@ -3,10 +3,11 @@ package model
 import "time"
 
 type ContainerStatus struct {
-	State        ContainerState
-	StartedAt    time.Time
-	TerminatedAt time.Time
-	WaitingFor   string
+	State         ContainerState
+	StartedAt     time.Time
+	TerminatedAt  time.Time
+	WaitingFor    string
+	TerminatedFor string
 }
 
 type ContainerState int

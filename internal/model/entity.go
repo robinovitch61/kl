@@ -48,11 +48,15 @@ func (e Entity) Render() string {
 				// terminated container with started at and terminated at time, show "for X time, ran X time"
 				res += " for " + util.TimeSince(e.Container.Status.TerminatedAt) + ", ran " + util.FormatDuration(e.Container.Status.TerminatedAt.Sub(e.Container.Status.StartedAt))
 			}
+
+			if e.Container.Status.TerminatedFor != "" {
+				res += ": " + e.Container.Status.TerminatedFor
+			}
 		}
 
 		// waiting container with waiting for reason, show "waiting for X"
 		if e.Container.Status.State == ContainerWaiting && e.Container.Status.WaitingFor != "" {
-			res += ", " + e.Container.Status.WaitingFor
+			res += ": " + e.Container.Status.WaitingFor
 		}
 
 		// add "NEW" to newly started containers

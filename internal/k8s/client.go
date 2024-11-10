@@ -299,23 +299,31 @@ func getStatus(podContainerStatuses []v1.ContainerStatus, containerName string) 
 
 			var startedAt time.Time
 			var terminatedAt time.Time
-			var waitingFor string
-			if state == model.ContainerRunning && status.State.Running != nil {
-				startedAt = status.State.Running.StartedAt.Time
-			}
-			if state == model.ContainerTerminated && status.State.Terminated != nil {
-				startedAt = status.State.Terminated.StartedAt.Time
-				terminatedAt = status.State.Terminated.FinishedAt.Time
-			}
-			if state == model.ContainerWaiting && status.State.Waiting != nil {
-				waitingFor = status.State.Waiting.Reason
+			var waitingFor, terminatedFor string
+			switch state {
+			case model.ContainerRunning:
+				if status.State.Running != nil {
+					startedAt = status.State.Running.StartedAt.Time
+				}
+			case model.ContainerTerminated:
+				if status.State.Terminated != nil {
+					startedAt = status.State.Terminated.StartedAt.Time
+					terminatedAt = status.State.Terminated.FinishedAt.Time
+					terminatedFor = status.State.Terminated.Reason
+				}
+			case model.ContainerWaiting:
+				if status.State.Waiting != nil {
+					waitingFor = status.State.Waiting.Reason
+				}
+			default:
 			}
 
 			return model.ContainerStatus{
-				State:        state,
-				StartedAt:    startedAt,
-				TerminatedAt: terminatedAt,
-				WaitingFor:   waitingFor,
+				State:         state,
+				StartedAt:     startedAt,
+				TerminatedAt:  terminatedAt,
+				WaitingFor:    waitingFor,
+				TerminatedFor: terminatedFor,
 			}, nil
 		}
 	}
