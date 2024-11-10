@@ -153,6 +153,10 @@ func (m Model) GetContextualMatchIdx() int {
 	return m.indexesMatchingFilter[m.currentMatchNum]
 }
 
+func (m Model) HasContextualMatches() bool {
+	return m.FilteringWithContext && len(m.indexesMatchingFilter) > 0
+}
+
 func (m Model) ViewHeight() int {
 	return lipgloss.Height(m.View())
 }

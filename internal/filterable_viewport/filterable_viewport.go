@@ -94,7 +94,9 @@ func (p FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.C
 				} else if key.Matches(msg, p.Filter.KeyMap.FilterPrevRow) {
 					p.Filter.DecrementFilteredSelectionNum()
 				}
-				p.scrollViewportToItemIdx(p.Filter.GetContextualMatchIdx())
+				if p.Filter.HasContextualMatches() {
+					p.scrollViewportToItemIdx(p.Filter.GetContextualMatchIdx())
+				}
 			}
 
 			// focus filter and start editing
