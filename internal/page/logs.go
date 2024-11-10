@@ -122,7 +122,7 @@ func (p LogsPage) HighjackingInput() bool {
 	return p.filterableViewport.HighjackingInput()
 }
 
-func (p LogsPage) ContentToPersist() []string {
+func (p LogsPage) ContentForFile() []string {
 	var content []string
 	for _, l := range p.logContainer.GetOrderedLogs() {
 		if p.filterableViewport.Filter.FilteringWithContext {

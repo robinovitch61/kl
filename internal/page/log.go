@@ -65,8 +65,15 @@ func (p SingleLogPage) HighjackingInput() bool {
 	return p.filterableViewport.Filter.Focused()
 }
 
-func (p SingleLogPage) ContentToPersist() []string {
-	header, content := veryNicelyFormatThisLog(p.log)
+func (p SingleLogPage) ContentForFile() []string {
+	header, content := veryNicelyFormatThisLog(p.log, true)
+	res := []string{header}
+	return append(res, content...)
+}
+
+func (p SingleLogPage) ContentForClipboard() []string {
+	// don't include asci escape chars in header when copying single log to clipboard
+	header, content := veryNicelyFormatThisLog(p.log, false)
 	res := []string{header}
 	return append(res, content...)
 }
@@ -97,7 +104,7 @@ func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
 		return p
 	}
 	p.log = log
-	header, content := veryNicelyFormatThisLog(log)
+	header, content := veryNicelyFormatThisLog(log, true)
 	var renderableStrings []viewport.RenderableString
 	for _, c := range content {
 		renderableStrings = append(renderableStrings, viewport.RenderableString{Content: c})
@@ -111,8 +118,8 @@ func (p SingleLogPage) HasAppliedFilter() bool {
 	return p.filterableViewport.Filter.Value() != ""
 }
 
-func veryNicelyFormatThisLog(log model.PageLog) (string, []string) {
-	header := fmt.Sprintf("%s | %s", log.Timestamps.Full, log.RenderName(log.ContainerNames.Full))
+func veryNicelyFormatThisLog(log model.PageLog, styleHeader bool) (string, []string) {
+	header := fmt.Sprintf("%s | %s", log.Timestamps.Full, log.RenderName(log.ContainerNames.Full, styleHeader))
 	return header, formatJSON(log.Log.Content)
 }
 

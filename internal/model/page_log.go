@@ -39,9 +39,9 @@ func (l PageLog) Render() string {
 	label := ""
 	if l.CurrentName.ContainerName != "" {
 		if ts == "" {
-			label = "|" + l.RenderName(l.CurrentName) + "|"
+			label = "|" + l.RenderName(l.CurrentName, true) + "|"
 		} else {
-			label = l.RenderName(l.CurrentName) + "|"
+			label = l.RenderName(l.CurrentName, true) + "|"
 		}
 	}
 	prefix := ts + label
@@ -61,9 +61,15 @@ func (l PageLog) Equals(other interface{}) bool {
 	return l.Log == otherLog.Log && l.Timestamps.Full == otherLog.Timestamps.Full
 }
 
-func (l PageLog) RenderName(name PageLogContainerName) string {
-	renderedPrefix := lipgloss.NewStyle().Background(l.ContainerColors.ID).Foreground(lipgloss.Color("#000000")).Render(name.Prefix)
-	renderedName := lipgloss.NewStyle().Background(l.ContainerColors.Name).Foreground(lipgloss.Color("#000000")).Render(name.ContainerName)
+func (l PageLog) RenderName(name PageLogContainerName, includeStyle bool) string {
+	var renderedPrefix, renderedName string
+	if includeStyle {
+		renderedPrefix = lipgloss.NewStyle().Background(l.ContainerColors.ID).Foreground(lipgloss.Color("#000000")).Render(name.Prefix)
+		renderedName = lipgloss.NewStyle().Background(l.ContainerColors.Name).Foreground(lipgloss.Color("#000000")).Render(name.ContainerName)
+	} else {
+		renderedPrefix = name.Prefix
+		renderedName = name.ContainerName
+	}
 	if lipgloss.Width(renderedPrefix) == 0 {
 		return renderedName
 	}

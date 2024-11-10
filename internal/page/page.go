@@ -7,7 +7,7 @@ import (
 type GenericPage interface {
 	Update(msg tea.Msg) (GenericPage, tea.Cmd)
 	View() string
-	ContentToPersist() []string
+	ContentForFile() []string
 	HighjackingInput() bool
 	WithDimensions(width, height int) GenericPage
 	Help() string
