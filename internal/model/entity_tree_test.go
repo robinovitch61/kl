@@ -135,7 +135,7 @@ func TestEntityTreeImpl_AddOrReplaceUpdate(t *testing.T) {
 	tree.AddOrReplace(container1Cluster1)
 
 	updated := container1Cluster1
-	updated.LogScannerPending = true
+	updated.State = ScannerStarting
 	tree.AddOrReplace(updated)
 
 	entities := tree.GetEntities()
@@ -272,16 +272,16 @@ func TestEntityTreeImpl_AnyPendingContainers(t *testing.T) {
 	tree.AddOrReplace(container1Cluster1)
 	tree.AddOrReplace(container1Cluster2)
 
-	if tree.AnyPendingContainers() {
-		t.Errorf("AnyPendingContainers() = true, want false")
+	if tree.AnyScannerStarting() {
+		t.Errorf("AnyScannerStarting() = true, want false")
 	}
 
 	pendingContainer := container3Cluster1
-	pendingContainer.LogScannerPending = true
+	pendingContainer.State = ScannerStarting
 	tree.AddOrReplace(pendingContainer)
 
-	if !tree.AnyPendingContainers() {
-		t.Errorf("AnyPendingContainers() = false, want true")
+	if !tree.AnyScannerStarting() {
+		t.Errorf("AnyScannerStarting() = false, want true")
 	}
 }
 
@@ -396,15 +396,16 @@ func TestRemoveOne(t *testing.T) {
 func TestEntityTreeImpl_GetSelectionActions(t *testing.T) {
 	tree := newTree()
 	selectedContainer1Cluster1 := container1Cluster1
-	selectedContainer1Cluster1.LogScanner = &LogScanner{}
+	selectedContainer1Cluster1.State = Scanning
 	deselectedButRunningContainer1Cluster2 := container1Cluster2
+	deselectedButRunningContainer1Cluster2.State = Inactive
 	deselectedButRunningContainer1Cluster2.Container.Status.State = ContainerRunning
 	tree.AddOrReplace(selectedContainer1Cluster1)
 	tree.AddOrReplace(container2Cluster1)
 	tree.AddOrReplace(deselectedButRunningContainer1Cluster2)
 
 	pendingContainer := container3Cluster1
-	pendingContainer.LogScannerPending = true
+	pendingContainer.State = ScannerStarting
 	tree.AddOrReplace(pendingContainer)
 
 	tests := []struct {
@@ -592,7 +593,7 @@ func TestEntityTreeImpl_ContainerToShortName(t *testing.T) {
 
 	tree := newTree()
 	c1cl1 := container1Cluster1
-	c1cl1.LogScanner = &LogScanner{}
+	c1cl1.State = Scanning
 	tree.AddOrReplace(c1cl1)
 	f := tree.ContainerToShortName(3)
 	expected := map[Container]PageLogContainerName{
@@ -604,7 +605,7 @@ func TestEntityTreeImpl_ContainerToShortName(t *testing.T) {
 	compare(f, expected)
 
 	c2cl1 := container2Cluster1
-	c2cl1.LogScanner = &LogScanner{}
+	c2cl1.State = Scanning
 	tree.AddOrReplace(c2cl1)
 	f = tree.ContainerToShortName(3)
 	expected = map[Container]PageLogContainerName{
@@ -620,7 +621,7 @@ func TestEntityTreeImpl_ContainerToShortName(t *testing.T) {
 	compare(f, expected)
 
 	c1cl2 := container1Cluster2
-	c1cl2.LogScanner = &LogScanner{}
+	c1cl2.State = Scanning
 	tree.AddOrReplace(c1cl2)
 	f = tree.ContainerToShortName(3)
 	expected = map[Container]PageLogContainerName{

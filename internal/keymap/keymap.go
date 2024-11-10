@@ -17,7 +17,6 @@ type KeyMap struct {
 	FilterPrevRow key.Binding
 	Help          key.Binding
 	Logs          key.Binding
-	Lookback      key.Binding
 	Name          key.Binding
 	NextLog       key.Binding
 	PrevLog       key.Binding
@@ -25,6 +24,7 @@ type KeyMap struct {
 	ReverseOrder  key.Binding
 	Save          key.Binding
 	Selection     key.Binding
+	SinceTime     key.Binding
 	Timestamps    key.Binding
 	TogglePause   key.Binding
 	Wrap          key.Binding
@@ -75,10 +75,6 @@ var DefaultKeyMap = KeyMap{
 		key.WithKeys("l", "L"),
 		key.WithHelp("l/L", "go to logs view"),
 	),
-	Lookback: key.NewBinding(
-		key.WithKeys("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"),
-		key.WithHelp("0-9", "change log start time"),
-	),
 	Name: key.NewBinding(
 		key.WithKeys("c"),
 		key.WithHelp("c", "show short/full/no container names"),
@@ -107,6 +103,10 @@ var DefaultKeyMap = KeyMap{
 		key.WithKeys("s", "S"),
 		key.WithHelp("s/S", "go to selection view"),
 	),
+	SinceTime: key.NewBinding(
+		key.WithKeys("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"),
+		key.WithHelp("0-9", "change log start time"),
+	),
 	Timestamps: key.NewBinding(
 		key.WithKeys("t"),
 		key.WithHelp("t", "show short/full/no timestamps"),
@@ -123,17 +123,17 @@ var DefaultKeyMap = KeyMap{
 
 func LookbackKeyBindings(km KeyMap) []key.Binding {
 	return []key.Binding{
-		km.Lookback,
-		WithDesc(WithKeys(km.Lookback, "0"), "now onwards"),
-		WithDesc(WithKeys(km.Lookback, "1"), "1m"),
-		WithDesc(WithKeys(km.Lookback, "2"), "5m"),
-		WithDesc(WithKeys(km.Lookback, "3"), "15m"),
-		WithDesc(WithKeys(km.Lookback, "4"), "30m"),
-		WithDesc(WithKeys(km.Lookback, "5"), "1h"),
-		WithDesc(WithKeys(km.Lookback, "6"), "3h"),
-		WithDesc(WithKeys(km.Lookback, "7"), "12h"),
-		WithDesc(WithKeys(km.Lookback, "8"), "1d"),
-		WithDesc(WithKeys(km.Lookback, "9"), "all time"),
+		km.SinceTime,
+		WithDesc(WithKeys(km.SinceTime, "0"), "now onwards"),
+		WithDesc(WithKeys(km.SinceTime, "1"), "1m"),
+		WithDesc(WithKeys(km.SinceTime, "2"), "5m"),
+		WithDesc(WithKeys(km.SinceTime, "3"), "15m"),
+		WithDesc(WithKeys(km.SinceTime, "4"), "30m"),
+		WithDesc(WithKeys(km.SinceTime, "5"), "1h"),
+		WithDesc(WithKeys(km.SinceTime, "6"), "3h"),
+		WithDesc(WithKeys(km.SinceTime, "7"), "12h"),
+		WithDesc(WithKeys(km.SinceTime, "8"), "1d"),
+		WithDesc(WithKeys(km.SinceTime, "9"), "all time"),
 	}
 }
 

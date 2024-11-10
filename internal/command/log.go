@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/errtype"
 	"github.com/robinovitch61/kl/internal/k8s"
 	"github.com/robinovitch61/kl/internal/model"
@@ -21,6 +22,7 @@ func StartLogScannerCmd(
 	sinceTime time.Time,
 ) tea.Cmd {
 	return func() tea.Msg {
+		dev.Debug(fmt.Sprintf("cmd running to start log scanner for container %v", container.HumanReadable()))
 		// update the container status just before getting a log stream in case status is not up to date
 		status, err := client.GetContainerStatus(container)
 		if err != nil {
@@ -30,14 +32,6 @@ func StartLogScannerCmd(
 			}
 		}
 		container.Status = status
-
-		// exit early if the container is not running
-		if status.State != model.ContainerRunning {
-			return StartedLogScannerMsg{
-				LogScanner: model.LogScanner{Container: container},
-				Err:        fmt.Errorf("container %s is not running", container.Name),
-			}
-		}
 
 		// attempt to create and start a log scanner from a k8s log stream
 		scanner, cancel, err := client.GetLogStream(container, sinceTime)
@@ -63,37 +57,47 @@ type GetNewLogsMsg struct {
 func GetNextLogsCmd(ls model.LogScanner, duration time.Duration) tea.Cmd {
 	return func() tea.Msg {
 		for {
-			collectedLogs, doneScanning, err := collectLogsForDuration(ls, duration)
-			if err != nil {
-				return GetNewLogsMsg{LogScanner: ls, Err: err}
+			logs := collectLogsForDuration(ls, duration)
+			if logs.err != nil {
+				return GetNewLogsMsg{LogScanner: ls, Err: logs.err}
 			}
-			if len(collectedLogs) > 0 || doneScanning {
-				return GetNewLogsMsg{LogScanner: ls, NewLogs: collectedLogs, DoneScanning: doneScanning}
+			if len(logs.collectedLogs) > 0 || logs.doneScanning {
+				return GetNewLogsMsg{LogScanner: ls, NewLogs: logs.collectedLogs, DoneScanning: logs.doneScanning}
 			}
 		}
 	}
 }
 
-func collectLogsForDuration(ls model.LogScanner, duration time.Duration) ([]model.Log, bool, error) {
+type collectedLogsResult struct {
+	collectedLogs []model.Log
+	doneScanning  bool
+	err           error
+}
+
+func collectLogsForDuration(ls model.LogScanner, duration time.Duration) collectedLogsResult {
 	var collectedLogs []model.Log
 	timeout := time.After(duration)
 
 	for {
 		select {
-		case log := <-ls.LogChan:
+		case log, ok := <-ls.LogChan:
+			if !ok {
+				// channel is closed
+				return collectedLogsResult{collectedLogs: collectedLogs, doneScanning: true, err: nil}
+			}
 			collectedLogs = append(collectedLogs, log)
 		case err := <-ls.ErrChan:
 			if errors.Is(err, errtype.LogScannerStoppedErr{}) {
-				return collectedLogs, true, nil
+				return collectedLogsResult{collectedLogs: collectedLogs, doneScanning: true, err: nil}
 			}
-			return nil, false, err
+			return collectedLogsResult{collectedLogs: collectedLogs, doneScanning: true, err: err}
 		case <-timeout:
-			return collectedLogs, false, nil
+			return collectedLogsResult{collectedLogs: collectedLogs, doneScanning: false, err: nil}
 		}
 	}
 }
 
-type LogScannersStoppedMsg struct {
+type StoppedLogScannersMsg struct {
 	Containers []model.Container
 	Restart    bool
 	KeepLogs   bool
@@ -102,21 +106,21 @@ type LogScannersStoppedMsg struct {
 // StopLogScannerCmd stops an Entity's LogScanner
 func StopLogScannerCmd(entity model.Entity, keepLogs bool) tea.Cmd {
 	return func() tea.Msg {
-		if entity.IsSelected() {
+		if entity.LogScanner != nil {
 			entity.LogScanner.Cancel()
-			return LogScannersStoppedMsg{Containers: []model.Container{entity.Container}, Restart: false, KeepLogs: keepLogs}
+			return StoppedLogScannersMsg{Containers: []model.Container{entity.Container}, Restart: false, KeepLogs: keepLogs}
 		}
-		return LogScannersStoppedMsg{Containers: []model.Container{}, Restart: false, KeepLogs: keepLogs}
+		return StoppedLogScannersMsg{Containers: []model.Container{}, Restart: false, KeepLogs: keepLogs}
 	}
 }
 
-func StopLogScannersInPrepForNewLookbackCmd(logScanners []model.LogScanner) tea.Cmd {
+func StopLogScannersInPrepForNewSinceTimeCmd(logScanners []model.LogScanner) tea.Cmd {
 	return func() tea.Msg {
 		var specs []model.Container
 		for _, ls := range logScanners {
 			ls.Cancel()
 			specs = append(specs, ls.Container)
 		}
-		return LogScannersStoppedMsg{Containers: specs, Restart: true}
+		return StoppedLogScannersMsg{Containers: specs, Restart: true, KeepLogs: false}
 	}
 }

@@ -6,10 +6,10 @@ import (
 )
 
 type ContainerDelta struct {
-	Time      time.Time
-	Container Container
-	ToDelete  bool
-	Selected  bool
+	Time       time.Time
+	Container  Container
+	ToDelete   bool
+	ToActivate bool
 }
 
 // ContainerDeltaSet sorts ContainerDeltas by time, Container ID ascending

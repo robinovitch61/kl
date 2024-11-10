@@ -227,10 +227,10 @@ func getContainerDeltas(
 		matcherSelectsContainer := matchers.AutoSelectMatcher.MatchesContainer(containers[i])
 		labelSelectorSelectsContainer := !selector.Empty() && selector.Matches(labels.Set(pod.Labels))
 		delta := model.ContainerDelta{
-			Time:      now,
-			Container: containers[i],
-			ToDelete:  delete,
-			Selected:  matcherSelectsContainer || labelSelectorSelectsContainer,
+			Time:       now,
+			Container:  containers[i],
+			ToDelete:   delete,
+			ToActivate: matcherSelectsContainer || labelSelectorSelectsContainer,
 		}
 		deltas = append(deltas, delta)
 	}

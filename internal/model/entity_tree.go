@@ -29,8 +29,8 @@ type EntityTree interface {
 	// GetClusterNamespaces returns all cluster namespaces
 	GetClusterNamespaces() []ClusterNamespaces
 
-	// AnyPendingContainers returns true if any container in the tree is pending
-	AnyPendingContainers() bool
+	// AnyScannerStarting returns true if any entity in the tree is in the ScannerStarting state
+	AnyScannerStarting() bool
 
 	// IsVisibleGivenFilter returns true if the entity or any of its children or parents match the filter
 	IsVisibleGivenFilter(entity Entity, filter filter.Model) bool
@@ -44,11 +44,10 @@ type EntityTree interface {
 
 	// GetSelectionActions returns a map of container Entity's to a boolean indicating if they
 	// should be activated or deactivated based on the current selection
-	// If an Entity doesn't match the filter, it is not included in the map
-	// If an Entity is pending, it is not included in the map
+	// If an Entity doesn't match the filter, it is not included in the response
+	// An Entity's current state is considered, e.g. no Inactive entities will be deactivated again
 	// If the selection is a container, only the selection is returned
-	// If it is a cluster, namespace, pod owner, or pod, all children containers are returned
-	// If the request is to activate, only running containers are returned
+	// If it is a cluster, namespace, pod owner, or pod, all children containers are considered
 	GetSelectionActions(selectedEntity Entity, filter filter.Model) map[Entity]bool
 
 	// GetEntity gets an entity by its Container
@@ -303,10 +302,10 @@ func (et entityTreeImpl) GetClusterNamespaces() []ClusterNamespaces {
 	return et.allClusterNamespaces
 }
 
-func (et entityTreeImpl) AnyPendingContainers() bool {
+func (et entityTreeImpl) AnyScannerStarting() bool {
 	allEntities := et.GetEntities()
 	for _, entity := range allEntities {
-		if entity.LogScannerPending {
+		if entity.State == ScannerStarting {
 			return true
 		}
 	}
@@ -402,19 +401,11 @@ func (et *entityTreeImpl) removeEntity(path []string, depth int, current map[str
 func (et *entityTreeImpl) GetSelectionActions(selectedEntity Entity, filter filter.Model) map[Entity]bool {
 	actions := make(map[Entity]bool)
 
-	if selectedEntity.IsContainer() {
-		if et.IsVisibleGivenFilter(selectedEntity, filter) && !selectedEntity.LogScannerPending {
-			actions[selectedEntity] = !selectedEntity.IsSelected()
-		}
+	if selectedEntity.IsContainer() && et.IsVisibleGivenFilter(selectedEntity, filter) {
+		actions[selectedEntity] = selectedEntity.State.ActivatesWhenSelected()
 	}
 
 	et.traverseChildren(selectedEntity, filter, actions)
-
-	for entity := range actions {
-		if entity.LogScannerPending {
-			delete(actions, entity)
-		}
-	}
 
 	deactivateAny := false
 	for _, shouldActivate := range actions {
@@ -431,16 +422,26 @@ func (et *entityTreeImpl) GetSelectionActions(selectedEntity Entity, filter filt
 		}
 	}
 
-	for entity, shouldBeActive := range actions {
-		// if entity already inactive, ignore
-		if !shouldBeActive && !entity.IsSelected() {
-			delete(actions, entity)
-		}
-	}
-
-	// even though requests to k8s for waiting containers "succeed", we don't want to even try them
-	for entity, shouldBeActive := range actions {
-		if shouldBeActive && entity.Container.Status.State != ContainerRunning {
+	// exclude invalid states
+	for entity, shouldActivate := range actions {
+		switch entity.State {
+		case Inactive:
+			if !shouldActivate {
+				delete(actions, entity)
+			}
+		case WantScanning:
+			if shouldActivate {
+				delete(actions, entity)
+			}
+		case Scanning:
+			if shouldActivate {
+				delete(actions, entity)
+			}
+		case Deleted:
+			if shouldActivate {
+				delete(actions, entity)
+			}
+		default:
 			delete(actions, entity)
 		}
 	}
@@ -456,8 +457,8 @@ func (et *entityTreeImpl) traverseChildren(entity Entity, filter filter.Model, a
 
 	for _, child := range node.children {
 		if child.entity.IsContainer() {
-			if et.IsVisibleGivenFilter(child.entity, filter) && !child.entity.LogScannerPending {
-				actions[child.entity] = !child.entity.IsSelected()
+			if et.IsVisibleGivenFilter(child.entity, filter) {
+				actions[child.entity] = child.entity.State.ActivatesWhenSelected()
 			}
 		} else {
 			et.traverseChildren(child.entity, filter, actions)
@@ -603,7 +604,7 @@ func (et entityTreeImpl) ContainerToShortName(minCharsEachSide int) func(Contain
 	activePodOwners := make(map[string]bool)
 	activePods := make(map[string]bool)
 	for _, e := range entities {
-		if !e.IsSelected() {
+		if !e.State.MayHaveLogs() {
 			continue
 		}
 		activeClusters[e.Container.Cluster] = true

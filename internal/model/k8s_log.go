@@ -3,7 +3,9 @@ package model
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"github.com/google/uuid"
+	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/errtype"
 	"strings"
 	"time"
@@ -44,6 +46,7 @@ func (ls LogScanner) StartReadingLogs() {
 
 			// logs should have at least a timestamp and content - ignore ones that do not
 			if len(vals) < 2 {
+				dev.Debug(fmt.Sprintf("skipping log: %v", ls.logLineScanner.Text()))
 				continue
 			}
 

@@ -1,7 +1,5 @@
 package internal
 
-// NOTE: Searching for `// #` will walk you through the main flow of the application
-
 import (
 	"context"
 	"flag"
@@ -84,8 +82,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case message.CleanupCompleteMsg:
 		return m, tea.Quit
 
-	// #5: The user presses a key. The key could be global, e.g. exit, or handled by the current page. Key presses update
-	// models and can trigger commands to be run. Commands are used to perform background work, e.g. starting a log scanner.
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)
 
@@ -113,37 +109,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 		return m, tea.Batch(cmds...)
 
-	// #3: Receive a batch of container deltas and update the tree accordingly
 	case command.GetContainerDeltasMsg:
 		m, cmd = m.handleContainerDeltasMsg(msg)
 		cmds = append(cmds, cmd)
 		return m, tea.Batch(cmds...)
 
-	// #4: By now, the entity tree should be populated and the user is oriented on the entities page with the selected
-	// (highlighted) entity at the top. From now on, when new entities are added to or removed from the tree, the
-	// selected entity will be maintained so that the user doesn't press enter on the wrong entity. If the selected
-	// entity is removed, the selection will be moved to the next entity in the tree.
 	case message.StartMaintainEntitySelectionMsg:
 		if m.pages[page.EntitiesPageType] != nil {
 			m.pages[page.EntitiesPageType] = m.pages[page.EntitiesPageType].(page.EntityPage).WithMaintainSelection(true)
 		}
 		return m, nil
 
-	// #7: Receive a log scanner for a container. At this point:
-	// - the entity representing the container in the tree will still be pending
-	// - a goroutine will be running that is scanning for container logs and sending them to the scanner's logs chan
 	case command.StartedLogScannerMsg:
 		m, cmd = m.handleStartedLogScannerMsg(msg)
 		cmds = append(cmds, cmd)
 		return m, tea.Batch(cmds...)
 
-	// #8: Receive new logs from a log scanner. Add them to the page log buffer and collect more logs
 	case command.GetNewLogsMsg:
 		m, cmd = m.handleNewLogsMsg(msg)
 		cmds = append(cmds, cmd)
 		return m, tea.Batch(cmds...)
 
-	// #9: Time to update the logs page with the buffered logs and empty the buffer. If paused, no-op
 	case message.BatchUpdateLogsMsg:
 		if len(m.pageLogBuffer) > 0 && !m.pauseState {
 			m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithAppendedLogs(m.pageLogBuffer)
@@ -151,8 +137,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Tick(constants.BatchUpdateLogsInterval, func(t time.Time) tea.Msg { return message.BatchUpdateLogsMsg{} })
 
-	case command.LogScannersStoppedMsg:
-		m, cmd = m.handleLogScannersStoppedMsg(msg)
+	case command.StoppedLogScannersMsg:
+		m, cmd = m.handleStoppedLogScannersMsg(msg)
 		cmds = append(cmds, cmd)
 		return m, tea.Batch(cmds...)
 
@@ -243,10 +229,10 @@ func (m Model) topBar() string {
 	var numPending, numSelected int
 	containerEntities := m.entityTree.GetContainerEntities()
 	for _, e := range containerEntities {
-		if e.LogScannerPending {
+		if e.State == model.ScannerStarting || e.State == model.WantScanning {
 			numPending++
 		}
-		if e.IsSelected() {
+		if e.State.MayHaveLogs() {
 			numSelected++
 		}
 	}
@@ -452,8 +438,6 @@ func (m Model) initialize() (Model, tea.Cmd) {
 
 	m.initialized = true
 
-	// #1: For each namespace in each cluster, subscribe to pod changes that are mapped into container deltas and
-	// returned to the app. This builds the initial state of the entity tree and keeps it in sync with cluster states.
 	var cmds []tea.Cmd
 	for _, clusterNamespaces := range m.allClusterNamespaces {
 		for _, namespace := range clusterNamespaces.Namespaces {
@@ -516,7 +500,7 @@ func (m Model) cleanupCmd() tea.Cmd {
 
 		if m.entityTree != nil {
 			for _, e := range m.entityTree.GetEntities() {
-				if e.IsSelected() {
+				if e.LogScanner != nil {
 					e.LogScanner.Cancel()
 				}
 			}
@@ -539,17 +523,17 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
-	if !m.initialized {
-		return m, nil
-	}
-
-	// #11: After a long and prosperous interactive log session, user exits the app. Some cleanup is done before exiting
 	if key.Matches(msg, m.keyMap.Quit) {
 		return m, m.cleanupCmd()
 	}
 
+	if !m.initialized {
+		return m, nil
+	}
+
 	// ignore key messages other than exit if an error is present
 	if m.err != nil {
+		// TODO: everywhere m.err is set, should also stop scanners, timed updates, & other cleanup without exiting
 		return m, nil
 	}
 
@@ -638,9 +622,9 @@ func (m Model) handleEntitiesPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 		}
 	}
 
-	// change lookback period for logs
-	if key.Matches(msg, m.keyMap.Lookback) {
-		return m.changeLookbackPeriod(msg)
+	// change since time for logs
+	if key.Matches(msg, m.keyMap.SinceTime) {
+		return m.changeSinceTime(msg)
 	}
 
 	// toggle pause state
@@ -679,24 +663,18 @@ func (m Model) doSelectionActions(selectionActions map[model.Entity]bool) (Model
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
-	// #6a: The user presses enter on the entities page. Container log scanners are started or stopped accordingly
-	// Note that a log scanner can also be started if the container matches the configured AutoSelectMatcher - see 6b
 	for entity, startLogScanner := range selectionActions {
+		dev.Debug(fmt.Sprintf("selection action: %s, startLogScanner: %t", entity.Container.HumanReadable(), startLogScanner))
 		if startLogScanner {
-			m, cmd = m.getStartLogScannerCmd(m.client, entity, m.sinceTime.Time)
+			newEntity, newTree, actions := entity.Activate(m.entityTree)
+			m.entityTree = newTree
+			m, cmd = m.doActions(newEntity, actions)
 			cmds = append(cmds, cmd)
 		} else {
-			// #10a: The user deselects containers. Either the entity is terminated and is removed from the tree, or we
-			// stop the log scanner but keep it in the tree
-			// Note that a container delta indicating the container is deleted will perform similar actions - see 10b
-			if entity.Terminated {
-				// user deselecting a terminated container removes it and its logs
-				m.removeLogsForContainer(entity.Container)
-				m.entityTree.Remove(entity)
-			} else {
-				m, cmd = m.stopLogScannerBySelectionActionCmd(entity)
-				cmds = append(cmds, cmd)
-			}
+			newEntity, newTree, actions := entity.Deactivate(m.entityTree)
+			m.entityTree = newTree
+			m, cmd = m.doActions(newEntity, actions)
+			cmds = append(cmds, cmd)
 		}
 	}
 
@@ -704,7 +682,6 @@ func (m Model) doSelectionActions(selectionActions map[model.Entity]bool) (Model
 	return m, tea.Batch(cmds...)
 }
 
-// getStartLogScannerCmd performs the following:
 func (m Model) getStartLogScannerCmd(client k8s.Client, entity model.Entity, sinceTime time.Time) (Model, tea.Cmd) {
 	// ensure the entity is a container
 	err := entity.AssertIsContainer()
@@ -714,15 +691,18 @@ func (m Model) getStartLogScannerCmd(client k8s.Client, entity model.Entity, sin
 	}
 
 	// ensure the entity does not already have an active log scanner
-	if entity.IsSelected() {
+	if entity.LogScanner != nil {
+		dev.Debug(fmt.Sprintf("log scanner already exists for %s", entity.Container.HumanReadable()))
 		return m, nil
 	}
 
 	// check the limit of active log scanners isn't reached
 	numPendingOrActive := 0
 	for _, ce := range m.entityTree.GetContainerEntities() {
-		if ce.LogScannerPending || ce.IsSelected() {
+		switch ce.State {
+		case model.WantScanning, model.ScannerStarting, model.Scanning, model.ScannerStopping, model.Deleted:
 			numPendingOrActive++
+		default:
 		}
 	}
 	if m.config.ContainerLimit >= 0 && numPendingOrActive >= m.config.ContainerLimit {
@@ -731,36 +711,7 @@ func (m Model) getStartLogScannerCmd(client k8s.Client, entity model.Entity, sin
 		return m, tea.Tick(time.Second*5, func(t time.Time) tea.Msg { return toast.TimeoutMsg{ID: newToast.ID} })
 	}
 
-	// mark the entity as pending in the tree so that the UI can show that and to protect against duplicate scanner requests
-	entity.LogScannerPending = true
-	m.entityTree.AddOrReplace(entity)
-
 	return m, command.StartLogScannerCmd(client, entity.Container, sinceTime)
-}
-
-func (m Model) stopLogScannerBySelectionActionCmd(entity model.Entity) (Model, tea.Cmd) {
-	var err error
-	if !entity.IsSelected() {
-		return m, nil
-	}
-	m, err = m.withContainerEntityPendingAndBufferedLogsRemoved(entity)
-	if err != nil {
-		m.err = err
-		return m, nil
-	}
-	return m, command.StopLogScannerCmd(entity, false)
-}
-
-func (m Model) withContainerEntityPendingAndBufferedLogsRemoved(entity model.Entity) (Model, error) {
-	err := entity.AssertIsContainer()
-	if err != nil {
-		return m, err
-	}
-	// mark as pending so that in-flight logs are ignored
-	entity.LogScannerPending = true
-	m.entityTree.AddOrReplace(entity)
-	m.removeContainerLogsFromBuffer(entity.Container)
-	return m, nil
 }
 
 func (m Model) handleLogsPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
@@ -777,9 +728,9 @@ func (m Model) handleLogsPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 	}
 
-	// change lookback period for logs
-	if key.Matches(msg, m.keyMap.Lookback) {
-		return m.changeLookbackPeriod(msg)
+	// change since time period for logs
+	if key.Matches(msg, m.keyMap.SinceTime) {
+		return m.changeSinceTime(msg)
 	}
 
 	// toggle pause state
@@ -847,8 +798,8 @@ func (m Model) handlePromptKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m Model) changeLookbackPeriod(msg tea.KeyMsg) (Model, tea.Cmd) {
-	// if already a lookback change in flight, no additional ones are allowed
+func (m Model) changeSinceTime(msg tea.KeyMsg) (Model, tea.Cmd) {
+	// if already a since time change in flight, no additional ones are allowed
 	if m.pendingSinceTime != nil {
 		return m, nil
 	}
@@ -860,7 +811,7 @@ func (m Model) changeLookbackPeriod(msg tea.KeyMsg) (Model, tea.Cmd) {
 	}
 	newSinceTime := model.NewSinceTime(newSinceTimestamp, newLookbackMins)
 
-	// 0 always available to "reset from now", otherwise can't change to the same lookback
+	// 0 always available to "reset from now", otherwise can't change to the same since time
 	if newLookbackMins == 0 || newSinceTime != m.sinceTime {
 		m.pendingSinceTime = &newSinceTime
 		return m.attemptUpdateSinceTime()
@@ -872,7 +823,6 @@ func (m Model) changeLookbackPeriod(msg tea.KeyMsg) (Model, tea.Cmd) {
 // other
 // ---
 
-// #2: Receive a container listener i.e. subscription to container deltas for a cluster and namespace
 func (m Model) handleContainerListenerMsg(msg command.GetContainerListenerMsg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
@@ -914,65 +864,37 @@ func (m Model) handleContainerDeltasMsg(msg command.GetContainerDeltasMsg) (Mode
 	}
 
 	for _, delta := range msg.DeltaSet.OrderedDeltas() {
-		if delta.ToDelete {
-			// #10b: if a container delta indicates the container is deleted, remove it from the tree
-			for _, existingContainerEntity := range existingContainerEntities {
-				if !existingContainerEntity.Container.Equals(delta.Container) {
-					continue
-				}
-
-				if !existingContainerEntity.IsSelected() {
-					// if the existing container has no active log scanner, remove it from the tree
-					m.entityTree.Remove(existingContainerEntity)
-					dev.Debug(fmt.Sprintf("model removed container %s, state %s", delta.Container.HumanReadable(), delta.Container.Status.State))
-				} else {
-					// if there is an active log scanner:
-					// - keep the entity in the tree
-					// - mark it as terminated
-					// - stop its log scanner without marking it inactive or removing the logs
-					//   - don't remove the logs as it's useful to have them around for debugging
-					// - mark the logs, new, old, and in buffer, as coming from a terminated container
-					existingContainerEntity.Terminated = true
-					existingContainerEntity.Container.Status = delta.Container.Status
-					m.entityTree.AddOrReplace(existingContainerEntity)
-
-					cmds = append(cmds, command.StopLogScannerCmd(existingContainerEntity, true))
-
-					m.markLogsTerminatedForContainer(delta.Container)
-					dev.Debug(fmt.Sprintf("model terminated container %s, state %s", delta.Container.HumanReadable(), delta.Container.Status.State))
-				}
+		// get the existing entity for the container, if it exists
+		var existingContainerEntity *model.Entity
+		for _, containerEntity := range existingContainerEntities {
+			if containerEntity.Container.Equals(delta.Container) {
+				existingContainerEntity = &containerEntity
 				break
 			}
-		} else {
-			var logScannerAlreadyActive bool
-			for _, existingContainerEntity := range existingContainerEntities {
-				if existingContainerEntity.Container.Equals(delta.Container) && existingContainerEntity.IsSelected() {
-					// preserve logscanner for existing, selected containers - just update status
-					logScannerAlreadyActive = true
-					updatedEntity := model.Entity{
-						Container:         delta.Container,
-						LogScanner:        existingContainerEntity.LogScanner,
-						LogScannerPending: existingContainerEntity.LogScannerPending,
-					}
-					m.entityTree.AddOrReplace(updatedEntity)
-					break
-				}
-			}
+		}
 
-			// update container statuses for new and inactive containers
-			if !logScannerAlreadyActive {
-				newEntity := model.Entity{
+		if delta.ToDelete {
+			if existingContainerEntity != nil {
+				entity, newTree, actions := existingContainerEntity.Delete(m.entityTree, delta)
+				m.entityTree = newTree
+				m, cmd = m.doActions(entity, actions)
+				cmds = append(cmds, cmd)
+			}
+		} else {
+			if existingContainerEntity == nil {
+				entity := model.Entity{
 					Container: delta.Container,
 				}
-				m.entityTree.AddOrReplace(newEntity)
-
-				// # 6b: if running container without an existing log scanner is auto-selected, start log scanner
-				if delta.Selected && delta.Container.Status.State == model.ContainerRunning {
-					m, cmd = m.getStartLogScannerCmd(m.client, newEntity, m.sinceTime.Time)
-					cmds = append(cmds, cmd)
-				}
+				newEntity, newTree, actions := entity.Create(m.entityTree, delta)
+				m.entityTree = newTree
+				m, cmd = m.doActions(newEntity, actions)
+				cmds = append(cmds, cmd)
+			} else {
+				entity, newTree, actions := existingContainerEntity.Update(m.entityTree, delta)
+				m.entityTree = newTree
+				m, cmd = m.doActions(entity, actions)
+				cmds = append(cmds, cmd)
 			}
-			dev.Debug(fmt.Sprintf("model added/updated container %s, state %s", delta.Container.HumanReadable(), delta.Container.Status.State))
 		}
 	}
 
@@ -982,61 +904,50 @@ func (m Model) handleContainerDeltasMsg(msg command.GetContainerDeltasMsg) (Mode
 }
 
 func (m Model) handleStartedLogScannerMsg(msg command.StartedLogScannerMsg) (Model, tea.Cmd) {
+	dev.Debug(fmt.Sprintf("handling started log scanner for container %s", msg.LogScanner.Container.HumanReadable()))
+	var cmd tea.Cmd
+	var cmds []tea.Cmd
 	existingContainerEntities := m.entityTree.GetContainerEntities()
-	logScannerIsForExistingContainer := false
-	for _, existingContainerEntity := range existingContainerEntities {
-		if msg.LogScanner.Container.Equals(existingContainerEntity.Container) {
-			// whether the log scanner started successfully or not, mark the container as no longer pending
-			existingContainerEntity.LogScannerPending = false
-
-			// when log scanners start or attempt to start, the container status is checked and updated
-			existingContainerEntity.Container.Status = msg.LogScanner.Container.Status
-
-			// update the entity according to the result of the log scanner start attempt
-			if msg.Err == nil {
-				// consider log scanner startup errors recoverable, e.g. pressing enter on a terminated container
-				existingContainerEntity.LogScanner = &msg.LogScanner
-			} else {
-				dev.Debug(fmt.Sprintf("log scanner startup failed, container %s: %s", msg.LogScanner.Container.HumanReadable(), msg.Err))
-				existingContainerEntity.LogScanner = nil
-			}
-
-			// update the entity with the successfully started log scanner
-			existingContainerEntity.LogScanner = &msg.LogScanner
-			m.entityTree.AddOrReplace(existingContainerEntity)
-
-			logScannerIsForExistingContainer = true
+	var startedContainerEntity *model.Entity
+	for _, containerEntity := range existingContainerEntities {
+		if msg.LogScanner.Container.Equals(containerEntity.Container) {
+			startedContainerEntity = &containerEntity
 			break
 		}
 	}
-
-	// if the started log scanner is for a container that no longer exists, clean up
-	if !logScannerIsForExistingContainer {
+	if startedContainerEntity == nil {
 		msg.LogScanner.Cancel()
+		return m, nil
 	}
 
+	entity, newTree, actions := startedContainerEntity.ScannerStarted(m.entityTree, msg.Err, msg.LogScanner)
+	m.entityTree = newTree
+	m, cmd = m.doActions(entity, actions)
+	cmds = append(cmds, cmd)
+
 	m.pages[page.EntitiesPageType] = m.pages[page.EntitiesPageType].(page.EntityPage).WithEntityTree(m.entityTree)
-	return m.withUpdatedContainerShortNames(), command.GetNextLogsCmd(msg.LogScanner, constants.SingleContainerLogCollectionDuration)
+	cmds = append(cmds, command.GetNextLogsCmd(msg.LogScanner, constants.SingleContainerLogCollectionDuration))
+	return m.withUpdatedContainerShortNames(), tea.Batch(cmds...)
 }
 
-func (m Model) handleLogScannersStoppedMsg(msg command.LogScannersStoppedMsg) (Model, tea.Cmd) {
+func (m Model) handleStoppedLogScannersMsg(msg command.StoppedLogScannersMsg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
 	// for each entity with a stopped log scanner, mark the scanner as inactive in the tree
-	// if the scanner should be restarted, e.g. to update the lookback time, start a new log scanner
+	// if the scanner should be restarted, e.g. to update the since time, start a new log scanner
 	existingEntities := m.entityTree.GetEntities()
 	for _, existingEntity := range existingEntities {
 		for _, stoppedContainer := range msg.Containers {
 			if existingEntity.Container.Equals(stoppedContainer) {
-				if !msg.KeepLogs {
-					existingEntity.LogScannerPending = false
-					existingEntity.LogScanner = nil
-					m.entityTree.AddOrReplace(existingEntity)
-				}
-
+				entity, newTree, actions := existingEntity.ScannerStopped(m.entityTree)
+				m.entityTree = newTree
+				m, cmd = m.doActions(entity, actions)
+				cmds = append(cmds, cmd)
 				if msg.Restart {
-					m, cmd = m.getStartLogScannerCmd(m.client, existingEntity, m.sinceTime.Time)
+					entity, newTree, actions = entity.Activate(m.entityTree)
+					m.entityTree = newTree
+					m, cmd = m.doActions(entity, actions)
 					cmds = append(cmds, cmd)
 				}
 			}
@@ -1062,23 +973,12 @@ func (m Model) handleNewLogsMsg(msg command.GetNewLogsMsg) (Model, tea.Cmd) {
 
 	// ignore logs if logScanner has already been closed
 	entity := m.entityTree.GetEntity(msg.LogScanner.Container)
-	if entity == nil || !entity.IsSelected() {
+	if entity == nil || entity.LogScanner == nil {
 		return m, nil
 	}
 
 	// ignore logs if its from an old logScanner for a container that has been removed and reactivated
 	if !entity.LogScanner.Equals(msg.LogScanner) {
-		return m, nil
-	}
-
-	// ignore logs if logScanner is Pending (i.e. stopping and has had its logs removed)
-	if entity.LogScannerPending {
-		return m, nil
-	}
-
-	// ignore log if logScanner has completed
-	if msg.DoneScanning {
-		dev.Debug(fmt.Sprintf("done scanning logs for container %s", msg.LogScanner.Container.HumanReadable()))
 		return m, nil
 	}
 
@@ -1113,24 +1013,27 @@ func (m Model) handleNewLogsMsg(msg command.GetNewLogsMsg) (Model, tea.Cmd) {
 				Short: localTime.Format(time.TimeOnly),
 				Full:  localTime.Format("2006-01-02T15:04:05.000Z07:00"),
 			},
-			Terminated: entity.Terminated,
+			Terminated: entity.Container.Status.State == model.ContainerTerminated,
 		}
 		newLogs = append(newLogs, newLog)
 	}
 
 	m.pageLogBuffer = append(m.pageLogBuffer, newLogs...)
 
-	if len(newLogs) > 0 {
+	if msg.DoneScanning {
+		dev.Debug(fmt.Sprintf("done adding %d logs, stopping log scanner", len(newLogs)))
+		return m, nil
+	} else if len(newLogs) > 0 {
 		dev.Debug(fmt.Sprintf("done adding %d logs, getting next logs", len(newLogs)))
 	}
 	return m, command.GetNextLogsCmd(msg.LogScanner, constants.SingleContainerLogCollectionDuration)
 }
 
-// attemptUpdateSinceTime checks if there are any pending log scanners, and if not, updates the lookback.
+// attemptUpdateSinceTime checks if there are any pending log scanners, and if not, updates the since time.
 // If there are pending log scanners, there's currently no way to stop or cancel pending log scanners,
-// so the lookback change is queued up to be attempted again after a delay.
+// so the since time change is queued up to be attempted again after a delay.
 func (m Model) attemptUpdateSinceTime() (Model, tea.Cmd) {
-	if m.entityTree.AnyPendingContainers() {
+	if m.entityTree.AnyScannerStarting() {
 		if !m.toast.Visible && m.pendingSinceTime != nil {
 			m.toast = toast.New(getUpdateSinceTimeText(m.pendingSinceTime.LookbackMins))
 		}
@@ -1140,29 +1043,58 @@ func (m Model) attemptUpdateSinceTime() (Model, tea.Cmd) {
 }
 
 func (m Model) doUpdateSinceTime() (Model, tea.Cmd) {
+	var cmd tea.Cmd
+	var cmds []tea.Cmd
 	if m.pendingSinceTime == nil {
 		return m, nil
 	}
-	// update lookback and indicate it is updated
+	// update since time and indicate it is updated
 	m.sinceTime = *m.pendingSinceTime
 	m.toast.Visible = false
 	m.pendingSinceTime = nil
 
-	// stop all log scanners and signal to restart them with the new lookback
-	var err error
+	// stop all scanning entities and signal to restart them with the new since time
 	var logScannersToStopAndRestart []model.LogScanner
 	for _, containerEntity := range m.entityTree.GetContainerEntities() {
-		// leave selected terminated containers untouched as they can't be restarted and may be useful for debugging
-		if containerEntity.IsSelected() && !containerEntity.Terminated {
-			m, err = m.withContainerEntityPendingAndBufferedLogsRemoved(containerEntity)
-			if err != nil {
-				m.err = err
-				return m, nil
-			}
-			logScannersToStopAndRestart = append(logScannersToStopAndRestart, *containerEntity.LogScanner)
+		if containerEntity.State == model.Scanning {
+			entity, newTree, actions := containerEntity.Restart(m.entityTree)
+			m.entityTree = newTree
+			m, cmd = m.doActions(entity, actions)
+			cmds = append(cmds, cmd)
+			logScannersToStopAndRestart = append(logScannersToStopAndRestart, *entity.LogScanner)
 		}
 	}
-	return m, command.StopLogScannersInPrepForNewLookbackCmd(logScannersToStopAndRestart)
+	// bulk stop log scanners together so they begin restarting one by one only after all have stopped
+	cmds = append(cmds, command.StopLogScannersInPrepForNewSinceTimeCmd(logScannersToStopAndRestart))
+	return m, tea.Batch(cmds...)
+}
+
+func (m Model) doActions(entity model.Entity, actions []model.EntityAction) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+	var cmds []tea.Cmd
+
+	// TODO: could sanity check here that actions are unique
+
+	for _, action := range actions {
+		switch action {
+		case model.StartScanner:
+			dev.Debug(fmt.Sprintf("starting log scanner for %s", entity.Container.HumanReadable()))
+			m, cmd = m.getStartLogScannerCmd(m.client, entity, m.sinceTime.Time)
+			cmds = append(cmds, cmd)
+		case model.StopScanner:
+			cmds = append(cmds, command.StopLogScannerCmd(entity, false))
+		case model.StopScannerKeepLogs:
+			cmds = append(cmds, command.StopLogScannerCmd(entity, true))
+		case model.RemoveEntity:
+			m.removeLogsForContainer(entity.Container)
+			m.entityTree.Remove(entity)
+		case model.MarkLogsTerminated:
+			m.markLogsTerminatedForContainer(entity.Container)
+		default:
+			panic(fmt.Sprintf("unknown entity action: %s", action))
+		}
+	}
+	return m, tea.Batch(cmds...)
 }
 
 // withUpdatedContainerShortNames updates the container short names in the entity tree and logs page
