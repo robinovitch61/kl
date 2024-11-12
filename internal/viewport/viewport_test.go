@@ -157,6 +157,25 @@ func TestViewport_SelectionOff_WrapOff_ShowFooter(t *testing.T) {
 	compare(t, expectedView, vp.View())
 }
 
+func TestViewport_SelectionOff_WrapOff_SpaceAround(t *testing.T) {
+	w, h := 15, 5
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetContent([]RenderableString{
+		{Content: "    first line     "},
+		{Content: "          first line          "},
+		{Content: "               first line               "},
+	})
+	expectedView := pad(vp.width, vp.height, []string{
+		"header",
+		"    first li...",
+		"          fi...",
+		"            ...",
+		"100% (3/3)",
+	})
+	compare(t, expectedView, vp.View())
+}
+
 func TestViewport_SelectionOff_WrapOff_MultiHeader(t *testing.T) {
 	w, h := 15, 2
 	vp := newViewport(w, h)
@@ -848,6 +867,26 @@ func TestViewport_SelectionOn_WrapOff_ShowFooter(t *testing.T) {
 		"\x1b[38;2;255;0;0msecond\x1b[0m line",
 		"\x1b[38;2;255;0;0ma really rea...\x1b[0m",
 		"\x1b[38;2;255;0;0ma\x1b[0m really rea...",
+	})
+	compare(t, expectedView, vp.View())
+}
+
+func TestViewport_SelectionOn_WrapOff_SpaceAround(t *testing.T) {
+	w, h := 15, 5
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetSelectionEnabled(true)
+	vp.SetContent([]RenderableString{
+		{Content: "    first line     "},
+		{Content: "          first line          "},
+		{Content: "               first line               "},
+	})
+	expectedView := pad(vp.width, vp.height, []string{
+		"header",
+		"\x1b[38;2;0;0;255m    first li...\x1b[0m",
+		"          fi...",
+		"            ...",
+		"33% (1/3)",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -2116,6 +2155,26 @@ func TestViewport_SelectionOff_WrapOn_ShowFooter(t *testing.T) {
 	compare(t, expectedView, vp.View())
 }
 
+func TestViewport_SelectionOff_WrapOn_SpaceAround(t *testing.T) {
+	w, h := 15, 5
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetWrapText(true)
+	vp.SetContent([]RenderableString{
+		{Content: "    first line     "},
+		{Content: "          first line          "},
+		{Content: "               first line               "},
+	})
+	expectedView := pad(vp.width, vp.height, []string{
+		"header",
+		"    first line ",
+		"          first",
+		" line",
+		"66% (2/3)",
+	})
+	compare(t, expectedView, vp.View())
+}
+
 func TestViewport_SelectionOff_WrapOn_MultiHeader(t *testing.T) {
 	w, h := 15, 2
 	vp := newViewport(w, h)
@@ -2891,6 +2950,27 @@ func TestViewport_SelectionOn_WrapOn_ShowFooter(t *testing.T) {
 		"\x1b[38;2;255;0;0m long line\x1b[0m",
 		"\x1b[38;2;255;0;0ma\x1b[0m really really",
 		"\x1b[38;2;255;0;0m\x1b[0m long line",
+	})
+	compare(t, expectedView, vp.View())
+}
+
+func TestViewport_SelectionOn_WrapOn_SpaceAround(t *testing.T) {
+	w, h := 15, 5
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetSelectionEnabled(true)
+	vp.SetWrapText(true)
+	vp.SetContent([]RenderableString{
+		{Content: "    first line     "},
+		{Content: "          first line          "},
+		{Content: "               first line               "},
+	})
+	expectedView := pad(vp.width, vp.height, []string{
+		"header",
+		"\x1b[38;2;0;0;255m    first line\x1b[0m",
+		"          first",
+		" line",
+		"33% (1/3)",
 	})
 	compare(t, expectedView, vp.View())
 }

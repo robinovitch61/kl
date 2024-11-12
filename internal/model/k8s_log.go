@@ -56,9 +56,11 @@ func (ls LogScanner) StartReadingLogs() {
 				continue
 			}
 
+			logContent := strings.Join(vals[1:], " ")
+			logContent = strings.ReplaceAll(logContent, "\t", "    ")
 			newLog := Log{
 				Timestamp: parsedTime,
-				Content:   strings.Join(vals[1:], " "),
+				Content:   logContent,
 				Container: ls.Container,
 			}
 			ls.LogChan <- newLog
