@@ -2760,7 +2760,7 @@ func TestViewport_SelectionOff_WrapOn_SuperLongWrappedLine(t *testing.T) {
 	vp.SetWrapText(true)
 	vp.SetContent([]RenderableString{
 		{Content: "smol"},
-		{Content: strings.Repeat("12345678", 100000)},
+		{Content: strings.Repeat("12345678", 1000000)},
 		{Content: "smol"},
 	})
 	expectedView := pad(vp.width, vp.height, []string{
@@ -4126,7 +4126,7 @@ func TestViewport_SelectionOn_WrapOn_SuperLongWrappedLine(t *testing.T) {
 	vp.SetWrapText(true)
 	vp.SetContent([]RenderableString{
 		{Content: "smol"},
-		{Content: strings.Repeat("12345678", 100000)},
+		{Content: strings.Repeat("12345678", 1000000)},
 		{Content: "smol"},
 	})
 	expectedView := pad(vp.width, vp.height, []string{

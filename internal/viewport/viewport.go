@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/robinovitch61/kl/internal/dev"
+	"github.com/robinovitch61/kl/internal/linebuffer"
 	"regexp"
 	"strings"
 )
@@ -463,6 +464,9 @@ func (m *Model[T]) safelySetXOffset(n int) {
 
 func (m *Model[T]) setWidthHeight(width, height int) {
 	m.width, m.height = max(0, width), max(0, height)
+	if m.width == 0 || m.height == 0 {
+		return
+	}
 	if m.selectionEnabled {
 		m.scrollSoSelectionInView()
 	}
@@ -740,7 +744,9 @@ func (m Model[T]) getTruncatedFooterLine(visibleContentLines visibleContentLines
 	percentScrolled := percent(numerator, denominator)
 	footerString := fmt.Sprintf("%d%% (%d/%d)", percentScrolled, numerator, denominator)
 	// use m.lineContinuationIndicator regardless of wrapText
-	return m.FooterStyle.Render(truncateLine(footerString, 0, m.width, m.lineContinuationIndicator))
+
+	footerBuffer := linebuffer.New(footerString, m.lineContinuationIndicator)
+	return m.FooterStyle.Render(footerBuffer.Truncate(0, m.width))
 }
 
 func (m Model[T]) getLineContinuationIndicator() string {
@@ -829,11 +835,13 @@ func (m Model[T]) maxItemIdxAndMaxTopLineOffset() (int, int) {
 
 // truncate truncates a line to fit within the viewport's width, accounting for the current xOffset (left/right) position
 func (m Model[T]) truncate(line string) string {
-	return truncateLine(line, m.xOffset, m.width, m.getLineContinuationIndicator())
+	lineBuffer := linebuffer.New(line, m.lineContinuationIndicator)
+	return lineBuffer.Truncate(m.xOffset, m.width)
 }
 
 func (m Model[T]) truncateNoXOffset(line string) string {
-	return truncateLine(line, 0, m.width, m.getLineContinuationIndicator())
+	lineBuffer := linebuffer.New(line, m.lineContinuationIndicator)
+	return lineBuffer.Truncate(0, m.width)
 }
 
 func (m Model[T]) getNumVisibleItems() int {

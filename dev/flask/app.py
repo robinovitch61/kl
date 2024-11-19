@@ -6,6 +6,7 @@ import os
 import logging
 import json
 from datetime import datetime
+import random
 
 class JSONFormatter(logging.Formatter):
     def format(self, record):
@@ -73,9 +74,16 @@ init_db()
 def health():
     logger.info("Health check endpoint called")
     logger.info("FIRST Lorem ipsum \n\tdolor sit amet, consectetur adipiscing elit. \n\tSed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim \n\tad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.")
+    if random.random() < 0.05:
+        logger.info(generate_random_text(100_000))
     logger.info("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod \n\ttempor incididunt ut labore et dolore magna aliqua. \n\tUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.")
     logger.info("LAST Lorem ipsum \n\tdolor sit amet, consectetur adipiscing elit. \n\tSed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad \n\tminim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.")
     return jsonify({"status": "healthy"}), 200
+
+def generate_random_text(num_words):
+    words = ['hello', 'world', 'test', 'random', 'text', 'words', 'generator',
+             'python', 'code', 'sample']
+    return ' '.join(random.choices(words, k=num_words))
 
 @app.route("/status", methods=["GET"])
 def status():

@@ -3,11 +3,11 @@ package viewport
 import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/go-cmp/cmp"
+	"github.com/robinovitch61/kl/internal/linebuffer"
 	"regexp"
 	"strings"
 	"testing"
 	"unicode"
-	"unicode/utf8"
 )
 
 func wrap(line string, width int, maxLinesEachEnd int) []string {
@@ -33,22 +33,24 @@ func wrap(line string, width int, maxLinesEachEnd int) []string {
 	lineWidth := lipgloss.Width(line)
 	totalLines := (lineWidth + width - 1) / width
 
+	lineBuffer := linebuffer.New(line, "")
+
 	if maxLinesEachEnd > 0 && totalLines > maxLinesEachEnd*2 {
+		i := 0
 		for xOffset := 0; xOffset < width*maxLinesEachEnd; xOffset += width {
-			truncatedLine := truncateLine(line, xOffset, width, "")
-			res = append(res, truncatedLine)
+			i += 1
+			res = append(res, lineBuffer.Truncate(xOffset, width))
 		}
 
-		remainingLines := totalLines - maxLinesEachEnd
-		startOffset := remainingLines * width
+		startOffset := lineWidth - (maxLinesEachEnd * width)
+		i = 0
 		for xOffset := startOffset; xOffset < lineWidth; xOffset += width {
-			truncatedLine := truncateLine(line, xOffset, width, "")
-			res = append(res, truncatedLine)
+			i += 1
+			res = append(res, lineBuffer.Truncate(xOffset, width))
 		}
 	} else {
 		for xOffset := 0; xOffset < lineWidth; xOffset += width {
-			truncatedLine := truncateLine(line, xOffset, width, "")
-			res = append(res, truncatedLine)
+			res = append(res, lineBuffer.Truncate(xOffset, width))
 		}
 	}
 
@@ -57,135 +59,6 @@ func wrap(line string, width int, maxLinesEachEnd int) []string {
 
 func percent(a, b int) int {
 	return int(float32(a) / float32(b) * 100)
-}
-
-// truncateLine returns the visible part of a line given an xOffset and width
-func truncateLine(s string, xOffset, width int, lineContinuationIndicator string) string {
-	// "the full line is like this"
-	//      |xOffset     |xOffset+width
-	//      |start       |end
-	//      |..l line i..|  <- returned if lineContinuationIndicator = ".."
-
-	if width <= 0 {
-		return ""
-	}
-
-	if xOffset == 0 && len(lineContinuationIndicator) == 0 && !strings.Contains(s, "\x1b") {
-		if len(s) <= width {
-			return s
-		}
-		return string([]rune(s)[:width])
-	}
-
-	ansiCodeIndexes := ansiPattern.FindAllStringIndex(s, -1)
-
-	var plainText string
-	if len(ansiCodeIndexes) > 0 {
-		plainText = ansiPattern.ReplaceAllString(s, "")
-	} else {
-		plainText = s
-	}
-
-	plainRunes := []rune(plainText)
-	lenPlainText := len(plainRunes)
-
-	if lenPlainText == 0 || xOffset >= lenPlainText {
-		if len(ansiCodeIndexes) > 0 {
-			return reapplyANSI(s, "", ansiCodeIndexes, 0)
-		}
-		return ""
-	}
-
-	indicatorLen := len([]rune(lineContinuationIndicator))
-	if width <= indicatorLen && lenPlainText > width {
-		return lineContinuationIndicator[:width]
-	}
-
-	start := xOffset
-	if start < 0 {
-		start = 0
-	}
-
-	end := xOffset + width
-	if end > lenPlainText {
-		end = lenPlainText
-	}
-
-	if end <= start {
-		if len(ansiCodeIndexes) > 0 {
-			return reapplyANSI(s, "", ansiCodeIndexes, 0)
-		}
-		return ""
-	}
-
-	if start == 0 && end == lenPlainText && len(ansiCodeIndexes) == 0 {
-		return s
-	}
-
-	visible := string(plainRunes[start:end])
-
-	if indicatorLen > 0 {
-		if end-start <= indicatorLen && lenPlainText > indicatorLen {
-			return lineContinuationIndicator[:min(indicatorLen, end-start)]
-		}
-
-		visLen := len([]rune(visible))
-		if xOffset > 0 && visLen > indicatorLen {
-			visible = lineContinuationIndicator + string([]rune(visible)[indicatorLen:])
-		} else if xOffset > 0 {
-			visible = lineContinuationIndicator
-		}
-
-		if end < lenPlainText && visLen > indicatorLen {
-			visible = string([]rune(visible)[:visLen-indicatorLen]) + lineContinuationIndicator
-		} else if end < lenPlainText {
-			visible = lineContinuationIndicator
-		}
-	}
-
-	if len(ansiCodeIndexes) > 0 {
-		byteOffset := 0
-		for i := 0; i < start; i++ {
-			_, size := utf8.DecodeRuneInString(string(plainRunes[i]))
-			byteOffset += size
-		}
-		return reapplyANSI(s, visible, ansiCodeIndexes, byteOffset)
-	}
-
-	return visible
-}
-
-func reapplyANSI(original, truncated string, ansiCodeIndexes [][]int, startBytes int) string {
-	var result []byte
-	var lenAnsiAdded int
-	truncatedBytes := []byte(truncated)
-
-	for i := 0; i < len(truncatedBytes); {
-		for len(ansiCodeIndexes) > 0 {
-			candidateAnsi := ansiCodeIndexes[0]
-			codeStart, codeEnd := candidateAnsi[0], candidateAnsi[1]
-			originalIdx := startBytes + i + lenAnsiAdded
-			if codeStart <= originalIdx || codeEnd <= originalIdx {
-				result = append(result, original[codeStart:codeEnd]...)
-				lenAnsiAdded += codeEnd - codeStart
-				ansiCodeIndexes = ansiCodeIndexes[1:]
-			} else {
-				break
-			}
-		}
-
-		_, size := utf8.DecodeRune(truncatedBytes[i:])
-		result = append(result, truncatedBytes[i:i+size]...)
-		i += size
-	}
-
-	// add remaining ansi codes in order to end
-	for _, codeIndexes := range ansiCodeIndexes {
-		codeStart, codeEnd := codeIndexes[0], codeIndexes[1]
-		result = append(result, original[codeStart:codeEnd]...)
-	}
-
-	return string(result)
 }
 
 // highlightLine highlights a line that potentially has ansi codes in it without disrupting them
