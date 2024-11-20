@@ -39,7 +39,7 @@ func NewEntitiesPage(
 	viewWhenEmpty := strings.Join(viewWhenEmptyLines, "\n")
 
 	filterableViewport := filterable_viewport.NewFilterableViewport[model.Entity](
-		"Select with Enter - L to View Logs",
+		"(S)election",
 		false,
 		true,
 		false,
@@ -58,7 +58,7 @@ func NewEntitiesPage(
 }
 
 func (p EntityPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
-	dev.DebugMsg("EntityPage", msg)
+	dev.DebugUpdateMsg("EntityPage", msg)
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -93,6 +93,16 @@ func (p EntityPage) ContentForFile() []string {
 
 func (p EntityPage) WithDimensions(width, height int) GenericPage {
 	p.filterableViewport = p.filterableViewport.WithDimensions(width, height)
+	return p
+}
+
+func (p EntityPage) WithFocus() GenericPage {
+	p.filterableViewport.SetFocus(true, true)
+	return p
+}
+
+func (p EntityPage) WithBlur() GenericPage {
+	p.filterableViewport.SetFocus(false, false)
 	return p
 }
 

@@ -34,15 +34,14 @@ type PageLog struct {
 func (l PageLog) Render() string {
 	ts := ""
 	if l.CurrentTimestamp != "" {
-		ts = "|" + l.CurrentTimestamp + "|"
+		ts = l.CurrentTimestamp
 	}
 	label := ""
 	if l.CurrentName.ContainerName != "" {
-		if ts == "" {
-			label = "|" + l.RenderName(l.CurrentName, true) + "|"
-		} else {
-			label = l.RenderName(l.CurrentName, true) + "|"
+		if ts != "" {
+			label += " "
 		}
+		label += l.RenderName(l.CurrentName, true)
 	}
 	prefix := ts + label
 	if len(prefix) > 0 {

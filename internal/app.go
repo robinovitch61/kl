@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -37,6 +38,7 @@ type Model struct {
 	allClusterNamespaces []model.ClusterNamespaces
 	width, height        int
 	initialized          bool
+	gotFirstContainers   bool
 	seenFirstContainer   bool
 	toast                toast.Model
 	prompt               prompt.Model
@@ -50,7 +52,9 @@ type Model struct {
 	cancel               context.CancelFunc
 	pages                map[page.Type]page.GenericPage
 	containerListeners   []model.ContainerListener
-	currentPageType      page.Type
+	focusedPageType      page.Type
+	rightPageType        page.Type
+	fullScreen           bool
 	sinceTime            model.SinceTime
 	pendingSinceTime     *model.SinceTime
 	pauseState           bool
@@ -72,7 +76,7 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	dev.DebugMsg("App", msg)
+	dev.DebugUpdateMsg("App", msg)
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -95,8 +99,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m, cmd = m.initialize()
 			cmds = append(cmds, cmd)
 		}
-		m, cmd = m.handleWindowSizeMsg(msg.Width, msg.Height)
-		cmds = append(cmds, cmd)
+		m.syncDimensions()
 		return m, tea.Batch(cmds...)
 
 	case message.AttemptUpdateSinceTimeMsg:
@@ -110,6 +113,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 
 	case command.GetContainerDeltasMsg:
+		if !m.gotFirstContainers {
+			m.pages[m.focusedPageType] = m.pages[m.focusedPageType].WithFocus()
+			m.gotFirstContainers = true
+		}
 		m, cmd = m.handleContainerDeltasMsg(msg)
 		cmds = append(cmds, cmd)
 		return m, tea.Batch(cmds...)
@@ -179,7 +186,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 	}
 
-	m.pages[m.currentPageType], cmd = m.pages[m.currentPageType].Update(msg)
+	m.pages[m.focusedPageType], cmd = m.pages[m.focusedPageType].Update(msg)
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
 }
@@ -197,19 +204,36 @@ func (m Model) View() string {
 			errString,
 		)
 	}
+
 	if !m.initialized {
 		return ""
 	}
-	topBar := m.topBar()
+
+	topBar := util.StyleStyledString(m.topBar(), style.Lilac)
 	if m.helpText != "" {
 		centeredHelp := lipgloss.Place(m.width, m.height-m.topBarHeight, lipgloss.Center, lipgloss.Center, m.helpText)
 		return lipgloss.JoinVertical(lipgloss.Left, topBar, centeredHelp)
 	}
+
 	if m.prompt.Visible {
 		return lipgloss.JoinVertical(lipgloss.Left, topBar, m.prompt.View())
 	}
-	viewLines := strings.Split(m.topBar(), "\n")
-	pageView := m.pages[m.currentPageType].View()
+
+	viewLines := strings.Split(topBar, "\n")
+
+	var pageView string
+	if !m.fullScreen && m.gotFirstContainers {
+		leftPageView := style.RightBorder.Render(m.pages[page.EntitiesPageType].View())
+		rightPageView := m.pages[m.rightPageType].View()
+		pageView = lipgloss.JoinHorizontal(lipgloss.Left, leftPageView, rightPageView)
+	} else {
+		if m.focusedPageType == page.EntitiesPageType {
+			pageView = m.pages[page.EntitiesPageType].View()
+		} else {
+			pageView = m.pages[m.rightPageType].View()
+		}
+	}
+
 	viewLines = append(viewLines, strings.Split(pageView, "\n")...)
 	if toastHeight := m.toast.ViewHeight(); m.toast.Visible && toastHeight > 0 {
 		viewLines = viewLines[:len(viewLines)-toastHeight]
@@ -418,10 +442,11 @@ func (m Model) initialize() (Model, tea.Cmd) {
 	m.entityTree = model.NewEntityTree(m.allClusterNamespaces)
 
 	if m.config.LogsView {
-		m.currentPageType = page.LogsPageType
+		m.focusedPageType = page.LogsPageType
 	} else {
-		m.currentPageType = page.EntitiesPageType
+		m.focusedPageType = page.EntitiesPageType
 	}
+	m.rightPageType = page.LogsPageType
 	m.sinceTime = m.config.SinceTime
 
 	m.pages = make(map[page.Type]page.GenericPage)
@@ -462,31 +487,52 @@ func (m Model) initialize() (Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m Model) handleWindowSizeMsg(width, height int) (Model, tea.Cmd) {
-	contentHeight := height - m.topBarHeight
-	m.prompt.SetWidthAndHeight(width, contentHeight)
-	for k, p := range m.pages {
-		m.pages[k] = p.WithDimensions(width, contentHeight)
+func (m Model) syncDimensions() (Model, tea.Cmd) {
+	contentHeight := m.height - m.topBarHeight
+	m.prompt.SetWidthAndHeight(m.width, contentHeight)
+	leftWidth := int(math.Round(float64(m.width) * constants.LeftPageWidthFraction))
+	rightWidth := m.width - leftWidth - 1
+	if m.fullScreen {
+		if m.focusedPageType == page.EntitiesPageType {
+			leftWidth = m.width
+			rightWidth = 0
+		} else {
+			leftWidth = 0
+			rightWidth = m.width
+		}
 	}
+	m.pages[page.EntitiesPageType] = m.pages[page.EntitiesPageType].WithDimensions(leftWidth, contentHeight)
+	m.pages[page.LogsPageType] = m.pages[page.LogsPageType].WithDimensions(rightWidth, contentHeight)
+	m.pages[page.SingleLogPageType] = m.pages[page.SingleLogPageType].WithDimensions(rightWidth, contentHeight)
 	return m, nil
 }
 
-func (m Model) changeCurrentPage(newPage page.Type) (Model, tea.Cmd) {
+func (m Model) changeFocusedPage(newPage page.Type) (Model, tea.Cmd) {
 	switch newPage {
 	case page.EntitiesPageType:
-		m.currentPageType = page.EntitiesPageType
+		m.pages[m.focusedPageType] = m.pages[m.focusedPageType].WithBlur()
+		m.focusedPageType = page.EntitiesPageType
 	case page.LogsPageType:
+		m.pages[m.focusedPageType] = m.pages[m.focusedPageType].WithBlur()
 		// re-enable stickyness on logs page
 		m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithStickyness()
-		m.currentPageType = page.LogsPageType
+		m.focusedPageType = page.LogsPageType
 	case page.SingleLogPageType:
 		// cancel stickyness on logs page when moving to single log page, otherwise if selection is on the newest log,
 		// selection changes when new logs arrive and is not purely driven by the user
 		m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithNoStickyness()
-		m.currentPageType = page.SingleLogPageType
+
+		// don't blur logs page as we rely on selection being enabled there to cycle through logs
+		if m.focusedPageType != page.LogsPageType {
+			m.pages[m.focusedPageType] = m.pages[m.focusedPageType].WithBlur()
+		}
+
+		m.focusedPageType = page.SingleLogPageType
 	default:
 		m.err = fmt.Errorf("unknown page type %d", newPage)
 	}
+	m.pages[m.focusedPageType] = m.pages[m.focusedPageType].WithFocus()
+	m.syncDimensions()
 	return m, nil
 }
 
@@ -552,58 +598,70 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 	}
 
 	// if current page highjacking input, e.g. editing a focused filter, update current page & return
-	if m.pages[m.currentPageType].HighjackingInput() {
-		m.pages[m.currentPageType], cmd = m.pages[m.currentPageType].Update(msg)
+	if m.pages[m.focusedPageType].HighjackingInput() {
+		m.pages[m.focusedPageType], cmd = m.pages[m.focusedPageType].Update(msg)
 		cmds = append(cmds, cmd)
 		return m, tea.Batch(cmds...)
 	}
 
 	// update current page
-	m.pages[m.currentPageType], cmd = m.pages[m.currentPageType].Update(msg)
+	m.pages[m.focusedPageType], cmd = m.pages[m.focusedPageType].Update(msg)
 	cmds = append(cmds, cmd)
 
-	// change to selection page
-	if key.Matches(msg, m.keyMap.Selection) {
-		m, cmd = m.changeCurrentPage(page.EntitiesPageType)
+	// change focus to selection page
+	if key.Matches(msg, m.keyMap.Selection) || key.Matches(msg, m.keyMap.SelectionFullScreen) {
+		m, cmd = m.changeFocusedPage(page.EntitiesPageType)
 		cmds = append(cmds, cmd)
+		if key.Matches(msg, m.keyMap.SelectionFullScreen) {
+			m.setFullscreen(true)
+		}
 		return m, tea.Batch(cmds...)
 	}
 
-	// change to logs page
-	if key.Matches(msg, m.keyMap.Logs) {
-		m, cmd = m.changeCurrentPage(page.LogsPageType)
+	// change focus to logs/single log page
+	if key.Matches(msg, m.keyMap.Logs) || key.Matches(msg, m.keyMap.LogsFullScreen) {
+		m, cmd = m.changeFocusedPage(m.rightPageType)
 		cmds = append(cmds, cmd)
+		if key.Matches(msg, m.keyMap.LogsFullScreen) {
+			m.setFullscreen(true)
+		}
 		return m, tea.Batch(cmds...)
 	}
 
 	// save content of current page
 	if key.Matches(msg, m.keyMap.Save) {
-		cmds = append(cmds, fileio.GetSaveCommand("", m.pages[m.currentPageType].ContentForFile()))
+		cmds = append(cmds, fileio.GetSaveCommand("", m.pages[m.focusedPageType].ContentForFile()))
 		return m, tea.Batch(cmds...)
+	}
+
+	// toggle fullscreen for focused page
+	if key.Matches(msg, m.keyMap.FullScreen) {
+		m.setFullscreen(!m.fullScreen)
+		return m, nil
 	}
 
 	// show help
 	if key.Matches(msg, m.keyMap.Help) {
-		m.helpText = m.pages[m.currentPageType].Help()
+		m.helpText = m.pages[m.focusedPageType].Help()
 		return m, nil
 	}
 
 	// entities page specific actions
-	if m.currentPageType == page.EntitiesPageType {
+	if m.focusedPageType == page.EntitiesPageType {
 		m, cmd = m.handleEntitiesPageKeyMsg(msg)
 		cmds = append(cmds, cmd)
 		return m, tea.Batch(cmds...)
 	}
 
 	// logs page specific actions
-	if m.currentPageType == page.LogsPageType {
+	if m.focusedPageType == page.LogsPageType {
 		m, cmd = m.handleLogsPageKeyMsg(msg)
 		cmds = append(cmds, cmd)
 		return m, tea.Batch(cmds...)
 	}
 
 	// single log page specific actions
-	if m.currentPageType == page.SingleLogPageType {
+	if m.focusedPageType == page.SingleLogPageType {
 		m, cmd = m.handleSingleLogPageKeyMsg(msg)
 		cmds = append(cmds, cmd)
 		return m, tea.Batch(cmds...)
@@ -614,7 +672,7 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 func (m Model) handleEntitiesPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 	// handle pressing enter on selected entity
 	if key.Matches(msg, m.keyMap.Enter) {
-		selected, selectionActions := m.pages[m.currentPageType].(page.EntityPage).GetSelectionActions()
+		selected, selectionActions := m.pages[m.focusedPageType].(page.EntityPage).GetSelectionActions()
 		if len(selectionActions) > constants.ConfirmSelectionActionsThreshold {
 			return m.promptToConfirmSelectionActions(selected, selectionActions)
 		} else {
@@ -664,7 +722,6 @@ func (m Model) doSelectionActions(selectionActions map[model.Entity]bool) (Model
 	var cmds []tea.Cmd
 
 	for entity, startLogScanner := range selectionActions {
-		dev.Debug(fmt.Sprintf("selection action: %s, startLogScanner: %t", entity.Container.HumanReadable(), startLogScanner))
 		if startLogScanner {
 			newEntity, newTree, actions := entity.Activate(m.entityTree)
 			m.entityTree = newTree
@@ -692,7 +749,6 @@ func (m Model) getStartLogScannerCmd(client k8s.Client, entity model.Entity, sin
 
 	// ensure the entity does not already have an active log scanner
 	if entity.LogScanner != nil {
-		dev.Debug(fmt.Sprintf("log scanner already exists for %s", entity.Container.HumanReadable()))
 		return m, nil
 	}
 
@@ -721,8 +777,9 @@ func (m Model) handleLogsPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 	if key.Matches(msg, m.keyMap.Enter) {
 		selectedLog := m.pages[page.LogsPageType].(page.LogsPage).GetSelectedLog()
 		if selectedLog != nil {
-			m, cmd = m.changeCurrentPage(page.SingleLogPageType)
+			m, cmd = m.changeFocusedPage(page.SingleLogPageType)
 			cmds = append(cmds, cmd)
+			m.rightPageType = page.SingleLogPageType
 			m.pages[page.SingleLogPageType] = m.pages[page.SingleLogPageType].(page.SingleLogPage).WithLog(*selectedLog)
 		}
 		return m, tea.Batch(cmds...)
@@ -745,11 +802,12 @@ func (m Model) handleSingleLogPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 	isClear := key.Matches(msg, m.keyMap.Clear)
-	notHighjackingInput := !m.pages[m.currentPageType].HighjackingInput()
-	noAppliedFilter := !m.pages[m.currentPageType].(page.SingleLogPage).HasAppliedFilter()
+	notHighjackingInput := !m.pages[m.focusedPageType].HighjackingInput()
+	noAppliedFilter := !m.pages[m.focusedPageType].(page.SingleLogPage).HasAppliedFilter()
 	if isClear && notHighjackingInput && noAppliedFilter {
-		m, cmd = m.changeCurrentPage(page.LogsPageType)
+		m, cmd = m.changeFocusedPage(page.LogsPageType)
 		cmds = append(cmds, cmd)
+		m.rightPageType = page.LogsPageType
 		return m, tea.Batch(cmds...)
 	}
 
@@ -905,7 +963,6 @@ func (m Model) handleContainerDeltasMsg(msg command.GetContainerDeltasMsg) (Mode
 }
 
 func (m Model) handleStartedLogScannerMsg(msg command.StartedLogScannerMsg) (Model, tea.Cmd) {
-	dev.Debug(fmt.Sprintf("handling started log scanner for container %s", msg.LogScanner.Container.HumanReadable()))
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 	existingContainerEntities := m.entityTree.GetContainerEntities()
@@ -1022,10 +1079,7 @@ func (m Model) handleNewLogsMsg(msg command.GetNewLogsMsg) (Model, tea.Cmd) {
 	m.pageLogBuffer = append(m.pageLogBuffer, newLogs...)
 
 	if msg.DoneScanning {
-		dev.Debug(fmt.Sprintf("done adding %d logs, stopping log scanner", len(newLogs)))
 		return m, nil
-	} else if len(newLogs) > 0 {
-		dev.Debug(fmt.Sprintf("done adding %d logs, getting next logs", len(newLogs)))
 	}
 	return m, command.GetNextLogsCmd(msg.LogScanner, constants.SingleContainerLogCollectionDuration)
 }
@@ -1079,7 +1133,6 @@ func (m Model) doActions(entity model.Entity, actions []model.EntityAction) (Mod
 	for _, action := range actions {
 		switch action {
 		case model.StartScanner:
-			dev.Debug(fmt.Sprintf("starting log scanner for %s", entity.Container.HumanReadable()))
 			m, cmd = m.getStartLogScannerCmd(m.client, entity, m.sinceTime.Time)
 			cmds = append(cmds, cmd)
 		case model.StopScanner:
@@ -1147,6 +1200,11 @@ func (m *Model) markContainerLogsTerminatedInBuffer(container model.Container) {
 			m.pageLogBuffer[i].Terminated = true
 		}
 	}
+}
+
+func (m *Model) setFullscreen(fullscreen bool) {
+	m.fullScreen = fullscreen
+	m.syncDimensions()
 }
 
 // normalizeRunes adjusts for buffered key presses

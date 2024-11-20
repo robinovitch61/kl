@@ -29,7 +29,7 @@ func New(message string) Model {
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
-	dev.DebugMsg("Toast", msg)
+	dev.DebugUpdateMsg("Toast", msg)
 	switch msg := msg.(type) {
 	case TimeoutMsg:
 		if msg.ID > 0 && msg.ID != m.ID {

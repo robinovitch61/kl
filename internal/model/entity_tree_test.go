@@ -675,7 +675,7 @@ func formatEntity(e Entity) string {
 }
 
 func newFilter(s string, isRegex bool) filter.Model {
-	f := filter.New("", 0, keymap.KeyMap{})
+	f := filter.New(keymap.KeyMap{})
 	f.SetValue(s)
 	f.SetIsRegex(isRegex)
 	return f

@@ -10,6 +10,8 @@ type GenericPage interface {
 	ContentForFile() []string
 	HighjackingInput() bool
 	WithDimensions(width, height int) GenericPage
+	WithFocus() GenericPage
+	WithBlur() GenericPage
 	Help() string
 }
 

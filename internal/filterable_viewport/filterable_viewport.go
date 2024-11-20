@@ -4,7 +4,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/filter"
 	"github.com/robinovitch61/kl/internal/keymap"
@@ -12,6 +11,8 @@ import (
 	"github.com/robinovitch61/kl/internal/viewport"
 	"strings"
 )
+
+var focusedStyle = style.Blue
 
 type FilterableViewport[T viewport.RenderableComparable] struct {
 	Filter            filter.Model
@@ -21,10 +22,12 @@ type FilterableViewport[T viewport.RenderableComparable] struct {
 	keyMap            keymap.KeyMap
 	filterWithContext bool
 	whenEmpty         string
+	topHeader         string
+	focused           bool
 }
 
 func NewFilterableViewport[T viewport.RenderableComparable](
-	filterLabel string,
+	topHeader string,
 	filterWithContext bool,
 	startSelectionEnabled bool,
 	startWrapOn bool,
@@ -34,10 +37,10 @@ func NewFilterableViewport[T viewport.RenderableComparable](
 	matchesFilter func(T, filter.Model) bool,
 	viewWhenEmpty string,
 ) FilterableViewport[T] {
-	f := filter.New(filterLabel, width, km)
+	f := filter.New(km)
 	f.SetFilteringWithContext(filterWithContext)
 
-	var vp = viewport.New[T](width, height-f.ViewHeight())
+	var vp = viewport.New[T](width, height)
 	vp.FooterStyle = style.Bold
 	vp.SelectedItemStyle = style.Inverse
 	vp.HighlightStyle = style.Inverse
@@ -45,7 +48,7 @@ func NewFilterableViewport[T viewport.RenderableComparable](
 	vp.SetSelectionEnabled(startSelectionEnabled)
 	vp.SetWrapText(startWrapOn)
 
-	return FilterableViewport[T]{
+	fv := FilterableViewport[T]{
 		Filter:            f,
 		viewport:          &vp,
 		allRows:           allRows,
@@ -53,15 +56,23 @@ func NewFilterableViewport[T viewport.RenderableComparable](
 		keyMap:            km,
 		filterWithContext: filterWithContext,
 		whenEmpty:         viewWhenEmpty,
+		topHeader:         topHeader,
 	}
+	fv.updateViewportHeader()
+	return fv
 }
 
 func (p FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.Cmd) {
-	dev.DebugMsg("FilterableViewport", msg)
+	dev.DebugUpdateMsg("FilterableViewport", msg)
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
+
+	// any updates to the filter should reflect in the viewport header
+	defer func() {
+		p.updateViewportHeader()
+	}()
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -151,11 +162,15 @@ func (p FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.C
 func (p FilterableViewport[T]) View() string {
 	var viewportView string
 	if len(p.allRows) == 0 {
-		viewportView = p.whenEmpty
+		whenEmpty := p.whenEmpty
+		if p.focused {
+			whenEmpty = focusedStyle.Render(whenEmpty)
+		}
+		viewportView = whenEmpty
 	} else {
 		viewportView = p.viewport.View()
 	}
-	return lipgloss.JoinVertical(lipgloss.Left, p.Filter.View(), viewportView)
+	return viewportView
 }
 
 func (p FilterableViewport[T]) HighjackingInput() bool {
@@ -164,8 +179,7 @@ func (p FilterableViewport[T]) HighjackingInput() bool {
 
 func (p FilterableViewport[T]) WithDimensions(width, height int) FilterableViewport[T] {
 	p.viewport.SetWidth(width)
-	p.Filter.SetWidth(width)
-	p.viewport.SetHeight(height - p.Filter.ViewHeight())
+	p.viewport.SetHeight(height)
 	return p
 }
 
@@ -181,13 +195,20 @@ func (p FilterableViewport[T]) SetSelectedContentIdx(idx int) {
 	p.viewport.SetSelectedItemIdx(idx)
 }
 
-func (p FilterableViewport[T]) SetHeader(header []string) {
-	p.viewport.SetHeader(header)
+func (p *FilterableViewport[T]) SetTopHeader(topHeader string) {
+	p.topHeader = topHeader
+	p.updateViewportHeader()
 }
 
 func (p *FilterableViewport[T]) SetAllRows(allRows []T) {
 	p.allRows = allRows
 	p.updateVisibleRows()
+}
+
+func (p *FilterableViewport[T]) SetFocus(focused bool, selectionEnabled bool) {
+	p.focused = focused
+	p.viewport.SetSelectionEnabled(selectionEnabled)
+	p.updateViewportHeader()
 }
 
 func (p *FilterableViewport[T]) SetAllRowsAndMatchesFilter(allRows []T, matchesFilter func(T, filter.Model) bool) {
@@ -260,6 +281,14 @@ func (p *FilterableViewport[T]) updateVisibleRows() {
 	} else {
 		p.viewport.SetContent(p.allRows)
 	}
+}
+
+func (p *FilterableViewport[T]) updateViewportHeader() {
+	prefix := p.topHeader
+	if p.focused {
+		prefix = focusedStyle.Render(prefix)
+	}
+	p.viewport.SetHeader([]string{prefix + " " + p.Filter.View()})
 }
 
 func (p *FilterableViewport[T]) clearFilter() {

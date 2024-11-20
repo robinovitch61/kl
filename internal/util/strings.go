@@ -2,8 +2,11 @@ package util
 
 import (
 	"github.com/charmbracelet/lipgloss"
+	"regexp"
 	"strings"
 )
+
+var ansiRegex = regexp.MustCompile(`(\x1b\[[0-9;]*m.*?\x1b\[0m)`)
 
 // GetUniqueShortNames takes in the set of names and tries to create a unique set of substrings of them,
 // starting at minChars length and increasing if necessary. If fromRight is true, it starts from the
@@ -130,4 +133,21 @@ func JoinWithEqualSpacing(width int, items ...string) string {
 
 		return result.String()
 	}
+}
+
+// StyleStyledString is for styling a string that contains ANSI escape codes.
+func StyleStyledString(s string, st lipgloss.Style) string {
+	split := ansiRegex.Split(s, -1)
+	matches := ansiRegex.FindAllString(s, -1)
+
+	finalResult := ""
+	for i, section := range split {
+		if section != "" {
+			finalResult += st.Render(section)
+		}
+		if i < len(split)-1 && i < len(matches) {
+			finalResult += matches[i]
+		}
+	}
+	return finalResult
 }

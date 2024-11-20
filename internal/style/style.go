@@ -38,6 +38,14 @@ var (
 		})
 
 	Underline = lipgloss.NewStyle().Underline(true)
+
+	Blue = lipgloss.NewStyle().Background(lipgloss.Color("6")).Foreground(lipgloss.Color("#000000"))
+
+	lilac = lipgloss.Color("189")
+
+	Lilac = lipgloss.NewStyle().Background(lilac).Foreground(lipgloss.Color("#000000"))
+
+	RightBorder = lipgloss.NewStyle().Border(lipgloss.ThickBorder(), false, true, false, false).BorderForeground(lilac)
 )
 
 func lightenColor(hex string, offset int) string {

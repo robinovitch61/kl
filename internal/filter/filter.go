@@ -20,17 +20,15 @@ type Renderable interface {
 type Model struct {
 	KeyMap                filterKeyMap
 	FilteringWithContext  bool
-	width                 int
 	isRegex               bool
 	regexp                *regexp.Regexp
 	currentMatchNum       int
 	indexesMatchingFilter []int
-	label                 string
 	textinput             textinput.Model
 	suffix                string
 }
 
-func New(label string, width int, km keymap.KeyMap) Model {
+func New(km keymap.KeyMap) Model {
 	ti := textinput.New()
 	ti.Prompt = ""
 	ti.Cursor.SetMode(cursor.CursorHide)
@@ -46,16 +44,16 @@ func New(label string, width int, km keymap.KeyMap) Model {
 
 	return Model{
 		KeyMap:    fkm,
-		width:     width,
-		label:     label,
 		textinput: ti,
 	}
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
-	dev.DebugMsg("Filter", msg)
-	var cmd tea.Cmd
-	var cmds []tea.Cmd
+	dev.DebugUpdateMsg("Filter", msg)
+	var (
+		cmd  tea.Cmd
+		cmds []tea.Cmd
+	)
 
 	m.textinput, cmd = m.textinput.Update(msg)
 	cmds = append(cmds, cmd)
@@ -119,12 +117,7 @@ func (m Model) View() string {
 	filterString := m.textinput.View()
 	filterStringStyle := m.textinput.TextStyle.PaddingLeft(1)
 
-	view := style.BoldUnderline.Render(m.label) + " " + filterStringStyle.Render(filterString)
-	widthView := lipgloss.Width(view)
-	if widthView < m.width {
-		view += strings.Repeat(" ", m.width-widthView)
-	}
-	return view
+	return filterStringStyle.Render(filterString)
 }
 
 func (m Model) Matches(renderable Renderable) bool {
@@ -157,10 +150,6 @@ func (m Model) HasContextualMatches() bool {
 	return m.FilteringWithContext && len(m.indexesMatchingFilter) > 0
 }
 
-func (m Model) ViewHeight() int {
-	return lipgloss.Height(m.View())
-}
-
 func (m Model) HasFilterText() bool {
 	return m.Value() != ""
 }
@@ -173,10 +162,6 @@ func (m Model) IsRegex() bool {
 	return m.isRegex
 }
 
-func (m *Model) SetWidth(width int) {
-	m.width = width
-}
-
 func (m *Model) SetIsRegex(isRegex bool) {
 	m.isRegex = isRegex
 	m.updateRegexp()
@@ -184,10 +169,6 @@ func (m *Model) SetIsRegex(isRegex bool) {
 
 func (m *Model) SetValue(value string) {
 	m.textinput.SetValue(value)
-}
-
-func (m *Model) SetLabel(label string) {
-	m.label = label
 }
 
 func (m *Model) SetSuffix(suffix string) {

@@ -1,8 +1,18 @@
 package util
 
 import (
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
+	"io"
 	"testing"
 )
+
+func renderer() *lipgloss.Renderer {
+	r := lipgloss.NewRenderer(io.Discard)
+	r.SetColorProfile(termenv.TrueColor)
+	r.SetHasDarkBackground(true)
+	return r
+}
 
 func TestGetUniqueShortNames(t *testing.T) {
 	tests := []struct {
@@ -131,5 +141,36 @@ func TestGetUniqueShortNamesFromSides(t *testing.T) {
 				t.Errorf("For name '%s', expected short name '%s' but got '%s'", k, v, result[k])
 			}
 		}
+	}
+}
+
+func TestStyleStyledString(t *testing.T) {
+	tests := []struct {
+		name     string
+		style    lipgloss.Style
+		input    string
+		expected string
+	}{
+		{
+			name:     "no ansi",
+			style:    renderer().NewStyle(),
+			input:    "No ANSI here, just plain text",
+			expected: "No ANSI here, just plain text",
+		},
+		{
+			name:     "has ansi",
+			style:    renderer().NewStyle().Foreground(lipgloss.Color("#0000ff")),
+			input:    "some \x1b[31mred\x1b[0m text",
+			expected: "\x1b[38;2;0;0;255msome \x1b[0m\x1b[31mred\x1b[0m\x1b[38;2;0;0;255m text\x1b[0m",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := StyleStyledString(tt.input, tt.style)
+			if result != tt.expected {
+				t.Errorf("For input '%q', expected '%q', but got '%q'", tt.input, tt.expected, result)
+			}
+		})
 	}
 }

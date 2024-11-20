@@ -27,7 +27,7 @@ func Debug(msg string) {
 	}
 }
 
-func DebugMsg(component string, msg tea.Msg) {
+func DebugUpdateMsg(component string, msg tea.Msg) {
 	switch msg.(type) {
 	case message.BatchUpdateLogsMsg, message.UpdateSinceTimeTextMsg, cursor.BlinkMsg:
 	// skip logging messages that are too frequent

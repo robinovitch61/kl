@@ -7,27 +7,30 @@ import (
 )
 
 type KeyMap struct {
-	Clear         key.Binding
-	Copy          key.Binding
-	Context       key.Binding
-	Enter         key.Binding
-	Filter        key.Binding
-	FilterRegex   key.Binding
-	FilterNextRow key.Binding
-	FilterPrevRow key.Binding
-	Help          key.Binding
-	Logs          key.Binding
-	Name          key.Binding
-	NextLog       key.Binding
-	PrevLog       key.Binding
-	Quit          key.Binding
-	ReverseOrder  key.Binding
-	Save          key.Binding
-	Selection     key.Binding
-	SinceTime     key.Binding
-	Timestamps    key.Binding
-	TogglePause   key.Binding
-	Wrap          key.Binding
+	Clear               key.Binding
+	Copy                key.Binding
+	Context             key.Binding
+	Enter               key.Binding
+	Filter              key.Binding
+	FilterRegex         key.Binding
+	FilterNextRow       key.Binding
+	FilterPrevRow       key.Binding
+	FullScreen          key.Binding
+	Help                key.Binding
+	Logs                key.Binding
+	LogsFullScreen      key.Binding
+	Name                key.Binding
+	NextLog             key.Binding
+	PrevLog             key.Binding
+	Quit                key.Binding
+	ReverseOrder        key.Binding
+	Save                key.Binding
+	Selection           key.Binding
+	SelectionFullScreen key.Binding
+	SinceTime           key.Binding
+	Timestamps          key.Binding
+	TogglePause         key.Binding
+	Wrap                key.Binding
 }
 
 // DefaultKeyMap for app. General principles:
@@ -67,13 +70,21 @@ var DefaultKeyMap = KeyMap{
 		key.WithKeys("N"),
 		key.WithHelp("N", "prev filter match"),
 	),
+	FullScreen: key.NewBinding(
+		key.WithKeys("F"),
+		key.WithHelp("F", "fullscreen"),
+	),
 	Help: key.NewBinding(
 		key.WithKeys("?"),
 		key.WithHelp("?", "show help"),
 	),
 	Logs: key.NewBinding(
-		key.WithKeys("l", "L"),
-		key.WithHelp("l/L", "go to logs view"),
+		key.WithKeys("l"),
+		key.WithHelp("l", "go to logs view"),
+	),
+	LogsFullScreen: key.NewBinding(
+		key.WithKeys("L"),
+		key.WithHelp("L", "full screen logs view"),
 	),
 	Name: key.NewBinding(
 		key.WithKeys("c"),
@@ -100,8 +111,12 @@ var DefaultKeyMap = KeyMap{
 		key.WithHelp("ctrl+s", "save view to file"),
 	),
 	Selection: key.NewBinding(
-		key.WithKeys("s", "S"),
-		key.WithHelp("s/S", "go to selection view"),
+		key.WithKeys("s"),
+		key.WithHelp("s", "go to selection view"),
+	),
+	SelectionFullScreen: key.NewBinding(
+		key.WithKeys("S"),
+		key.WithHelp("S", "full screen selection view"),
 	),
 	SinceTime: key.NewBinding(
 		key.WithKeys("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"),

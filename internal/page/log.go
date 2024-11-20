@@ -47,7 +47,7 @@ func NewSingleLogPage(keyMap keymap.KeyMap, width, height int) SingleLogPage {
 }
 
 func (p SingleLogPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
-	dev.DebugMsg("SingleLogPage", msg)
+	dev.DebugUpdateMsg("SingleLogPage", msg)
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -83,6 +83,16 @@ func (p SingleLogPage) WithDimensions(width, height int) GenericPage {
 	return p
 }
 
+func (p SingleLogPage) WithFocus() GenericPage {
+	p.filterableViewport.SetFocus(true, false)
+	return p
+}
+
+func (p SingleLogPage) WithBlur() GenericPage {
+	p.filterableViewport.SetFocus(false, false)
+	return p
+}
+
 func (p SingleLogPage) Help() string {
 	local := []key.Binding{
 		p.keyMap.Copy,
@@ -105,11 +115,10 @@ func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
 	}
 	p.log = log
 	header, content := veryNicelyFormatThisLog(log, true)
-	var renderableStrings []viewport.RenderableString
+	renderableStrings := []viewport.RenderableString{{Content: header}}
 	for _, c := range content {
 		renderableStrings = append(renderableStrings, viewport.RenderableString{Content: c})
 	}
-	p.filterableViewport.SetHeader([]string{header})
 	p.filterableViewport.SetAllRows(renderableStrings)
 	return p
 }

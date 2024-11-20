@@ -240,11 +240,6 @@ type UpdateResult struct {
 }
 
 func (e Entity) Update(tree EntityTree, delta ContainerDelta) (Entity, EntityTree, []EntityAction) {
-	dev.Debug(fmt.Sprintf("Update %v starts %v", e.Container.HumanReadable(), e.State))
-	defer func() {
-		dev.Debug(fmt.Sprintf("Update %v ends %v", e.Container.HumanReadable(), e.State))
-	}()
-
 	e.Container = delta.Container
 	tree.AddOrReplace(e)
 

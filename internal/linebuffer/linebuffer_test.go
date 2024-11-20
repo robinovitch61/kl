@@ -168,8 +168,8 @@ func TestTruncateLine(t *testing.T) {
 		},
 		{
 			name: "offset start space ansi",
-			// 	                           0123456789012345   67890
-			//                                            0       123456789012345678901234
+			// 							   0123456789012345   67890
+			//       									  0       123456789012345678901234
 			s:                         "\x1b[38;2;255;0;0ma\x1b[0m really really long line",
 			xOffset:                   15,
 			width:                     15,

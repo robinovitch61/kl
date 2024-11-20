@@ -24,6 +24,9 @@ var AttemptUpdateSinceTimeInterval = 500 * time.Millisecond
 
 // *********************************************************************************************************************
 
+// LeftPageWidthFraction controls the width of the left page as a fraction of the terminal width
+const LeftPageWidthFraction = 2. / 5.
+
 // MinCharsEachSideShortNames controls the minimum number of characters to show on each side of container shortnames
 const MinCharsEachSideShortNames = 2
 

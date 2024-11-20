@@ -23,6 +23,7 @@ func wrap(line string, width int, maxLinesEachEnd int) []string {
 	if strings.TrimSpace(line) != "" {
 		line = strings.TrimRightFunc(line, unicode.IsSpace)
 	}
+	//println(fmt.Sprintf("after trim time: %v", time.Since(start)))
 
 	// preserve empty lines
 	if line == "" {

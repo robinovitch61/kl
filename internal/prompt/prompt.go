@@ -24,7 +24,7 @@ func New(visible bool, width, height int, text []string) Model {
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
-	dev.DebugMsg("Prompt", msg)
+	dev.DebugUpdateMsg("Prompt", msg)
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {

@@ -30,7 +30,7 @@ var _ GenericPage = LogsPage{}
 func NewLogsPage(keyMap keymap.KeyMap, width, height int, descending bool) LogsPage {
 	lc := model.NewPageLogContainer(!descending)
 	filterableViewport := filterable_viewport.NewFilterableViewport[model.PageLog](
-		"", // set by updateFilterLabel below
+		fmt.Sprintf("(L)ogs, %s", getOrder(!descending)),
 		true,
 		true,
 		false,
@@ -57,7 +57,7 @@ func NewLogsPage(keyMap keymap.KeyMap, width, height int, descending bool) LogsP
 }
 
 func (p LogsPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
-	dev.DebugMsg("LogsPage", msg)
+	dev.DebugUpdateMsg("LogsPage", msg)
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -136,6 +136,16 @@ func (p LogsPage) ContentForFile() []string {
 
 func (p LogsPage) WithDimensions(width, height int) GenericPage {
 	p.filterableViewport = p.filterableViewport.WithDimensions(width, height)
+	return p
+}
+
+func (p LogsPage) WithFocus() GenericPage {
+	p.filterableViewport.SetFocus(true, true)
+	return p
+}
+
+func (p LogsPage) WithBlur() GenericPage {
+	p.filterableViewport.SetFocus(false, false)
 	return p
 }
 
@@ -269,12 +279,15 @@ func (p *LogsPage) setStickynessBasedOnOrder() {
 }
 
 func (p *LogsPage) updateFilterLabel() {
-	order := "Descending"
-	if p.logContainer.Ascending() {
-		order = "Ascending"
+	label := fmt.Sprintf("(L)ogs %s", getOrder(p.logContainer.Ascending()))
+	p.filterableViewport.SetTopHeader(label)
+}
+
+func getOrder(ascending bool) string {
+	if ascending {
+		return "Ascending"
 	}
-	label := fmt.Sprintf("Logs %s - S for Selection, Enter to Zoom", order)
-	p.filterableViewport.Filter.SetLabel(label)
+	return "Descending"
 }
 
 func getLogTimestamp(log model.PageLog, format string) string {

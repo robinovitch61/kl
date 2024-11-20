@@ -110,7 +110,7 @@ func New[T RenderableComparable](width, height int) (m Model[T]) {
 
 // Update processes messages and updates the model
 func (m Model[T]) Update(msg tea.Msg) (Model[T], tea.Cmd) {
-	dev.DebugMsg("Viewport", msg)
+	dev.DebugUpdateMsg("Viewport", msg)
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
