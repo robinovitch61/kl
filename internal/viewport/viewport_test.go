@@ -157,6 +157,57 @@ func TestViewport_SelectionOff_WrapOff_ShowFooter(t *testing.T) {
 	compare(t, expectedView, vp.View())
 }
 
+func TestViewport_SelectionOff_WrapOff_FooterStyle(t *testing.T) {
+	w, h := 15, 5
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.FooterStyle = renderer().NewStyle().Foreground(red)
+	vp.SetContent([]RenderableString{
+		{Content: "1"},
+		{Content: "2"},
+		{Content: "3"},
+		{Content: "4"},
+	})
+	expectedView := pad(vp.width, vp.height, []string{
+		"header",
+		"1",
+		"2",
+		"3",
+		"\x1b[38;2;255;0;0m75% (3/4)\x1b[0m",
+	})
+	compare(t, expectedView, vp.View())
+}
+
+func TestViewport_SelectionOff_WrapOff_FooterDisabled(t *testing.T) {
+	w, h := 15, 5
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetContent([]RenderableString{
+		{Content: "first line"},
+		{Content: "second line"},
+		{Content: "third line"},
+		{Content: "fourth line"},
+	})
+	expectedView := pad(vp.width, vp.height, []string{
+		"header",
+		"first line",
+		"second line",
+		"third line",
+		"75% (3/4)",
+	})
+	compare(t, expectedView, vp.View())
+
+	vp.SetFooterVisible(false)
+	expectedView = pad(vp.width, vp.height, []string{
+		"header",
+		"first line",
+		"second line",
+		"third line",
+		"fourth line",
+	})
+	compare(t, expectedView, vp.View())
+}
+
 func TestViewport_SelectionOff_WrapOff_SpaceAround(t *testing.T) {
 	w, h := 15, 5
 	vp := newViewport(w, h)
@@ -867,6 +918,59 @@ func TestViewport_SelectionOn_WrapOff_ShowFooter(t *testing.T) {
 		"\x1b[38;2;255;0;0msecond\x1b[0m line",
 		"\x1b[38;2;255;0;0ma really rea...\x1b[0m",
 		"\x1b[38;2;255;0;0ma\x1b[0m really rea...",
+	})
+	compare(t, expectedView, vp.View())
+}
+
+func TestViewport_SelectionOn_WrapOff_FooterStyle(t *testing.T) {
+	w, h := 15, 5
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetSelectionEnabled(true)
+	vp.FooterStyle = renderer().NewStyle().Foreground(red)
+	vp.SetContent([]RenderableString{
+		{Content: "1"},
+		{Content: "2"},
+		{Content: "3"},
+		{Content: "4"},
+	})
+	expectedView := pad(vp.width, vp.height, []string{
+		"header",
+		"\x1b[38;2;0;0;255m1\x1b[0m",
+		"2",
+		"3",
+		"\x1b[38;2;255;0;0m25% (1/4)\x1b[0m",
+	})
+	compare(t, expectedView, vp.View())
+}
+
+func TestViewport_SelectionOn_WrapOff_FooterDisabled(t *testing.T) {
+	w, h := 15, 5
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetSelectionEnabled(true)
+	vp.SetContent([]RenderableString{
+		{Content: "first line"},
+		{Content: "second line"},
+		{Content: "third line"},
+		{Content: "fourth line"},
+	})
+	expectedView := pad(vp.width, vp.height, []string{
+		"header",
+		"\x1b[38;2;0;0;255mfirst line\x1b[0m",
+		"second line",
+		"third line",
+		"25% (1/4)",
+	})
+	compare(t, expectedView, vp.View())
+
+	vp.SetFooterVisible(false)
+	expectedView = pad(vp.width, vp.height, []string{
+		"header",
+		"\x1b[38;2;0;0;255mfirst line\x1b[0m",
+		"second line",
+		"third line",
+		"fourth line",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -2155,6 +2259,59 @@ func TestViewport_SelectionOff_WrapOn_ShowFooter(t *testing.T) {
 	compare(t, expectedView, vp.View())
 }
 
+func TestViewport_SelectionOff_WrapOn_FooterStyle(t *testing.T) {
+	w, h := 15, 5
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetWrapText(true)
+	vp.FooterStyle = renderer().NewStyle().Foreground(red)
+	vp.SetContent([]RenderableString{
+		{Content: "1"},
+		{Content: "2"},
+		{Content: "3"},
+		{Content: "4"},
+	})
+	expectedView := pad(vp.width, vp.height, []string{
+		"header",
+		"1",
+		"2",
+		"3",
+		"\x1b[38;2;255;0;0m75% (3/4)\x1b[0m",
+	})
+	compare(t, expectedView, vp.View())
+}
+
+func TestViewport_SelectionOff_WrapOn_FooterDisabled(t *testing.T) {
+	w, h := 15, 5
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetWrapText(true)
+	vp.SetContent([]RenderableString{
+		{Content: "first line"},
+		{Content: "second line"},
+		{Content: "third line"},
+		{Content: "fourth line"},
+	})
+	expectedView := pad(vp.width, vp.height, []string{
+		"header",
+		"first line",
+		"second line",
+		"third line",
+		"75% (3/4)",
+	})
+	compare(t, expectedView, vp.View())
+
+	vp.SetFooterVisible(false)
+	expectedView = pad(vp.width, vp.height, []string{
+		"header",
+		"first line",
+		"second line",
+		"third line",
+		"fourth line",
+	})
+	compare(t, expectedView, vp.View())
+}
+
 func TestViewport_SelectionOff_WrapOn_SpaceAround(t *testing.T) {
 	w, h := 15, 5
 	vp := newViewport(w, h)
@@ -2950,6 +3107,61 @@ func TestViewport_SelectionOn_WrapOn_ShowFooter(t *testing.T) {
 		"\x1b[38;2;255;0;0m long line\x1b[0m",
 		"\x1b[38;2;255;0;0ma\x1b[0m really really",
 		"\x1b[38;2;255;0;0m\x1b[0m long line",
+	})
+	compare(t, expectedView, vp.View())
+}
+
+func TestViewport_SelectionOn_WrapOn_FooterStyle(t *testing.T) {
+	w, h := 15, 5
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetWrapText(true)
+	vp.SetSelectionEnabled(true)
+	vp.FooterStyle = renderer().NewStyle().Foreground(red)
+	vp.SetContent([]RenderableString{
+		{Content: "1"},
+		{Content: "2"},
+		{Content: "3"},
+		{Content: "4"},
+	})
+	expectedView := pad(vp.width, vp.height, []string{
+		"header",
+		"\x1b[38;2;0;0;255m1\x1b[0m",
+		"2",
+		"3",
+		"\x1b[38;2;255;0;0m25% (1/4)\x1b[0m",
+	})
+	compare(t, expectedView, vp.View())
+}
+
+func TestViewport_SelectionOn_WrapOn_FooterDisabled(t *testing.T) {
+	w, h := 15, 5
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetSelectionEnabled(true)
+	vp.SetWrapText(true)
+	vp.SetContent([]RenderableString{
+		{Content: "first line"},
+		{Content: "second line"},
+		{Content: "third line"},
+		{Content: "fourth line"},
+	})
+	expectedView := pad(vp.width, vp.height, []string{
+		"header",
+		"\x1b[38;2;0;0;255mfirst line\x1b[0m",
+		"second line",
+		"third line",
+		"25% (1/4)",
+	})
+	compare(t, expectedView, vp.View())
+
+	vp.SetFooterVisible(false)
+	expectedView = pad(vp.width, vp.height, []string{
+		"header",
+		"\x1b[38;2;0;0;255mfirst line\x1b[0m",
+		"second line",
+		"third line",
+		"fourth line",
 	})
 	compare(t, expectedView, vp.View())
 }

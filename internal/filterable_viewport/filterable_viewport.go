@@ -208,6 +208,12 @@ func (p *FilterableViewport[T]) SetAllRows(allRows []T) {
 func (p *FilterableViewport[T]) SetFocus(focused bool, selectionEnabled bool) {
 	p.focused = focused
 	p.viewport.SetSelectionEnabled(selectionEnabled)
+	if focused {
+		p.viewport.FooterStyle = style.Regular
+	} else {
+		p.viewport.FooterStyle = style.Alt
+	}
+
 	p.updateViewportHeader()
 }
 

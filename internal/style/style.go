@@ -19,6 +19,15 @@ var (
 )
 
 var (
+	Regular = lipgloss.NewStyle()
+
+	Alt = lipgloss.NewStyle().Foreground(
+		lipgloss.AdaptiveColor{
+			Light: lighterForegroundHex,
+			Dark:  darkerForegroundHex,
+		},
+	)
+
 	// need to specifically set the foreground color otherwise changes color on some terminals
 	Bold = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(foregroundHex))
 

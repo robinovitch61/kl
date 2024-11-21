@@ -62,6 +62,9 @@ type Model[T RenderableComparable] struct {
 	// selectionEnabled is true if the viewport allows individual line selection
 	selectionEnabled bool
 
+	// footerVisible is true if the viewport will show the footer when it overflows
+	footerVisible bool
+
 	// wrapText is true if the viewport wraps text rather than showing that a line is truncated/horizontally scrollable
 	wrapText bool
 
@@ -105,6 +108,7 @@ func New[T RenderableComparable](width, height int) (m Model[T]) {
 
 	m.KeyMap = DefaultKeyMap()
 	m.lineContinuationIndicator = "..."
+	m.footerVisible = true
 	return m
 }
 
@@ -312,6 +316,11 @@ func (m *Model[T]) SetBottomSticky(bottomSticky bool) {
 // SetSelectionEnabled sets whether the viewport allows line selection
 func (m *Model[T]) SetSelectionEnabled(selectionEnabled bool) {
 	m.selectionEnabled = selectionEnabled
+}
+
+// SetFooterVisible sets whether the viewport shows the footer when it overflows
+func (m *Model[T]) SetFooterVisible(footerVisible bool) {
+	m.footerVisible = footerVisible
 }
 
 // SetMaintainSelection sets whether the viewport should try to maintain the current selection when allItems changes
@@ -712,6 +721,10 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 	if !scrolledToTop {
 		// if scrolled at all, should be showing footer
 		showFooter = true
+	}
+
+	if !m.footerVisible {
+		showFooter = false
 	}
 
 	if showFooter {
