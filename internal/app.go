@@ -2,7 +2,6 @@ package internal
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -22,11 +21,7 @@ import (
 	"github.com/robinovitch61/kl/internal/style"
 	"github.com/robinovitch61/kl/internal/toast"
 	"github.com/robinovitch61/kl/internal/util"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/klog/v2"
 	"math"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -96,7 +91,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		if !m.initialized {
-			m, cmd = m.initialize()
+			m, cmd = initializedModel(m)
 			cmds = append(cmds, cmd)
 		}
 		m.syncDimensions()
@@ -286,207 +281,6 @@ func (m Model) topBar() string {
 
 // startup, shutdown, & bubble tea builtin messages
 // ---
-func (m Model) initialize() (Model, tea.Cmd) {
-	dev.Debug("initializing")
-	defer dev.Debug("done initializing")
-	dev.Debug("------------")
-
-	// disable kubernetes client warning/logging
-	klog.InitFlags(nil)
-	_ = flag.Set("logtostderr", "false")
-	_ = flag.Set("stderrthreshold", "FATAL") // Set threshold to FATAL to suppress most kubernetes client logs
-	_ = flag.Set("v", "0")                   // Set verbosity level to 0
-
-	// Currently intentionally unsupported in config, can revisit in the future but will make config more complicated:
-	// - specifying a specific set of namespaces per context/cluster
-	//    - could potentially edit `--contexts` to have form of `context1[ns1,ns2],context2[ns3,ns4]`
-	// - specifying multiple contexts that point to the same cluster
-	//    - I can't imagine a scenario where this is desired other than wanting multiple namespaces per cluster
-
-	// get kubeconfig, accounting for multiple file paths
-	kubeconfigPaths := strings.Split(m.config.KubeConfigPath, string(os.PathListSeparator))
-	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
-	dev.Debug(fmt.Sprintf("kubeconfig paths: %v", kubeconfigPaths))
-	loadingRules.Precedence = kubeconfigPaths
-	clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, nil)
-	rawKubeConfig, err := clientConfig.RawConfig()
-	if err != nil {
-		m.err = err
-		return m, nil
-	}
-
-	// specified contexts
-	contextsString := strings.Trim(strings.TrimSpace(m.config.Contexts), ",")
-	var contexts []string
-	if len(contextsString) > 0 {
-		contexts = strings.Split(contextsString, ",")
-	}
-
-	// fall back to current context if exists
-	if len(contexts) == 0 && rawKubeConfig.CurrentContext != "" {
-		contexts = []string{rawKubeConfig.CurrentContext}
-	}
-
-	// validate that at least one context was found
-	if len(contexts) == 0 {
-		m.err = fmt.Errorf("no contexts specified and no current context found in kubeconfig")
-		return m, nil
-	}
-
-	// validate that each context exists in the kubeconfig
-	for _, c := range contexts {
-		if _, exists := rawKubeConfig.Contexts[c]; !exists {
-			m.err = fmt.Errorf("context %s not found in kubeconfig", c)
-			return m, nil
-		}
-	}
-	dev.Debug(fmt.Sprintf("using contexts %v", contexts))
-
-	// get the cluster name for each context
-	var clusters []string
-	for _, contextName := range contexts {
-		clusterName := rawKubeConfig.Contexts[contextName].Cluster
-		clusters = append(clusters, clusterName)
-	}
-
-	// enforce that each context has a unique cluster, otherwise it will be undefined what auth/namespace to use for that cluster
-	clusterToContext := make(map[string]string)
-	for _, contextName := range contexts {
-		clusterName := rawKubeConfig.Contexts[contextName].Cluster
-		if existingContext, exists := clusterToContext[clusterName]; exists {
-			m.err = fmt.Errorf("contexts %s and %s both specify cluster %s - unclear which auth/namespace to use", existingContext, contextName, clusterName)
-			return m, nil
-		}
-		clusterToContext[clusterName] = contextName
-	}
-
-	// each context has a cluster, auth info, and an optional namespace
-	// - if all namespaces are specified, use all namespaces for all clusters
-	// - if specific namespaces are specified, ignore context namespaces and use the specified ones for all clusters
-	// - if no namespaces are specified, use the context's namespace if it exists, otherwise use the default namespace
-	namespacesString := strings.Trim(strings.TrimSpace(m.config.Namespaces), ",")
-	var namespaces []string
-	if len(namespacesString) > 0 {
-		namespaces = strings.Split(namespacesString, ",")
-	}
-
-	// ordered pairing of (cluster name, namespaces)
-	// not a map
-	var allClusterNamespaces []model.ClusterNamespaces
-	for _, cluster := range clusters {
-		if m.config.AllNamespaces {
-			cn := model.ClusterNamespaces{Cluster: cluster, Namespaces: []string{""}}
-			allClusterNamespaces = append(allClusterNamespaces, cn)
-		} else if len(namespaces) > 0 {
-			cn := model.ClusterNamespaces{Cluster: cluster, Namespaces: namespaces}
-			allClusterNamespaces = append(allClusterNamespaces, cn)
-		} else {
-			contextName := clusterToContext[cluster]
-			namespace := rawKubeConfig.Contexts[contextName].Namespace
-			if namespace == "" {
-				namespace = "default"
-			}
-			cn := model.ClusterNamespaces{Cluster: cluster, Namespaces: []string{namespace}}
-			allClusterNamespaces = append(allClusterNamespaces, cn)
-		}
-	}
-	m.allClusterNamespaces = allClusterNamespaces
-	for _, cn := range allClusterNamespaces {
-		for _, namespace := range cn.Namespaces {
-			dev.Debug(fmt.Sprintf("using cluster '%s' namespace '%s'", cn.Cluster, namespace))
-		}
-	}
-
-	// create a map of cluster to client set
-	clusterToClientSet := make(map[string]*kubernetes.Clientset)
-	for _, cluster := range clusters {
-		// find the context that refers to the configured cluster
-		contextName, exists := clusterToContext[cluster]
-		if !exists {
-			m.err = fmt.Errorf("no context found for cluster %s in kubeconfig", cluster)
-			return m, nil
-		}
-
-		// set the current context to the one that refers to the configured cluster
-		rawKubeConfig.CurrentContext = contextName
-		if err := clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), rawKubeConfig, false); err != nil {
-			m.err = fmt.Errorf("failed to set current context for cluster %s: %w", cluster, err)
-			return m, nil
-		}
-
-		dev.Debug(fmt.Sprintf("using context %s for cluster %s", contextName, cluster))
-
-		// reload the client configuration
-		clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, nil)
-		config, err := clientConfig.ClientConfig()
-		if err != nil {
-			m.err = fmt.Errorf("failed to get client config for cluster %s: %w", cluster, err)
-			return m, nil
-		}
-
-		// create a new clientset for the current context
-		clientset, err := kubernetes.NewForConfig(config)
-		if err != nil {
-			m.err = fmt.Errorf("failed to create clientset for cluster %s: %w", cluster, err)
-			return m, nil
-		}
-
-		// add the clientset to the map
-		clusterToClientSet[cluster] = clientset
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	m.cancel = cancel
-	m.client = k8s.NewClient(ctx, clusterToClientSet)
-
-	m.entityTree = model.NewEntityTree(m.allClusterNamespaces)
-
-	if m.config.LogsView {
-		m.focusedPageType = page.LogsPageType
-	} else {
-		m.focusedPageType = page.EntitiesPageType
-	}
-	m.rightPageType = page.LogsPageType
-	m.sinceTime = m.config.SinceTime
-
-	m.pages = make(map[page.Type]page.GenericPage)
-
-	m.topBarHeight = lipgloss.Height(m.topBar())
-	contentHeight := m.height - m.topBarHeight
-	m.pages[page.EntitiesPageType] = page.NewEntitiesPage(m.keyMap, m.width, contentHeight, m.entityTree)
-	m.pages[page.LogsPageType] = page.NewLogsPage(m.keyMap, m.width, contentHeight, m.config.Descending)
-	m.pages[page.SingleLogPageType] = page.NewSingleLogPage(m.keyMap, m.width, contentHeight)
-
-	if m.config.LogFilter.Value != "" {
-		m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithLogFilter(m.config.LogFilter)
-	}
-
-	m.initialized = true
-
-	var cmds []tea.Cmd
-	for _, clusterNamespaces := range m.allClusterNamespaces {
-		for _, namespace := range clusterNamespaces.Namespaces {
-			cmds = append(cmds, command.GetContainerListenerCmd(
-				m.client,
-				clusterNamespaces.Cluster,
-				namespace,
-				m.config.Matchers,
-				m.config.Selector,
-				m.config.IgnoreOwnerTypes,
-			))
-		}
-	}
-
-	// start updates of since time
-	updateSinceTimeTextCmd := tea.Tick(
-		m.sinceTime.TimeToNextUpdate(),
-		func(t time.Time) tea.Msg { return message.UpdateSinceTimeTextMsg{UUID: m.sinceTime.UUID} },
-	)
-	cmds = append(cmds, updateSinceTimeTextCmd)
-
-	return m, tea.Batch(cmds...)
-}
-
 func (m Model) syncDimensions() (Model, tea.Cmd) {
 	contentHeight := m.height - m.topBarHeight
 	m.prompt.SetWidthAndHeight(m.width, contentHeight)
