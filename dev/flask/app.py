@@ -7,6 +7,9 @@ import logging
 import json
 from datetime import datetime
 import random
+import signal
+import threading
+import time
 
 class JSONFormatter(logging.Formatter):
     def format(self, record):
@@ -68,7 +71,21 @@ def init_db():
     finally:
         return_db_connection(conn)
 
+def cleanup():
+    logger.info("Cleaning up resources...")
+    db_pool.closeall()
+
+def exit_after_delay():
+    time.sleep(30)  # Wait for 60 seconds
+    logger.info("Exiting after 1 minute delay")
+    cleanup()
+    os._exit(0)
+
 init_db()
+
+# Start the exit timer thread
+# exit_thread = threading.Thread(target=exit_after_delay, daemon=True)
+# exit_thread.start()
 
 @app.route("/health")
 def health():

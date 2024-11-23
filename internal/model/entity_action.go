@@ -7,6 +7,7 @@ const (
 	StopScanner
 	StopScannerKeepLogs
 	RemoveEntity
+	RemoveLogs
 	MarkLogsTerminated
 )
 
@@ -20,6 +21,8 @@ func (a EntityAction) String() string {
 		return "StopScannerKeepLogs"
 	case RemoveEntity:
 		return "RemoveEntity"
+	case RemoveLogs:
+		return "RemoveLogs"
 	case MarkLogsTerminated:
 		return "MarkLogsTerminated"
 	default:

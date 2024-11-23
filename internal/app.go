@@ -1140,8 +1140,9 @@ func (m Model) doActions(entity model.Entity, actions []model.EntityAction) (Mod
 		case model.StopScannerKeepLogs:
 			cmds = append(cmds, command.StopLogScannerCmd(entity, true))
 		case model.RemoveEntity:
-			m.removeLogsForContainer(entity.Container)
 			m.entityTree.Remove(entity)
+		case model.RemoveLogs:
+			m.removeLogsForContainer(entity.Container)
 		case model.MarkLogsTerminated:
 			m.markLogsTerminatedForContainer(entity.Container)
 		default:
