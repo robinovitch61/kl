@@ -1171,8 +1171,29 @@ func (m Model) withUpdatedContainerShortNames() Model {
 		m.err = err
 		return m
 	}
+
+	err = m.updateShortNamesInBuffer()
+	if err != nil {
+		m.err = err
+		return m
+	}
+
 	m.pages[page.LogsPageType] = newLogsPage
 	return m
+}
+
+func (m *Model) updateShortNamesInBuffer() error {
+	bufferedLogs := m.pageLogBuffer
+	m.pageLogBuffer = nil
+	for i := range bufferedLogs {
+		short, err := m.containerToShortName(bufferedLogs[i].Log.Container)
+		if err != nil {
+			return err
+		}
+		bufferedLogs[i].ContainerNames.Short = short
+	}
+	m.pageLogBuffer = bufferedLogs
+	return nil
 }
 
 func (m *Model) removeLogsForContainer(container model.Container) {
