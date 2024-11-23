@@ -15,7 +15,7 @@ type KeyMap struct {
 	FilterRegex         key.Binding
 	FilterNextRow       key.Binding
 	FilterPrevRow       key.Binding
-	FullScreen          key.Binding
+	Fullscreen          key.Binding
 	Help                key.Binding
 	Logs                key.Binding
 	LogsFullScreen      key.Binding
@@ -44,11 +44,11 @@ var DefaultKeyMap = KeyMap{
 	),
 	Copy: key.NewBinding(
 		key.WithKeys("ctrl+y"),
-		key.WithHelp("ctrl+y", "copy log to clipboard"),
+		key.WithHelp("ctrl+y", "copy zoomed log"),
 	),
 	Context: key.NewBinding(
 		key.WithKeys("x"),
-		key.WithHelp("x", "toggle filtered logs only"),
+		key.WithHelp("x", "filter matches only"),
 	),
 	Enter: key.NewBinding(
 		key.WithKeys("enter"),
@@ -70,21 +70,21 @@ var DefaultKeyMap = KeyMap{
 		key.WithKeys("N"),
 		key.WithHelp("N", "prev filter match"),
 	),
-	FullScreen: key.NewBinding(
+	Fullscreen: key.NewBinding(
 		key.WithKeys("F"),
-		key.WithHelp("F", "fullscreen"),
+		key.WithHelp("F", "toggle fullscreen"),
 	),
 	Help: key.NewBinding(
 		key.WithKeys("?"),
-		key.WithHelp("?", "show help"),
+		key.WithHelp("?", "show/hide help"),
 	),
 	Logs: key.NewBinding(
 		key.WithKeys("l"),
-		key.WithHelp("l", "go to logs view"),
+		key.WithHelp("l", "focus logs"),
 	),
 	LogsFullScreen: key.NewBinding(
 		key.WithKeys("L"),
-		key.WithHelp("L", "full screen logs view"),
+		key.WithHelp("L", "logs fullscreen"),
 	),
 	Name: key.NewBinding(
 		key.WithKeys("c"),
@@ -108,15 +108,15 @@ var DefaultKeyMap = KeyMap{
 	),
 	Save: key.NewBinding(
 		key.WithKeys("ctrl+s"),
-		key.WithHelp("ctrl+s", "save view to file"),
+		key.WithHelp("ctrl+s", "save focus to file"),
 	),
 	Selection: key.NewBinding(
 		key.WithKeys("s"),
-		key.WithHelp("s", "go to selection view"),
+		key.WithHelp("s", "focus selection"),
 	),
 	SelectionFullScreen: key.NewBinding(
 		key.WithKeys("S"),
-		key.WithHelp("S", "full screen selection view"),
+		key.WithHelp("S", "selection fullscreen"),
 	),
 	SinceTime: key.NewBinding(
 		key.WithKeys("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"),
@@ -128,7 +128,7 @@ var DefaultKeyMap = KeyMap{
 	),
 	TogglePause: key.NewBinding(
 		key.WithKeys("p"),
-		key.WithHelp("p", "pause/resume log stream"),
+		key.WithHelp("p", "pause/resume logs"),
 	),
 	Wrap: key.NewBinding(
 		key.WithKeys("w"),
@@ -155,24 +155,33 @@ func LookbackKeyBindings(km KeyMap) []key.Binding {
 func GlobalKeyBindings(km KeyMap) []key.Binding {
 	// available from anywhere on the app
 	return []key.Binding{
-		km.Quit,
-		km.Help,
 		km.Logs,
+		km.LogsFullScreen,
 		km.Selection,
-		km.Save,
+		km.SelectionFullScreen,
+		km.Fullscreen,
 		km.Wrap,
-		viewport.DefaultKeyMap().Up,
-		viewport.DefaultKeyMap().Down,
-		viewport.DefaultKeyMap().PageUp,
-		viewport.DefaultKeyMap().PageDown,
-		viewport.DefaultKeyMap().Top,
-		viewport.DefaultKeyMap().Bottom,
 		km.Filter,
 		km.FilterRegex,
 		km.Clear,
 		WithDesc(km.Enter, "apply filter"),
 		km.FilterNextRow,
 		km.FilterPrevRow,
+		km.Context,
+		viewport.DefaultKeyMap().Up,
+		viewport.DefaultKeyMap().Down,
+		viewport.DefaultKeyMap().PageUp,
+		viewport.DefaultKeyMap().PageDown,
+		viewport.DefaultKeyMap().Top,
+		viewport.DefaultKeyMap().Bottom,
+		km.Save,
+		km.TogglePause,
+		km.ReverseOrder,
+		WithDesc(km.Enter, "zoom on log"),
+		WithDesc(km.Clear, "back to all logs"),
+		km.Copy,
+		km.Quit,
+		km.Help,
 	}
 }
 

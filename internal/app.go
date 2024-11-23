@@ -429,7 +429,7 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 	}
 
 	// toggle fullscreen for focused page
-	if key.Matches(msg, m.keyMap.FullScreen) {
+	if key.Matches(msg, m.keyMap.Fullscreen) {
 		m.setFullscreen(!m.fullScreen)
 		return m, nil
 	}

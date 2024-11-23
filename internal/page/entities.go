@@ -2,10 +2,10 @@ package page
 
 import (
 	"fmt"
-	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/filterable_viewport"
+	"github.com/robinovitch61/kl/internal/help"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/model"
 	"strings"
@@ -107,16 +107,7 @@ func (p EntityPage) WithBlur() GenericPage {
 }
 
 func (p EntityPage) Help() string {
-	local := []key.Binding{
-		keymap.WithDesc(p.keyMap.Enter, "select/deselect"),
-		p.keyMap.TogglePause,
-	}
-	local = append(local, keymap.LookbackKeyBindings(p.keyMap)...)
-	return makePageHelp(
-		"Selection",
-		keymap.GlobalKeyBindings(p.keyMap),
-		local,
-	)
+	return help.MakeHelp(p.keyMap)
 }
 
 func (p EntityPage) WithEntityTree(entityTree model.EntityTree) EntityPage {

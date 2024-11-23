@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/filter"
 	"github.com/robinovitch61/kl/internal/filterable_viewport"
+	"github.com/robinovitch61/kl/internal/help"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/model"
 	"github.com/robinovitch61/kl/internal/viewport"
@@ -94,19 +94,7 @@ func (p SingleLogPage) WithBlur() GenericPage {
 }
 
 func (p SingleLogPage) Help() string {
-	local := []key.Binding{
-		p.keyMap.Copy,
-		keymap.WithDesc(p.keyMap.Clear, "back to logs"),
-		p.keyMap.PrevLog,
-		p.keyMap.NextLog,
-		key.NewBinding(key.WithHelp("shift+↑/k", "scroll up within log")),
-		key.NewBinding(key.WithHelp("shift+↓/j", "scroll down within log")),
-	}
-	return makePageHelp(
-		"Single Log",
-		keymap.GlobalKeyBindings(p.keyMap),
-		local,
-	)
+	return help.MakeHelp(p.keyMap)
 }
 
 func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {

@@ -1,34 +1,27 @@
-package page
+package help
 
 import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/style"
 )
 
-func makePageHelp(pageName string, globalBindings, pageBindings []key.Binding) string {
+func MakeHelp(keyMap keymap.KeyMap) string {
 	title := lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1).Render("Help (press any key to hide)")
-	rowsPerCol := 6
-
-	pageHelp := lipgloss.JoinVertical(
-		lipgloss.Center,
-		style.Underline.Render("Current View: "+pageName),
-		"",
-		formatKeyBindings(pageBindings, rowsPerCol),
-	)
+	rowsPerCol := 9
 
 	generalHelp := lipgloss.JoinVertical(
 		lipgloss.Center,
 		"",
-		style.Underline.Render("Anywhere in Application"),
+		formatKeyBindings(keymap.GlobalKeyBindings(keyMap), rowsPerCol),
 		"",
-		formatKeyBindings(globalBindings, rowsPerCol),
+		formatKeyBindings(keymap.LookbackKeyBindings(keyMap), 4),
 	)
 
 	res := lipgloss.JoinVertical(
 		lipgloss.Center,
 		title,
-		pageHelp,
 		generalHelp,
 	)
 	return res

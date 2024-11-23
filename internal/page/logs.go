@@ -7,6 +7,7 @@ import (
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/filter"
 	"github.com/robinovitch61/kl/internal/filterable_viewport"
+	"github.com/robinovitch61/kl/internal/help"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/model"
 )
@@ -150,19 +151,7 @@ func (p LogsPage) WithBlur() GenericPage {
 }
 
 func (p LogsPage) Help() string {
-	local := []key.Binding{
-		keymap.WithDesc(p.keyMap.Enter, "zoom on log"),
-		p.keyMap.Context,
-		p.keyMap.Name,
-		p.keyMap.Timestamps,
-		p.keyMap.ReverseOrder,
-	}
-	local = append(local, keymap.LookbackKeyBindings(p.keyMap)...)
-	return makePageHelp(
-		"Logs",
-		keymap.GlobalKeyBindings(p.keyMap),
-		local,
-	)
+	return help.MakeHelp(p.keyMap)
 }
 
 func (p LogsPage) WithLogFilter(lf model.LogFilter) LogsPage {
