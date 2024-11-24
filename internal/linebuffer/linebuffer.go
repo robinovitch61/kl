@@ -1,13 +1,9 @@
 package linebuffer
 
 import (
-	"regexp"
+	"github.com/robinovitch61/kl/internal/constants"
 	"strings"
 	"unicode/utf8"
-)
-
-var (
-	ansiPattern = regexp.MustCompile("\x1b\\[[0-9;]*m")
 )
 
 type LineBuffer struct {
@@ -21,11 +17,11 @@ type LineBuffer struct {
 }
 
 func New(line, lineContinuationIndicator string) LineBuffer {
-	ansiCodeIndexes := ansiPattern.FindAllStringIndex(line, -1)
+	ansiCodeIndexes := constants.AnsiRegex.FindAllStringIndex(line, -1)
 
 	var plainText string
 	if len(ansiCodeIndexes) > 0 {
-		plainText = ansiPattern.ReplaceAllString(line, "")
+		plainText = constants.AnsiRegex.ReplaceAllString(line, "")
 	} else {
 		plainText = line
 	}

@@ -10,6 +10,7 @@ import (
 )
 
 var (
+	// these are a bit of an approximation in some terminals
 	backgroundHex = termenv.ConvertToRGB(termenv.BackgroundColor()).Hex()
 	foregroundHex = termenv.ConvertToRGB(termenv.ForegroundColor()).Hex()
 
@@ -19,7 +20,7 @@ var (
 )
 
 var (
-	Regular = lipgloss.NewStyle()
+	Unset = lipgloss.NewStyle().Foreground(lipgloss.Color(foregroundHex)).Background(lipgloss.Color(backgroundHex))
 
 	Alt = lipgloss.NewStyle().Foreground(
 		lipgloss.AdaptiveColor{

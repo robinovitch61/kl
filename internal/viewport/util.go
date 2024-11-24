@@ -4,7 +4,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/go-cmp/cmp"
 	"github.com/robinovitch61/kl/internal/linebuffer"
-	"regexp"
 	"strings"
 	"testing"
 	"unicode"
@@ -63,72 +62,93 @@ func percent(a, b int) int {
 }
 
 // highlightLine highlights a line that potentially has ansi codes in it without disrupting them
-func highlightLine(line string, highlight string, highlightStyle lipgloss.Style) string {
-	ansiCodeIndexes := ansiPattern.FindAllStringIndex(line, -1)
-
-	if len(ansiCodeIndexes) == 0 {
-		// no pre-existing ansi codes, easy
-		return strings.ReplaceAll(line, highlight, highlightStyle.Render(highlight))
+func highlightLine(line, highlight string, highlightStyle lipgloss.Style) string {
+	if line == "" || highlight == "" {
+		return line
 	}
 
-	if len(ansiCodeIndexes)%2 != 0 {
-		// odd number of ansi codes, meaning something like one is not reset
-		// doesn't currently handle this, naively pretend there are no ansi codes
-		return strings.ReplaceAll(line, highlight, highlightStyle.Render(highlight))
-	}
+	// Pre-compute highlight style string, removing final reset
+	highlightStr := strings.TrimSuffix(highlightStyle.String(), "\x1b[0m")
 
-	highlightRegexp := regexp.MustCompile(regexp.QuoteMeta(highlight))
-	highlightIndexes := highlightRegexp.FindAllStringIndex(line, -1)
-
-	resetCode := "\x1b[0m"
 	var result strings.Builder
-	lastIndex := 0
-	for _, highlightIndex := range highlightIndexes {
-		start, end := highlightIndex[0], highlightIndex[1]
+	result.Grow(len(line) * 2) // Pre-allocate buffer
 
-		// check if the highlight is within any ansi code
-		inAnsiCode := false
-		for _, ansiIndex := range ansiCodeIndexes {
-			if start >= ansiIndex[0] && start < ansiIndex[1] {
-				inAnsiCode = true
-				break
-			}
+	searchStart := 0
+	writeStart := 0
+	currentStyleStart := -1
+	inAnsi := false
+
+	lowLine := strings.ToLower(line)
+	lowHighlight := strings.ToLower(highlight)
+
+	for {
+		idx := strings.Index(lowLine[searchStart:], lowHighlight)
+		if idx == -1 {
+			result.WriteString(line[writeStart:])
+			break
 		}
 
-		if inAnsiCode {
-			// if the highlight is within an ansi code, don't apply highlighting
-			result.WriteString(line[lastIndex:end])
-		} else {
-			// add the part before the highlight
-			result.WriteString(line[lastIndex:start])
+		idx += searchStart
 
-			// check if the highlight is within any ansi code range (between start and end codes)
-			inAnsiRange := false
-			var activeAnsiCode string
-			for i := 0; i < len(ansiCodeIndexes); i += 2 {
-				if ansiCodeIndexes[i][0] <= start && end <= ansiCodeIndexes[i+1][0] {
-					inAnsiRange = true
-					activeAnsiCode = line[ansiCodeIndexes[i][0]:ansiCodeIndexes[i][1]]
-					break
+		// Check if we're in an ANSI sequence
+		for i := writeStart; i < idx; i++ {
+			if line[i] == '\x1b' {
+				inAnsi = true
+				if line[i+1] == '[' {
+					if currentStyleStart == -1 {
+						currentStyleStart = i
+					}
+				}
+			} else if inAnsi && line[i] == 'm' {
+				inAnsi = false
+				if i >= 2 && line[i-1] == '0' && line[i-2] == '[' && line[i-3] == '\x1b' {
+					currentStyleStart = -1
 				}
 			}
+		}
 
-			if inAnsiRange {
-				// reset, apply highlight, then reapply active ansi code
-				result.WriteString(resetCode)
-				result.WriteString(highlightStyle.Render(line[start:end]))
-				result.WriteString(activeAnsiCode)
-			} else {
-				// just apply highlight without resetting or reapplying ansi codes
-				result.WriteString(highlightStyle.Render(line[start:end]))
+		// Skip if we're in an ANSI sequence
+		if inAnsi {
+			searchStart = idx + 1
+			continue
+		}
+
+		// Write up to match
+		result.WriteString(line[writeStart:idx])
+
+		// Close current style if needed
+		if currentStyleStart != -1 {
+			result.WriteString("\x1b[0m")
+		}
+
+		// Write highlighted section
+		result.WriteString(highlightStr)
+		result.WriteString(line[idx : idx+len(highlight)])
+		result.WriteString("\x1b[0m")
+
+		// Restore previous style if needed
+		if currentStyleStart != -1 {
+			// Find end of style sequence
+			styleEnd := currentStyleStart
+			for styleEnd < len(line) {
+				if line[styleEnd] == 'm' {
+					result.WriteString(line[currentStyleStart : styleEnd+1])
+					break
+				}
+				styleEnd++
 			}
 		}
 
-		lastIndex = end
+		writeStart = idx + len(highlight)
+		searchStart = writeStart
+
+		// Reset style tracking for next section if we're at a reset sequence
+		if writeStart >= 4 &&
+			line[writeStart-4:writeStart] == "\x1b[0m" {
+			currentStyleStart = -1
+		}
 	}
 
-	// add the remaining part of the line
-	result.WriteString(line[lastIndex:])
 	return result.String()
 }
 

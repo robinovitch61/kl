@@ -4,6 +4,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/filter"
 	"github.com/robinovitch61/kl/internal/keymap"
@@ -44,6 +45,7 @@ func NewFilterableViewport[T viewport.RenderableComparable](
 	vp.FooterStyle = style.Bold
 	vp.SelectedItemStyle = style.Inverse
 	vp.HighlightStyle = style.Inverse
+	vp.HighlightStyleIfSelected = style.Unset
 
 	vp.SetSelectionEnabled(startSelectionEnabled)
 	vp.SetWrapText(startWrapOn)
@@ -209,7 +211,7 @@ func (p *FilterableViewport[T]) SetFocus(focused bool, selectionEnabled bool) {
 	p.focused = focused
 	p.viewport.SetSelectionEnabled(selectionEnabled)
 	if focused {
-		p.viewport.FooterStyle = style.Regular
+		p.viewport.FooterStyle = lipgloss.NewStyle()
 	} else {
 		p.viewport.FooterStyle = style.Alt
 	}

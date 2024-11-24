@@ -21,6 +21,7 @@ var (
 	goToBottomKeyMsg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(testKeyMap.Bottom.Keys()[0])}
 	red              = lipgloss.Color("#ff0000")
 	blue             = lipgloss.Color("#0000ff")
+	green            = lipgloss.Color("#00ff00")
 	selectionStyle   = renderer().NewStyle().Foreground(blue)
 )
 
@@ -2046,23 +2047,24 @@ func TestViewport_SelectionOn_WrapOff_ChangeContent(t *testing.T) {
 }
 
 func TestViewport_SelectionOn_WrapOff_StringToHighlight(t *testing.T) {
-	w, h := 10, 5
+	w, h := 15, 5
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
 	vp.SetStringToHighlight("second")
-	vp.HighlightStyle = renderer().NewStyle().Foreground(red)
+	vp.HighlightStyle = renderer().NewStyle().Foreground(green)
+	vp.HighlightStyleIfSelected = renderer().NewStyle().Foreground(red)
 	vp.SetContent([]RenderableString{
-		{Content: "first"},
-		{Content: "second"},
-		{Content: "second"},
-		{Content: "third"},
+		{Content: "the first line"},
+		{Content: "the second line"},
+		{Content: "the second line"},
+		{Content: "the fourth line"},
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
-		"\x1b[38;2;255;0;0msecond\x1b[0m",
-		"\x1b[38;2;255;0;0msecond\x1b[0m",
+		"\x1b[38;2;0;0;255mthe first line\x1b[0m",
+		"the \x1b[38;2;0;255;0msecond\x1b[0m line",
+		"the \x1b[38;2;0;255;0msecond\x1b[0m line",
 		"25% (1/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -2070,9 +2072,24 @@ func TestViewport_SelectionOn_WrapOff_StringToHighlight(t *testing.T) {
 	vp.SetStringToHighlight("first")
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
-		"second",
-		"second",
+		"\x1b[38;2;0;0;255mthe \x1b[0m\x1b[38;2;255;0;0mfirst\x1b[0m\x1b[38;2;0;0;255m line\x1b[0m",
+		"the second line",
+		"the second line",
+		"25% (1/4)",
+	})
+	compare(t, expectedView, vp.View())
+
+	vp.SetContent([]RenderableString{
+		{Content: "first line"},
+		{Content: "second line"},
+		{Content: "second line"},
+		{Content: "fourth line"},
+	})
+	expectedView = pad(vp.width, vp.height, []string{
+		"header",
+		"\x1b[38;2;255;0;0mfirst\x1b[0m\x1b[38;2;0;0;255m line\x1b[0m",
+		"second line",
+		"second line",
 		"25% (1/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4235,7 +4252,8 @@ func TestViewport_SelectionOn_WrapOn_StringToHighlight(t *testing.T) {
 	vp.SetSelectionEnabled(true)
 	vp.SetWrapText(true)
 	vp.SetStringToHighlight("second")
-	vp.HighlightStyle = renderer().NewStyle().Foreground(red)
+	vp.HighlightStyle = renderer().NewStyle().Foreground(green)
+	vp.HighlightStyleIfSelected = renderer().NewStyle().Foreground(red)
 	vp.SetContent([]RenderableString{
 		{Content: "first"},
 		{Content: "second"},
@@ -4245,8 +4263,8 @@ func TestViewport_SelectionOn_WrapOn_StringToHighlight(t *testing.T) {
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
 		"\x1b[38;2;0;0;255mfirst\x1b[0m",
-		"\x1b[38;2;255;0;0msecond\x1b[0m",
-		"\x1b[38;2;255;0;0msecond\x1b[0m",
+		"\x1b[38;2;0;255;0msecond\x1b[0m",
+		"\x1b[38;2;0;255;0msecond\x1b[0m",
 		"25% (1/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4254,23 +4272,22 @@ func TestViewport_SelectionOn_WrapOn_StringToHighlight(t *testing.T) {
 	vp.SetStringToHighlight("first")
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;255;0;0mfirst\x1b[0m",
 		"second",
 		"second",
 		"25% (1/4)",
 	})
 	compare(t, expectedView, vp.View())
 
-	// string to highlight ignored due to selection
 	vp.SetContent([]RenderableString{
-		{Content: "averylongwordthatwraps"},
+		{Content: "averylongwordthatwrapsover"},
 	})
 	vp.SetStringToHighlight("wraps")
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255maverylongw\x1b[0m",
-		"\x1b[38;2;0;0;255mordthatwra\x1b[0m",
-		"\x1b[38;2;0;0;255mps\x1b[0m",
+		"\x1b[38;2;0;0;255maverylongw\x1b[0m\x1b[38;2;255;0;0m\x1b[0m",
+		"\x1b[38;2;0;0;255mordthat\x1b[0m\x1b[38;2;255;0;0mwra\x1b[0m",
+		"\x1b[38;2;255;0;0mps\x1b[0m\x1b[38;2;0;0;255mover\x1b[0m",
 		"100% (1/1)",
 	})
 	compare(t, expectedView, vp.View())

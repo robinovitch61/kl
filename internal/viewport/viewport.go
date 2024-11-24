@@ -11,10 +11,6 @@ import (
 	"strings"
 )
 
-var (
-	ansiPattern = regexp.MustCompile("\x1b\\[[0-9;]*m")
-)
-
 // Terminology:
 // - allItems: an item to be rendered in the viewport
 // - line: a row in the terminal
@@ -39,15 +35,18 @@ var (
 // second line   1               4
 //
 
+var surroundingAnsiRegex = regexp.MustCompile(`(\x1b\[[0-9;]*m.*?\x1b\[0m)`)
+
 // Model represents a viewport component
 type Model[T RenderableComparable] struct {
 	// KeyMap is the keymap for the viewport
 	KeyMap KeyMap
 
 	// styles
-	FooterStyle       lipgloss.Style
-	HighlightStyle    lipgloss.Style
-	SelectedItemStyle lipgloss.Style
+	FooterStyle              lipgloss.Style
+	HighlightStyle           lipgloss.Style
+	HighlightStyleIfSelected lipgloss.Style
+	SelectedItemStyle        lipgloss.Style
 
 	// header is the fixed header lines at the top of the viewport
 	// these lines will wrap and be horizontally scrollable similar to other rendered allItems
@@ -672,14 +671,14 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 	}
 
 	renderAndHighlight := func(item T, idx int) string {
-		if m.selectionEnabled && idx == m.selectedItemIdx {
-			// do not highlight strings in selected item, interferes with selection style
-			return item.Render()
-		}
 		if m.stringToHighlight == "" {
 			return item.Render()
 		}
-		return highlightLine(item.Render(), m.stringToHighlight, m.HighlightStyle)
+		highlightStyle := m.HighlightStyle
+		if m.selectionEnabled && idx == m.selectedItemIdx {
+			highlightStyle = m.HighlightStyleIfSelected
+		}
+		return highlightLine(item.Render(), m.stringToHighlight, highlightStyle)
 	}
 
 	if m.wrapText {
@@ -872,9 +871,8 @@ func (m Model[T]) getNumVisibleItems() int {
 }
 
 func (m Model[T]) styleSelection(s string) string {
-	re := regexp.MustCompile(`(\x1b\[[0-9;]*m.*?\x1b\[0m)`)
-	split := re.Split(s, -1)
-	matches := re.FindAllString(s, -1)
+	split := surroundingAnsiRegex.Split(s, -1)
+	matches := surroundingAnsiRegex.FindAllString(s, -1)
 
 	finalResult := ""
 	for i, section := range split {
