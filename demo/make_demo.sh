@@ -10,7 +10,7 @@ _THISDIR=$(dirname "$(readlink -f "$0")")
 # demo.tape output depends on the current working directory
 cd "$_THISDIR" || exit
 
-if [ "$(kl -v)" != "demo" ]; then
+if [ "$(kl -v)" != "kl demo" ]; then
   "$_THISDIR"/../dev/rebuild.sh demo
 fi
 

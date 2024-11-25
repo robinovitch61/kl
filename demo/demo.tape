@@ -1,3 +1,5 @@
+# Can change gif speed with https://ezgif.com/speed if too fast
+
 # VHS documentation
 #
 # Output:
@@ -55,16 +57,15 @@
 #   Hide                            Hide the subsequent commands from the output
 #   Show                            Show the subsequent commands in the output
 
-# NOTE: NOT ACTUALLY USING THIS RIGHT NOW DUE TO https://github.com/charmbracelet/vhs/issues/88
-
 Output demo.gif
 
 Require kl
 
 Set TypingSpeed 160ms
 Set FontSize 20
-Set Width 1200
-Set Height 600
+Set Width 1440
+Set Height 700
+Set Padding 25
 
 Hide
 Type@1ms "kubectl config use-context k3d-test"
@@ -76,7 +77,7 @@ Show
 Type "kl"
 Enter
 # wait for startup
-Sleep 4s
+Sleep 3s
 
 Type@200ms "jjjj"
 Enter
@@ -86,10 +87,34 @@ Type@200ms "jjj"
 Enter
 Sleep 1.5s
 
+Type "t"
+Sleep 2s
+
 Type "l"
+Sleep 3s
+
+Type "F"
+Sleep 3s
+
+Type "k"
+Sleep 2s
+
+Type@2s "uu"
+Type "g"
+Sleep 1s
+
+Type "/"
+Sleep 3s
+
+Type "error"
+Enter
 Sleep 4s
 
-Type "ct"
-Sleep 4s
+Enter
+Sleep 2s
 
-Sleep 8s
+Type@1s "kkk"
+
+Escape
+
+Sleep 6s

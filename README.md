@@ -8,34 +8,26 @@
 
 An interactive Kubernetes log viewer for your terminal.
 
-<div style="display: flex; justify-content: center; flex-wrap: wrap; gap: 10px;">
-  <img src="./demo/img/tree.png" alt="tree view of containers" width="400"/>
-  <img src="./demo/img/logs.png" alt="logs view" width="400"/>
-  <img src="./demo/img/single.png" alt="single log" width="400"/>
-  <img src="./demo/img/help.png" alt="help" width="400"/>
-</div>
-<br>
+<img src="./demo/demo.gif" alt="gif demo of kl"/>
 
 * View logs across multiple containers, pods, namespaces, and clusters
 * Select containers interactively or auto-select by pattern matching against names, labels, and more
 * See cluster changes in real time
-* Navigate interleaved logs from multiple containers, ordered globally by timestamp
+* Navigate logs from multiple containers interleaved by timestamp
 * Search logs by exact string or regex pattern. Include surrounding context or show matching lines only
 * Zoom in and flip through single formatted logs one by one
 * Archive and share: save logs to a local file or copy a log to your clipboard
-* Use your own terminal color scheme
 
 Comparable to:
 
 * [k9s](https://k9scli.io/) but focused on logs
 * [kubectl logs](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_logs/) supercharged
-* [stern](https://github.com/stern/stern) & [kail](https://github.com/boz/kail) but multi-cluster and an interactive interface
+* [stern](https://github.com/stern/stern) & [kail](https://github.com/boz/kail) but multi-cluster and an interactive
+  interface
 
 ## Usage
 
 [Install](#Installation) and run `kl` in a terminal. See `kl --help` for all options.
-
-Press `?` in any view to see keyboard shortcuts specific to the current view and across the application.
 
 Examples:
 
@@ -64,6 +56,42 @@ kl --ic "^my-sidecar$"
 # Start on the logs page, ordered by timestamp descending, showing logs from 10 minutes ago onwards
 kl --mc "^my-container$" -d --logs-view --since 10m
 ```
+
+Press `?` in any view to see keyboard shortcuts specific to the current view and across the application.
+
+| Key    | Action                                          |
+|--------|-------------------------------------------------|
+| ↓/j    | down one line                                   |
+| ↑/k    | up one line                                     |
+| d      | down half page                                  |
+| u      | up half page                                    |
+| f      | down full page                                  |
+| b      | up full page                                    |
+| g      | go to top (will follow logs if descending)      |
+| G      | go to bottom (will follow logs if ascending)    |
+| l      | focus on logs view                              |
+| L      | focus on logs view in fullscreen                |
+| enter  | zoom in to single log view for selected log     |
+| esc    | back to all logs view when viewing single log   |
+| s      | focus on container selection view               |
+| S      | focus on container selection view in fullscreen |
+| F      | toggle fullscreen                               |
+| /      | edit exact match filter                         |
+| r      | edit regex filter                               |
+| enter  | when filtering, apply filter                    |
+| esc    | discard applied filter                          |
+| n      | next filter match                               |
+| N      | previous filter match                           |
+| x      | toggle showing only the logs matching filter    |
+| w      | toggle line wrap                                |
+| o      | reverse timestamp ordering                      |
+| p      | pause/resume log stream                         |
+| t      | change timestamp format                         |
+| c      | change container name format                    |
+| 0-9    | change time from which logs begin               |
+| ctrl+s | save focused view to local file                 |
+| ctrl+y | in single log view, copy to clipboard           |
+| ?      | show/hide help                                  |
 
 ## Installation
 
@@ -110,6 +138,9 @@ binary to somewhere in your `PATH`.
 `kl` is written with tools from [Charm](https://charm.sh/).
 
 [Feature requests and bug reports are welcome](https://github.com/robinovitch61/kl/issues/new/choose).
+
+Running the app with the environment variable `KL_DEBUG=1` will create or append to a `kl.log` file in your current
+directory with debug logs.
 
 To manually build the project:
 
