@@ -55,6 +55,8 @@ var (
 
 	Lilac = lipgloss.NewStyle().Background(lilac).Foreground(lipgloss.Color("#000000"))
 
+	Green = lipgloss.NewStyle().Background(lipgloss.Color("46")).Foreground(lipgloss.Color("#000000"))
+
 	RightBorder = lipgloss.NewStyle().Border(lipgloss.ThickBorder(), false, true, false, false).BorderForeground(lilac)
 )
 

@@ -4,6 +4,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/emirpasic/gods/trees/redblacktree"
 	"github.com/robinovitch61/kl/internal/dev"
+	"github.com/robinovitch61/kl/internal/style"
 )
 
 type PageLogContainerName struct {
@@ -34,7 +35,7 @@ type PageLog struct {
 func (l PageLog) Render() string {
 	ts := ""
 	if l.CurrentTimestamp != "" {
-		ts = l.CurrentTimestamp
+		ts = style.Green.Render(l.CurrentTimestamp)
 	}
 	label := ""
 	if l.CurrentName.ContainerName != "" {
