@@ -34,7 +34,7 @@ func NewLogsPage(keyMap keymap.KeyMap, width, height int, descending bool) LogsP
 		fmt.Sprintf("(L)ogs, %s", getOrder(!descending)),
 		true,
 		true,
-		false,
+		true,
 		keyMap,
 		width,
 		height,
