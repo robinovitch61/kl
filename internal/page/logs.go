@@ -33,7 +33,7 @@ func NewLogsPage(keyMap keymap.KeyMap, width, height int, descending bool) LogsP
 	filterableViewport := filterable_viewport.NewFilterableViewport[model.PageLog](
 		fmt.Sprintf("(L)ogs, %s", getOrder(!descending)),
 		true,
-		false,
+		true,
 		true,
 		keyMap,
 		width,

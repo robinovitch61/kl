@@ -43,7 +43,6 @@ func NewFilterableViewport[T viewport.RenderableComparable](
 
 	var vp = viewport.New[T](width, height)
 	vp.FooterStyle = style.Bold
-	vp.SelectedItemStyle = style.Inverse
 	vp.HighlightStyle = style.Inverse
 	vp.HighlightStyleIfSelected = style.Unset
 
@@ -209,10 +208,11 @@ func (p *FilterableViewport[T]) SetAllRows(allRows []T) {
 
 func (p *FilterableViewport[T]) SetFocus(focused bool, selectionEnabled bool) {
 	p.focused = focused
-	p.viewport.SetSelectionEnabled(selectionEnabled)
 	if focused {
+		p.viewport.SelectedItemStyle = style.Inverse
 		p.viewport.FooterStyle = lipgloss.NewStyle()
 	} else {
+		p.viewport.SelectedItemStyle = lipgloss.NewStyle()
 		p.viewport.FooterStyle = style.Alt
 	}
 

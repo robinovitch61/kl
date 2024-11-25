@@ -41,7 +41,7 @@ func NewEntitiesPage(
 	filterableViewport := filterable_viewport.NewFilterableViewport[model.Entity](
 		"(S)election",
 		false,
-		false,
+		true,
 		false,
 		keyMap,
 		width,
