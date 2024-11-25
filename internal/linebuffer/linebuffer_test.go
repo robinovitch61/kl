@@ -200,6 +200,14 @@ func TestTruncateLine(t *testing.T) {
 			lineContinuationIndicator: "...",
 			expected:                  "\x1b[38;2;0;0;255m├─f...\x1b[0m",
 		},
+		{
+			name:                      "width exceeds capacity",
+			s:                         "  │   └─[ ] local-path-provisioner (running for 11d)",
+			xOffset:                   0,
+			width:                     53,
+			lineContinuationIndicator: "",
+			expected:                  "  │   └─[ ] local-path-provisioner (running for 11d)",
+		},
 	}
 
 	for _, tt := range tests {
