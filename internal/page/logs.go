@@ -33,7 +33,7 @@ func NewLogsPage(keyMap keymap.KeyMap, width, height int, descending bool) LogsP
 	filterableViewport := filterable_viewport.NewFilterableViewport[model.PageLog](
 		fmt.Sprintf("(L)ogs, %s", getOrder(!descending)),
 		true,
-		true,
+		false,
 		true,
 		keyMap,
 		width,
@@ -70,37 +70,6 @@ func (p LogsPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
 			p.filterableViewport, cmd = p.filterableViewport.Update(msg)
 			cmds = append(cmds, cmd)
 			return p, tea.Batch(cmds...)
-		}
-
-		if key.Matches(msg, p.keyMap.Timestamps) {
-			p.timestampFormatIdx = (p.timestampFormatIdx + 1) % len(timestampFormats)
-			allLogs := p.logContainer.GetOrderedLogs()
-			for i := range allLogs {
-				allLogs[i].CurrentTimestamp = getLogTimestamp(allLogs[i], timestampFormats[p.timestampFormatIdx])
-			}
-			p.setLogs(allLogs)
-			return p, nil
-		}
-
-		if key.Matches(msg, p.keyMap.Name) {
-			p.nameFormatIdx = (p.nameFormatIdx + 1) % len(nameFormats)
-			allLogs := p.logContainer.GetOrderedLogs()
-			for i := range allLogs {
-				allLogs[i].CurrentName = getContainerName(allLogs[i], nameFormats[p.nameFormatIdx])
-			}
-			p.setLogs(allLogs)
-			return p, nil
-		}
-
-		if key.Matches(msg, p.keyMap.ReverseOrder) {
-			// switch the log order
-			p.logContainer.ToggleAscending()
-			p.setStickynessBasedOnOrder()
-			p.updateFilterLabel()
-
-			// reinsert the logs with the updated comparator and update the viewport
-			p.setLogs(p.logContainer.GetOrderedLogs())
-			return p, nil
 		}
 
 		// toggle filtering with context
@@ -234,6 +203,37 @@ func (p LogsPage) WithLogsTerminatedForContainer(containerSpec model.Container) 
 		}
 	}
 	p.setLogs(allLogs)
+	return p
+}
+
+func (p LogsPage) WithNewTimestampFormat() LogsPage {
+	p.timestampFormatIdx = (p.timestampFormatIdx + 1) % len(timestampFormats)
+	allLogs := p.logContainer.GetOrderedLogs()
+	for i := range allLogs {
+		allLogs[i].CurrentTimestamp = getLogTimestamp(allLogs[i], timestampFormats[p.timestampFormatIdx])
+	}
+	p.setLogs(allLogs)
+	return p
+}
+
+func (p LogsPage) WithNewNameFormat() LogsPage {
+	p.nameFormatIdx = (p.nameFormatIdx + 1) % len(nameFormats)
+	allLogs := p.logContainer.GetOrderedLogs()
+	for i := range allLogs {
+		allLogs[i].CurrentName = getContainerName(allLogs[i], nameFormats[p.nameFormatIdx])
+	}
+	p.setLogs(allLogs)
+	return p
+}
+
+func (p LogsPage) WithReversedLogOrder() LogsPage {
+	// switch the log order
+	p.logContainer.ToggleAscending()
+	p.setStickynessBasedOnOrder()
+	p.updateFilterLabel()
+
+	// reinsert the logs with the updated comparator and update the viewport
+	p.setLogs(p.logContainer.GetOrderedLogs())
 	return p
 }
 

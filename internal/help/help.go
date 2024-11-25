@@ -9,14 +9,14 @@ import (
 
 func MakeHelp(keyMap keymap.KeyMap) string {
 	title := lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1).Render("Help (press any key to hide)")
-	rowsPerCol := 9
+	rowsPerCol := 10
 
 	generalHelp := lipgloss.JoinVertical(
 		lipgloss.Center,
 		"",
 		formatKeyBindings(keymap.GlobalKeyBindings(keyMap), rowsPerCol),
 		"",
-		formatKeyBindings(keymap.LookbackKeyBindings(keyMap), 4),
+		formatKeyBindings(keymap.LookbackKeyBindings(keyMap), 6),
 	)
 
 	res := lipgloss.JoinVertical(
@@ -66,7 +66,7 @@ func formatColumn(bindings []key.Binding) string {
 
 		d := b.Help().Desc
 		if len(d) > 0 {
-			help = append(help, "->"+d)
+			help = append(help, " "+d)
 		} else {
 			help = append(help, "")
 		}

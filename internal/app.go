@@ -440,6 +440,24 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, nil
 	}
 
+	// change timestamp format
+	if key.Matches(msg, m.keyMap.Timestamps) {
+		m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithNewTimestampFormat()
+		return m, nil
+	}
+
+	// change container name format
+	if key.Matches(msg, m.keyMap.Name) {
+		m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithNewNameFormat()
+		return m, nil
+	}
+
+	// change log order
+	if key.Matches(msg, m.keyMap.ReverseOrder) {
+		m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithReversedLogOrder()
+		return m, nil
+	}
+
 	// entities page specific actions
 	if m.focusedPageType == page.EntitiesPageType {
 		m, cmd = m.handleEntitiesPageKeyMsg(msg)
@@ -712,6 +730,7 @@ func (m Model) handleContainerDeltasMsg(msg command.GetContainerDeltasMsg) (Mode
 	existingContainerEntities := m.entityTree.GetContainerEntities()
 
 	if len(existingContainerEntities) == 0 && !m.seenFirstContainer {
+		m.pages[m.focusedPageType] = m.pages[m.focusedPageType].WithFocus()
 		cmds = append(cmds, tea.Tick(constants.AttemptMaintainEntitySelectionAfterFirstContainer, func(t time.Time) tea.Msg { return message.StartMaintainEntitySelectionMsg{} }))
 		m.seenFirstContainer = true
 	}
