@@ -14,15 +14,15 @@ An interactive Kubernetes log viewer for your terminal.
 * Select containers interactively or auto-select by pattern matching against names, labels, and more
 * See cluster changes in real time
 * Navigate logs from multiple containers interleaved by timestamp
-* Search logs by exact string or regex pattern. Include surrounding context or show matching lines only
+* Search logs by exact string or regex pattern. Show or hide surrounding context
 * Zoom in and flip through single formatted logs one by one
 * Archive and share: save logs to a local file or copy a log to your clipboard
 
 Comparable to:
 
-* [k9s](https://k9scli.io/) but focused on logs
 * [kubectl logs](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_logs/) supercharged
-* [stern](https://github.com/stern/stern) & [kail](https://github.com/boz/kail) but multi-cluster and an interactive
+* [k9s](https://k9scli.io/) but specializing in logs
+* [stern](https://github.com/stern/stern) & [kail](https://github.com/boz/kail) but multi-cluster and with an interactive
   interface
 
 ## Usage
@@ -32,66 +32,67 @@ Comparable to:
 Examples:
 
 ```shell
-# Use the current kubernetes context. If context namespace doesn't exist, uses `default`
+# Use the current kubernetes context, defaulting to `default`
 kl
 
 # Use context `my-context`, all namespaces
 kl --context my-context -A
 
-# Use contexts `my-context` & `other-context`, namespaces `default` & `other-ns` in each
+# Use contexts `my-context` & `other-context`, namespaces `default` & `other-ns` in each context
 kl --context my-context,other-context -n default,other-ns
 
-# Auto-select all containers in a with a pod owner (e.g. deployment) containing the word `nginx`
+# Auto-select containers with a pod owner (e.g. deployment) containing the word `nginx`
 kl --mown nginx
 
-# Auto-select all containers with the exact name of `my-container`, limited to 10 selections
+# Auto-select containers with the exact name `my-container`, limited to 10 containers
 kl --mc "^my-container$" --limit 10
 
-# Auto-select all containers that have labels app=flask and either tier=stage or tier=prod
+# Auto-select containers that have labels app=flask and either tier=stage or tier=prod
 kl -l 'app=flask,tier in (stage, prod)'
 
-# Ignore all containers with the exact name of `my-sidecar`
+# Ignore containers with the exact name of `my-sidecar`
 kl --ic "^my-sidecar$"
 
-# Start on the logs page, ordered by timestamp descending, showing logs from 10 minutes ago onwards
+# Start focused on logs, ordered by timestamp descending, showing logs from 10 minutes ago onwards
 kl --mc "^my-container$" -d --logs-view --since 10m
 ```
 
 Press `?` in any view to see keyboard shortcuts specific to the current view and across the application.
 
-| Key    | Action                                          |
-|--------|-------------------------------------------------|
-| ↓/j    | down one line                                   |
-| ↑/k    | up one line                                     |
-| d      | down half page                                  |
-| u      | up half page                                    |
-| f      | down full page                                  |
-| b      | up full page                                    |
-| g      | go to top (will follow logs if descending)      |
-| G      | go to bottom (will follow logs if ascending)    |
-| l      | focus on logs view                              |
-| L      | focus on logs view in fullscreen                |
-| enter  | zoom in to single log view for selected log     |
-| esc    | back to all logs view when viewing single log   |
-| s      | focus on container selection view               |
-| S      | focus on container selection view in fullscreen |
-| F      | toggle fullscreen                               |
-| /      | edit exact match filter                         |
-| r      | edit regex filter                               |
-| enter  | when filtering, apply filter                    |
-| esc    | discard applied filter                          |
-| n      | next filter match                               |
-| N      | previous filter match                           |
-| x      | toggle showing only the logs matching filter    |
-| w      | toggle line wrap                                |
-| o      | reverse timestamp ordering                      |
-| p      | pause/resume log stream                         |
-| t      | change timestamp format                         |
-| c      | change container name format                    |
-| 0-9    | change time from which logs begin               |
-| ctrl+s | save focused view to local file                 |
-| ctrl+y | in single log view, copy to clipboard           |
-| ?      | show/hide help                                  |
+| Key     | Action                                          |
+|---------|-------------------------------------------------|
+| ↓/j     | down one line                                   |
+| ↑/k     | up one line                                     |
+| d       | down half page                                  |
+| u       | up half page                                    |
+| f       | down full page                                  |
+| b       | up full page                                    |
+| g       | go to top (will follow logs if descending)      |
+| G       | go to bottom (will follow logs if ascending)    |
+| l       | focus on logs view                              |
+| L       | focus on logs view in fullscreen                |
+| enter   | zoom in to single log view for selected log     |
+| esc     | back to all logs view when viewing single log   |
+| s       | focus on container selection view               |
+| S       | focus on container selection view in fullscreen |
+| F       | toggle fullscreen                               |
+| /       | edit exact match filter                         |
+| r       | edit regex filter                               |
+| enter   | when filtering, apply filter                    |
+| esc     | discard applied filter                          |
+| n       | next filter match                               |
+| N       | previous filter match                           |
+| x       | toggle showing only the logs matching filter    |
+| w       | toggle line wrap                                |
+| ←/→/h/l | pan left/right when not wrapped                 |
+| o       | reverse timestamp ordering                      |
+| p       | pause/resume log stream                         |
+| t       | change timestamp format                         |
+| c       | change container name format                    |
+| 0-9     | change time from which logs begin               |
+| ctrl+s  | save focused view to local file                 |
+| ctrl+y  | in single log view, copy to clipboard           |
+| ?       | show/hide help                                  |
 
 ## Installation
 
@@ -150,7 +151,7 @@ cd kl
 go build  # outputs ./kl executable
 ```
 
-Running a an example flask + postgres + nginx setup in a local [k3d](https://k3d.io/) cluster for testing locally:
+Run an example flask + postgres + nginx setup in a local [k3d](https://k3d.io/) cluster for testing locally:
 
 ```sh
 k3d cluster create test
