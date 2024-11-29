@@ -1,9 +1,7 @@
 package linebuffer
 
 import (
-	"fmt"
 	"github.com/robinovitch61/kl/internal/constants"
-	"github.com/robinovitch61/kl/internal/dev"
 	"strings"
 	"unicode/utf8"
 )
@@ -46,9 +44,6 @@ func New(line, lineContinuationIndicator string) LineBuffer {
 }
 
 func (l LineBuffer) Truncate(xOffset, width int) string {
-	if len(l.line) < 10000 {
-		dev.Debug(fmt.Sprintf("calling Truncate(%d, %d) for linebuffer %q", xOffset, width, l.line))
-	}
 	if width <= 0 {
 		return ""
 	}
