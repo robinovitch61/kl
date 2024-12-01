@@ -2,10 +2,10 @@ package filter
 
 import (
 	"fmt"
-	"github.com/charmbracelet/bubbles/cursor"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/cursor"
+	"github.com/charmbracelet/bubbles/v2/textinput"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/style"
@@ -26,6 +26,7 @@ type Model struct {
 	indexesMatchingFilter []int
 	textinput             textinput.Model
 	suffix                string
+	styles                style.Styles
 }
 
 func New(km keymap.KeyMap) Model {
@@ -66,8 +67,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m Model) View() string {
 	if m.textinput.Focused() {
-		m.textinput.PromptStyle = style.Inverse
-		m.textinput.TextStyle = style.Inverse
+		m.textinput.PromptStyle = m.styles.Inverse
+		m.textinput.TextStyle = m.styles.Inverse
 		m.textinput.Cursor.Style = lipgloss.NewStyle()
 		m.textinput.Cursor.TextStyle = lipgloss.NewStyle()
 		if len(m.textinput.Value()) > 0 {
@@ -102,10 +103,10 @@ func (m Model) View() string {
 			} else {
 				m.textinput.Prompt = "filter: "
 			}
-			m.textinput.PromptStyle = style.AltInverse
-			m.textinput.TextStyle = style.AltInverse
-			m.textinput.Cursor.Style = style.AltInverse
-			m.textinput.Cursor.TextStyle = style.AltInverse
+			m.textinput.PromptStyle = m.styles.AltInverse
+			m.textinput.TextStyle = m.styles.AltInverse
+			m.textinput.Cursor.Style = m.styles.AltInverse
+			m.textinput.Cursor.TextStyle = m.styles.AltInverse
 		} else {
 			// no filter, not editing
 			m.textinput.Prompt = ""
@@ -173,6 +174,10 @@ func (m *Model) SetValue(value string) {
 
 func (m *Model) SetSuffix(suffix string) {
 	m.suffix = suffix
+}
+
+func (m *Model) SetStyles(styles style.Styles) {
+	m.styles = styles
 }
 
 func (m *Model) SetFilteringWithContext(filteringWithContext bool) {

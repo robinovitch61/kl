@@ -2,12 +2,13 @@ package page
 
 import (
 	"fmt"
-	tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/filterable_viewport"
 	"github.com/robinovitch61/kl/internal/help"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/model"
+	"github.com/robinovitch61/kl/internal/style"
 	"strings"
 )
 
@@ -15,6 +16,7 @@ type EntityPage struct {
 	filterableViewport filterable_viewport.FilterableViewport[model.Entity]
 	entityTree         model.EntityTree
 	keyMap             keymap.KeyMap
+	styles             style.Styles
 }
 
 // assert EntityPage implements GenericPage
@@ -24,6 +26,7 @@ func NewEntitiesPage(
 	keyMap keymap.KeyMap,
 	width, height int,
 	entityTree model.EntityTree,
+	styles style.Styles,
 ) EntityPage {
 	viewWhenEmptyLines := []string{"Subscribing to updates for:"}
 	for _, cns := range entityTree.GetClusterNamespaces() {
@@ -49,6 +52,7 @@ func NewEntitiesPage(
 		entityTree.GetEntities(),
 		entityTree.IsVisibleGivenFilter,
 		viewWhenEmpty,
+		styles,
 	)
 	return EntityPage{
 		filterableViewport: filterableViewport,
@@ -97,17 +101,23 @@ func (p EntityPage) WithDimensions(width, height int) GenericPage {
 }
 
 func (p EntityPage) WithFocus() GenericPage {
-	p.filterableViewport.SetFocus(true, true)
+	p.filterableViewport.SetFocus(true)
 	return p
 }
 
 func (p EntityPage) WithBlur() GenericPage {
-	p.filterableViewport.SetFocus(false, false)
+	p.filterableViewport.SetFocus(false)
+	return p
+}
+
+func (p EntityPage) WithStyles(styles style.Styles) GenericPage {
+	p.styles = styles
+	p.filterableViewport.SetStyles(styles)
 	return p
 }
 
 func (p EntityPage) Help() string {
-	return help.MakeHelp(p.keyMap)
+	return help.MakeHelp(p.keyMap, p.styles.InverseUnderline)
 }
 
 func (p EntityPage) WithEntityTree(entityTree model.EntityTree) EntityPage {

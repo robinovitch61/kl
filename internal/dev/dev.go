@@ -2,8 +2,8 @@ package dev
 
 import (
 	"fmt"
-	"github.com/charmbracelet/bubbles/cursor"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/cursor"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/message"
 	"log"
 	"os"

@@ -1,10 +1,10 @@
 package filterable_viewport
 
 import (
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/textinput"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/filter"
 	"github.com/robinovitch61/kl/internal/keymap"
@@ -12,8 +12,6 @@ import (
 	"github.com/robinovitch61/kl/internal/viewport"
 	"strings"
 )
-
-var focusedStyle = style.Blue
 
 type FilterableViewport[T viewport.RenderableComparable] struct {
 	Filter            filter.Model
@@ -25,6 +23,7 @@ type FilterableViewport[T viewport.RenderableComparable] struct {
 	whenEmpty         string
 	topHeader         string
 	focused           bool
+	styles            style.Styles
 }
 
 func NewFilterableViewport[T viewport.RenderableComparable](
@@ -37,14 +36,12 @@ func NewFilterableViewport[T viewport.RenderableComparable](
 	allRows []T,
 	matchesFilter func(T, filter.Model) bool,
 	viewWhenEmpty string,
+	styles style.Styles,
 ) FilterableViewport[T] {
 	f := filter.New(km)
 	f.SetFilteringWithContext(filterWithContext)
 
 	var vp = viewport.New[T](width, height)
-	vp.FooterStyle = style.Bold
-	vp.HighlightStyle = style.Inverse
-	vp.HighlightStyleIfSelected = style.Unset
 
 	vp.SetSelectionEnabled(startSelectionEnabled)
 	vp.SetWrapText(startWrapOn)
@@ -58,12 +55,14 @@ func NewFilterableViewport[T viewport.RenderableComparable](
 		filterWithContext: filterWithContext,
 		whenEmpty:         viewWhenEmpty,
 		topHeader:         topHeader,
+		styles:            styles,
 	}
+	fv.updateViewportStyles()
 	fv.updateViewportHeader()
 	return fv
 }
 
-func (p FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.Cmd) {
+func (fv FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.Cmd) {
 	dev.DebugUpdateMsg("FilterableViewport", msg)
 	var (
 		cmd  tea.Cmd
@@ -72,245 +71,258 @@ func (p FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.C
 
 	// any updates to the filter should reflect in the viewport header
 	defer func() {
-		p.updateViewportHeader()
+		fv.updateViewportHeader()
 	}()
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		// clearing the filter is always available regardless of filter focus
-		if key.Matches(msg, p.keyMap.Clear) {
-			p.clearFilter()
-			return p, nil
+		if key.Matches(msg, fv.keyMap.Clear) {
+			fv.clearFilter()
+			return fv, nil
 		}
 
-		if p.Filter.Focused() {
-			if key.Matches(msg, p.keyMap.Enter) {
+		if fv.Filter.Focused() {
+			if key.Matches(msg, fv.keyMap.Enter) {
 				// done editing
-				p.viewport.SelectedItemStyle = style.Inverse
-				p.Filter.Blur()
-				p.Filter.UpdateLabelAndSuffix()
+				fv.Filter.Blur()
+				fv.Filter.UpdateLabelAndSuffix()
+				fv.updateViewportStyles()
 			}
 		} else {
 			// if not editing filter, pass through to viewport
-			*p.viewport, cmd = p.viewport.Update(msg)
+			*fv.viewport, cmd = fv.viewport.Update(msg)
 			cmds = append(cmds, cmd)
 
 			// handle next match/prev match
-			if key.Matches(msg, p.Filter.KeyMap.FilterNextRow) || key.Matches(msg, p.Filter.KeyMap.FilterPrevRow) {
+			if key.Matches(msg, fv.Filter.KeyMap.FilterNextRow) || key.Matches(msg, fv.Filter.KeyMap.FilterPrevRow) {
 				// if not filtering with context, or no filter text, ignore
-				if !p.Filter.FilteringWithContext || !p.Filter.HasFilterText() {
-					return p, nil
+				if !fv.Filter.FilteringWithContext || !fv.Filter.HasFilterText() {
+					return fv, nil
 				}
-				if key.Matches(msg, p.Filter.KeyMap.FilterNextRow) {
-					p.Filter.IncrementFilteredSelectionNum()
-				} else if key.Matches(msg, p.Filter.KeyMap.FilterPrevRow) {
-					p.Filter.DecrementFilteredSelectionNum()
+				if key.Matches(msg, fv.Filter.KeyMap.FilterNextRow) {
+					fv.Filter.IncrementFilteredSelectionNum()
+				} else if key.Matches(msg, fv.Filter.KeyMap.FilterPrevRow) {
+					fv.Filter.DecrementFilteredSelectionNum()
 				}
-				if p.Filter.HasContextualMatches() {
-					p.scrollViewportToItemIdx(p.Filter.GetContextualMatchIdx())
+				if fv.Filter.HasContextualMatches() {
+					fv.scrollViewportToItemIdx(fv.Filter.GetContextualMatchIdx())
 				}
 			}
 
 			// focus filter and start editing
-			if key.Matches(msg, p.keyMap.Filter) || key.Matches(msg, p.keyMap.FilterRegex) {
-				prevIsRegex := p.Filter.IsRegex()
-				newIsRegex := key.Matches(msg, p.keyMap.FilterRegex)
-				p.Filter.SetIsRegex(newIsRegex)
-				p.Filter.Focus()
+			if key.Matches(msg, fv.keyMap.Filter) || key.Matches(msg, fv.keyMap.FilterRegex) {
+				prevIsRegex := fv.Filter.IsRegex()
+				newIsRegex := key.Matches(msg, fv.keyMap.FilterRegex)
+				fv.Filter.SetIsRegex(newIsRegex)
+				fv.Filter.Focus()
+				fv.updateViewportStyles()
 
 				// if the filter type has changed, update the visible rows
 				if prevIsRegex != newIsRegex {
-					p.updateVisibleRows()
+					fv.updateVisibleRows()
 				}
 
-				// change the color of the selection
-				p.viewport.SelectedItemStyle = style.AltInverse
-				return p, textinput.Blink
+				return fv, textinput.Blink
 			}
 
 			// wrap text
-			if key.Matches(msg, p.keyMap.Wrap) {
-				p.viewport.SetWrapText(!p.viewport.GetWrapText())
-				return p, nil
+			if key.Matches(msg, fv.keyMap.Wrap) {
+				fv.viewport.SetWrapText(!fv.viewport.GetWrapText())
+				return fv, nil
 			}
 		}
 
-		prevFilterString := p.Filter.Value()
+		prevFilterString := fv.Filter.Value()
 
-		p.Filter, cmd = p.Filter.Update(msg)
+		fv.Filter, cmd = fv.Filter.Update(msg)
 		cmds = append(cmds, cmd)
 
-		if p.Filter.Value() != prevFilterString {
-			p.viewport.SetStringToHighlight(p.Filter.Value())
-			p.updateVisibleRows()
-			p.Filter.UpdateLabelAndSuffix()
+		if fv.Filter.Value() != prevFilterString {
+			fv.viewport.SetStringToHighlight(fv.Filter.Value())
+			fv.updateVisibleRows()
+			fv.Filter.UpdateLabelAndSuffix()
 
 			// if filtering with context, reset the match number and scroll to the first match
-			if p.Filter.FilteringWithContext {
-				p.Filter.ResetContextualFilterMatchNum()
-				p.scrollViewportToItemIdx(p.Filter.GetContextualMatchIdx())
+			if fv.Filter.FilteringWithContext {
+				fv.Filter.ResetContextualFilterMatchNum()
+				fv.scrollViewportToItemIdx(fv.Filter.GetContextualMatchIdx())
 			}
 		}
 
-		return p, tea.Batch(cmds...)
+		return fv, tea.Batch(cmds...)
 	}
 
-	p.Filter, cmd = p.Filter.Update(msg)
+	fv.Filter, cmd = fv.Filter.Update(msg)
 	cmds = append(cmds, cmd)
-	return p, tea.Batch(cmds...)
+	return fv, tea.Batch(cmds...)
 }
 
-func (p FilterableViewport[T]) View() string {
+func (fv FilterableViewport[T]) View() string {
 	var viewportView string
-	if len(p.allRows) == 0 {
-		whenEmpty := p.whenEmpty
-		if p.focused {
-			whenEmpty = focusedStyle.Render(whenEmpty)
+	if len(fv.allRows) == 0 {
+		whenEmpty := fv.whenEmpty
+		if fv.focused {
+			whenEmpty = fv.styles.Blue.Render(whenEmpty)
 		}
 		viewportView = whenEmpty
 	} else {
-		viewportView = p.viewport.View()
+		viewportView = fv.viewport.View()
 	}
 	return viewportView
 }
 
-func (p FilterableViewport[T]) HighjackingInput() bool {
-	return p.Filter.Focused()
+func (fv FilterableViewport[T]) HighjackingInput() bool {
+	return fv.Filter.Focused()
 }
 
-func (p FilterableViewport[T]) WithDimensions(width, height int) FilterableViewport[T] {
-	p.viewport.SetWidth(width)
-	p.viewport.SetHeight(height)
-	return p
+func (fv FilterableViewport[T]) WithDimensions(width, height int) FilterableViewport[T] {
+	fv.viewport.SetWidth(width)
+	fv.viewport.SetHeight(height)
+	return fv
 }
 
-func (p FilterableViewport[T]) GetSelection() *T {
-	return p.viewport.GetSelectedItem()
+func (fv FilterableViewport[T]) GetSelection() *T {
+	return fv.viewport.GetSelectedItem()
 }
 
-func (p FilterableViewport[T]) GetSelectionIdx() int {
-	return p.viewport.GetSelectedItemIdx()
+func (fv FilterableViewport[T]) GetSelectionIdx() int {
+	return fv.viewport.GetSelectedItemIdx()
 }
 
-func (p FilterableViewport[T]) SetSelectedContentIdx(idx int) {
-	p.viewport.SetSelectedItemIdx(idx)
+func (fv FilterableViewport[T]) SetSelectedContentIdx(idx int) {
+	fv.viewport.SetSelectedItemIdx(idx)
 }
 
-func (p *FilterableViewport[T]) SetTopHeader(topHeader string) {
-	p.topHeader = topHeader
-	p.updateViewportHeader()
+func (fv *FilterableViewport[T]) SetTopHeader(topHeader string) {
+	fv.topHeader = topHeader
+	fv.updateViewportHeader()
 }
 
-func (p *FilterableViewport[T]) SetAllRows(allRows []T) {
-	p.allRows = allRows
-	p.updateVisibleRows()
+func (fv *FilterableViewport[T]) SetAllRows(allRows []T) {
+	fv.allRows = allRows
+	fv.updateVisibleRows()
 }
 
-func (p *FilterableViewport[T]) SetFocus(focused bool, selectionEnabled bool) {
-	p.focused = focused
-	if focused {
-		p.viewport.SelectedItemStyle = style.Inverse
-		p.viewport.FooterStyle = lipgloss.NewStyle()
-	} else {
-		p.viewport.SelectedItemStyle = lipgloss.NewStyle()
-		p.viewport.FooterStyle = style.Alt
-	}
-
-	p.updateViewportHeader()
+func (fv *FilterableViewport[T]) SetFocus(focused bool) {
+	fv.focused = focused
+	fv.updateViewportStyles()
+	fv.updateViewportHeader()
 }
 
-func (p *FilterableViewport[T]) SetAllRowsAndMatchesFilter(allRows []T, matchesFilter func(T, filter.Model) bool) {
-	p.allRows = allRows
-	p.matchesFilter = matchesFilter
-	p.updateVisibleRows()
+func (fv *FilterableViewport[T]) SetAllRowsAndMatchesFilter(allRows []T, matchesFilter func(T, filter.Model) bool) {
+	fv.allRows = allRows
+	fv.matchesFilter = matchesFilter
+	fv.updateVisibleRows()
 }
 
-func (p *FilterableViewport[T]) SetTopSticky(topSticky bool) {
-	p.viewport.SetTopSticky(topSticky)
+func (fv *FilterableViewport[T]) SetTopSticky(topSticky bool) {
+	fv.viewport.SetTopSticky(topSticky)
 }
 
-func (p *FilterableViewport[T]) SetBottomSticky(bottomSticky bool) {
-	p.viewport.SetBottomSticky(bottomSticky)
+func (fv *FilterableViewport[T]) SetBottomSticky(bottomSticky bool) {
+	fv.viewport.SetBottomSticky(bottomSticky)
 }
 
-func (p *FilterableViewport[T]) SetMaintainSelection(maintainSelection bool) {
-	p.viewport.SetMaintainSelection(maintainSelection)
+func (fv *FilterableViewport[T]) SetMaintainSelection(maintainSelection bool) {
+	fv.viewport.SetMaintainSelection(maintainSelection)
 }
 
-func (p *FilterableViewport[T]) ToggleFilteringWithContext() {
-	p.Filter.SetFilteringWithContext(!p.Filter.FilteringWithContext)
-	p.updateVisibleRows()
+func (fv *FilterableViewport[T]) ToggleFilteringWithContext() {
+	fv.Filter.SetFilteringWithContext(!fv.Filter.FilteringWithContext)
+	fv.updateVisibleRows()
 }
 
-func (p *FilterableViewport[T]) SetUpDownMovementWithShift() {
+func (fv *FilterableViewport[T]) SetUpDownMovementWithShift() {
 	upDownBindings := []*key.Binding{
-		&p.viewport.KeyMap.Up,
-		&p.viewport.KeyMap.Down,
-		&p.viewport.KeyMap.PageUp,
-		&p.viewport.KeyMap.PageDown,
-		&p.viewport.KeyMap.HalfPageUp,
-		&p.viewport.KeyMap.HalfPageDown,
+		&fv.viewport.KeyMap.Up,
+		&fv.viewport.KeyMap.Down,
+		&fv.viewport.KeyMap.PageUp,
+		&fv.viewport.KeyMap.PageDown,
+		&fv.viewport.KeyMap.HalfPageUp,
+		&fv.viewport.KeyMap.HalfPageDown,
 	}
 	for i := range upDownBindings {
 		newKeys := upDownBindings[i].Keys()
 		for j := range newKeys {
-			if (newKeys[j] == "up" || newKeys[j] == "down") && !strings.Contains(newKeys[j], "shift") {
+			if !strings.Contains(newKeys[j], "shift") {
 				newKeys[j] = "shift+" + newKeys[j]
-			}
-			if len(newKeys[j]) == 1 {
-				newKeys[j] = strings.ToUpper(newKeys[j])
 			}
 		}
 		upDownBindings[i].SetKeys(newKeys...)
 	}
 }
 
-func (p *FilterableViewport[T]) updateVisibleRows() {
+func (fv *FilterableViewport[T]) updateVisibleRows() {
 	dev.Debug("Updating visible rows")
 	defer dev.Debug("Done updating visible rows")
 
-	if p.Filter.FilteringWithContext && p.Filter.Value() != "" {
+	if fv.Filter.FilteringWithContext && fv.Filter.Value() != "" {
 		var entityIndexesMatchingFilter []int
-		for i := range p.allRows {
-			if p.matchesFilter(p.allRows[i], p.Filter) {
+		for i := range fv.allRows {
+			if fv.matchesFilter(fv.allRows[i], fv.Filter) {
 				entityIndexesMatchingFilter = append(entityIndexesMatchingFilter, i)
 			}
 		}
-		p.Filter.SetIndexesMatchingFilter(entityIndexesMatchingFilter)
-		p.viewport.SetContent(p.allRows)
-	} else if p.Filter.Value() != "" {
+		fv.Filter.SetIndexesMatchingFilter(entityIndexesMatchingFilter)
+		fv.viewport.SetContent(fv.allRows)
+	} else if fv.Filter.Value() != "" {
 		var filtered []T
-		for i := range p.allRows {
-			if p.matchesFilter(p.allRows[i], p.Filter) {
-				filtered = append(filtered, p.allRows[i])
+		for i := range fv.allRows {
+			if fv.matchesFilter(fv.allRows[i], fv.Filter) {
+				filtered = append(filtered, fv.allRows[i])
 			}
 		}
-		p.viewport.SetContent(filtered)
+		fv.viewport.SetContent(filtered)
 	} else {
-		p.viewport.SetContent(p.allRows)
+		fv.viewport.SetContent(fv.allRows)
 	}
 }
 
-func (p *FilterableViewport[T]) updateViewportHeader() {
-	prefix := p.topHeader
-	if p.focused {
-		prefix = focusedStyle.Render(prefix)
+func (fv *FilterableViewport[T]) updateViewportHeader() {
+	prefix := fv.topHeader
+	if fv.focused {
+		prefix = fv.styles.Blue.Render(prefix)
 	}
-	p.viewport.SetHeader([]string{prefix + " " + p.Filter.View()})
+	fv.viewport.SetHeader([]string{prefix + " " + fv.Filter.View()})
 }
 
-func (p *FilterableViewport[T]) clearFilter() {
-	p.Filter.BlurAndClear()
-	p.viewport.SetStringToHighlight("")
-	p.viewport.SelectedItemStyle = style.Inverse
-	p.updateVisibleRows()
+func (fv *FilterableViewport[T]) clearFilter() {
+	fv.Filter.BlurAndClear()
+	fv.viewport.SetStringToHighlight("")
+	fv.updateViewportStyles()
+	fv.updateVisibleRows()
 }
 
-func (p *FilterableViewport[T]) scrollViewportToItemIdx(itemIdx int) {
-	if p.viewport.GetSelectionEnabled() {
-		p.viewport.SetSelectedItemIdx(itemIdx)
+func (fv *FilterableViewport[T]) scrollViewportToItemIdx(itemIdx int) {
+	if fv.viewport.GetSelectionEnabled() {
+		fv.viewport.SetSelectedItemIdx(itemIdx)
 	} else {
-		p.viewport.ScrollSoItemIdxInView(itemIdx)
+		fv.viewport.ScrollSoItemIdxInView(itemIdx)
 	}
-	p.Filter.UpdateLabelAndSuffix()
+	fv.Filter.UpdateLabelAndSuffix()
+}
+
+func (fv *FilterableViewport[T]) SetStyles(styles style.Styles) {
+	fv.styles = styles
+	fv.Filter.SetStyles(styles)
+	fv.updateViewportStyles()
+	fv.updateViewportHeader()
+}
+
+func (fv *FilterableViewport[T]) updateViewportStyles() {
+	if fv.focused {
+		fv.viewport.SelectedItemStyle = fv.styles.Inverse
+		fv.viewport.FooterStyle = lipgloss.NewStyle()
+	} else {
+		fv.viewport.SelectedItemStyle = lipgloss.NewStyle()
+		fv.viewport.FooterStyle = fv.styles.Alt
+	}
+
+	if fv.Filter.Focused() {
+		fv.viewport.SelectedItemStyle = fv.styles.AltInverse
+	}
+
+	fv.viewport.HighlightStyle = fv.styles.Inverse
+	fv.viewport.HighlightStyleIfSelected = fv.styles.Unset
 }

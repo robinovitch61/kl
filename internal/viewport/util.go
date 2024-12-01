@@ -1,7 +1,7 @@
 package viewport
 
 import (
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/robinovitch61/kl/internal/linebuffer"
 	"strings"
@@ -67,86 +67,63 @@ func highlightLine(line, highlight string, highlightStyle lipgloss.Style) string
 		return line
 	}
 
-	// Pre-compute highlight style string, removing final reset
-	highlightStr := strings.TrimSuffix(highlightStyle.String(), "\x1b[0m")
-
-	var result strings.Builder
-	result.Grow(len(line) * 2) // Pre-allocate buffer
-
-	searchStart := 0
-	writeStart := 0
-	currentStyleStart := -1
-	inAnsi := false
-
-	lowLine := strings.ToLower(line)
-	lowHighlight := strings.ToLower(highlight)
-
-	for {
-		idx := strings.Index(lowLine[searchStart:], lowHighlight)
-		if idx == -1 {
-			result.WriteString(line[writeStart:])
-			break
+	// Helper function to check if we're inside an ANSI escape sequence
+	isInAnsiCode := func(s string, pos int) bool {
+		// Look back for ESC character
+		for i := pos; i >= 0; i-- {
+			if s[i] == '\x1b' {
+				return true
+			} else if s[i] == 'm' {
+				return false
+			}
 		}
+		return false
+	}
 
-		idx += searchStart
+	result := &strings.Builder{}
+	i := 0
+	activeStyle := ""
 
-		// Check if we're in an ANSI sequence
-		for i := writeStart; i < idx; i++ {
-			if line[i] == '\x1b' {
-				inAnsi = true
-				if line[i+1] == '[' {
-					if currentStyleStart == -1 {
-						currentStyleStart = i
-					}
+	for i < len(line) {
+		if strings.HasPrefix(line[i:], "\x1b[") {
+			// Found start of ANSI sequence
+			escEnd := strings.Index(line[i:], "m")
+			if escEnd != -1 {
+				escEnd += i + 1
+				currentSequence := line[i:escEnd]
+				if currentSequence == "\x1b[m" {
+					activeStyle = "" // Reset style
+				} else {
+					activeStyle = currentSequence // Set new active style
 				}
-			} else if inAnsi && line[i] == 'm' {
-				inAnsi = false
-				if i >= 2 && line[i-1] == '0' && line[i-2] == '[' && line[i-3] == '\x1b' {
-					currentStyleStart = -1
-				}
+				result.WriteString(currentSequence)
+				i = escEnd
+				continue
 			}
 		}
 
-		// Skip if we're in an ANSI sequence
-		if inAnsi {
-			searchStart = idx + 1
+		// Check if current position starts a highlight match
+		if len(highlight) > 0 && strings.HasPrefix(line[i:], highlight) && !isInAnsiCode(line, i) {
+			// Reset current style if any
+			if activeStyle != "" {
+				result.WriteString("\x1b[m")
+			}
+
+			// Apply highlight
+			result.WriteString(highlightStyle.Render(highlight))
+
+			// Restore previous style if there was one
+			if activeStyle != "" {
+				result.WriteString(activeStyle)
+			}
+
+			i += len(highlight)
 			continue
 		}
 
-		// Write up to match
-		result.WriteString(line[writeStart:idx])
-
-		// Close current style if needed
-		if currentStyleStart != -1 {
-			result.WriteString("\x1b[0m")
-		}
-
-		// Write highlighted section
-		result.WriteString(highlightStr)
-		result.WriteString(line[idx : idx+len(highlight)])
-		result.WriteString("\x1b[0m")
-
-		// Restore previous style if needed
-		if currentStyleStart != -1 {
-			// Find end of style sequence
-			styleEnd := currentStyleStart
-			for styleEnd < len(line) {
-				if line[styleEnd] == 'm' {
-					result.WriteString(line[currentStyleStart : styleEnd+1])
-					break
-				}
-				styleEnd++
-			}
-		}
-
-		writeStart = idx + len(highlight)
-		searchStart = writeStart
-
-		// Reset style tracking for next section if we're at a reset sequence
-		if writeStart >= 4 &&
-			line[writeStart-4:writeStart] == "\x1b[0m" {
-			currentStyleStart = -1
-		}
+		// Regular character
+		result.WriteByte(line[i])
+		i++
 	}
 
 	return result.String()

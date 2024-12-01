@@ -3,7 +3,7 @@ package command
 import (
 	"errors"
 	"fmt"
-	tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/errtype"
 	"github.com/robinovitch61/kl/internal/k8s"

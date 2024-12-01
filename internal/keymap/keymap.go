@@ -1,8 +1,7 @@
 package keymap
 
 import (
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/key"
 	"github.com/robinovitch61/kl/internal/viewport"
 )
 
@@ -63,15 +62,15 @@ var DefaultKeyMap = KeyMap{
 		key.WithHelp("r", "regex filter"),
 	),
 	FilterNextRow: key.NewBinding(
-		key.WithKeys("n", tea.KeyShiftUp.String()),
+		key.WithKeys("n"),
 		key.WithHelp("n", "next filter match"),
 	),
 	FilterPrevRow: key.NewBinding(
-		key.WithKeys("N"),
+		key.WithKeys("shift+n"),
 		key.WithHelp("N", "prev filter match"),
 	),
 	Fullscreen: key.NewBinding(
-		key.WithKeys("F"),
+		key.WithKeys("shift+f"),
 		key.WithHelp("F", "toggle fullscreen"),
 	),
 	Help: key.NewBinding(
@@ -83,7 +82,7 @@ var DefaultKeyMap = KeyMap{
 		key.WithHelp("l", "focus logs"),
 	),
 	LogsFullScreen: key.NewBinding(
-		key.WithKeys("L"),
+		key.WithKeys("shift+l"),
 		key.WithHelp("L", "logs fullscreen"),
 	),
 	Name: key.NewBinding(
@@ -115,7 +114,7 @@ var DefaultKeyMap = KeyMap{
 		key.WithHelp("s", "focus selection"),
 	),
 	SelectionFullScreen: key.NewBinding(
-		key.WithKeys("S"),
+		key.WithKeys("shift+s"),
 		key.WithHelp("S", "selection fullscreen"),
 	),
 	SinceTime: key.NewBinding(

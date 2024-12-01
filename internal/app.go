@@ -3,9 +3,9 @@ package internal
 import (
 	"context"
 	"fmt"
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/key"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/muesli/reflow/wrap"
 	"github.com/robinovitch61/kl/internal/color"
 	"github.com/robinovitch61/kl/internal/command"
@@ -55,6 +55,8 @@ type Model struct {
 	pauseState           bool
 	helpText             string
 	topBarHeight         int // assumed constant
+	termStyleData        style.TermStyleData
+	styles               style.Styles
 }
 
 func InitialModel(c Config) Model {
@@ -64,9 +66,11 @@ func InitialModel(c Config) Model {
 	}
 }
 
-func (m Model) Init() tea.Cmd {
-	return tea.Batch(
+func (m Model) Init() (tea.Model, tea.Cmd) {
+	return m, tea.Batch(
 		tea.Tick(constants.BatchUpdateLogsInterval, func(t time.Time) tea.Msg { return message.BatchUpdateLogsMsg{} }),
+		tea.RequestForegroundColor,
+		tea.RequestBackgroundColor,
 	)
 }
 
@@ -86,6 +90,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case message.ErrMsg:
 		m.err = msg.Err
+
+	case tea.BackgroundColorMsg:
+		m.termStyleData.SetBackground(msg)
+		if m.termStyleData.IsComplete() {
+			m.setStyles(style.NewStyles(m.termStyleData))
+		}
+		return m, nil
+
+	case tea.ForegroundColorMsg:
+		m.termStyleData.SetForeground(msg)
+		if m.termStyleData.IsComplete() {
+			m.setStyles(style.NewStyles(m.termStyleData))
+		}
+		return m, nil
 
 	// WindowSizeMsg arrives once on startup, then again every time the window is resized
 	case tea.WindowSizeMsg:
@@ -181,6 +199,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 	}
 
+	if m.pages[m.focusedPageType] == nil {
+		return m, nil
+	}
 	m.pages[m.focusedPageType], cmd = m.pages[m.focusedPageType].Update(msg)
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
@@ -204,7 +225,7 @@ func (m Model) View() string {
 		return ""
 	}
 
-	topBar := util.StyleStyledString(m.topBar(), style.Lilac)
+	topBar := util.StyleStyledString(m.topBar(), m.styles.Lilac)
 	if m.helpText != "" {
 		centeredHelp := lipgloss.Place(m.width, m.height-m.topBarHeight, lipgloss.Center, lipgloss.Center, m.helpText)
 		return lipgloss.JoinVertical(lipgloss.Left, topBar, centeredHelp)
@@ -218,7 +239,7 @@ func (m Model) View() string {
 
 	var pageView string
 	if !m.fullScreen && m.gotFirstContainers {
-		leftPageView := style.RightBorder.Render(m.pages[page.EntitiesPageType].View())
+		leftPageView := m.styles.RightBorder.Render(m.pages[page.EntitiesPageType].View())
 		rightPageView := m.pages[m.rightPageType].View()
 		pageView = lipgloss.JoinHorizontal(lipgloss.Left, leftPageView, rightPageView)
 	} else {
@@ -266,12 +287,12 @@ func (m Model) topBar() string {
 		len(containerEntities),
 	)
 	if m.pauseState {
-		left += padding + style.Inverse.Render("[PAUSED]")
+		left += padding + m.styles.Inverse.Render("[PAUSED]")
 	}
 
 	right := fmt.Sprintf("%s to quit / %s for help", m.keyMap.Quit.Help().Key, m.keyMap.Help.Help().Key)
 	toJoin := []string{left}
-	if len(left)+len(padding)+len(right) < m.width {
+	if lipgloss.Width(left)+lipgloss.Width(padding)+lipgloss.Width(right) < m.width {
 		toJoin = append(toJoin, right)
 	} else {
 		toJoin = append(toJoin, strings.Repeat(" ", len(right)))
@@ -382,9 +403,6 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.helpText = ""
 		return m, nil
 	}
-
-	// adjust for buffered input from held keys, e.g "kk" or "jjj"
-	msg.Runes = normalizeRunes(msg)
 
 	// if prompt is visible, only allow prompt actions
 	if m.prompt.Visible {
@@ -524,7 +542,7 @@ func (m Model) promptToConfirmSelectionActions(selected model.Entity, selectionA
 	topLine = fmt.Sprintf("%s for %s", topLine, selected.Type())
 	bottomLine := fmt.Sprintf("%s?", selected.Container.HumanReadable())
 	text := []string{topLine, bottomLine}
-	m.prompt = prompt.New(true, m.width, m.height-m.topBarHeight, text)
+	m.prompt = prompt.New(true, m.width, m.height-m.topBarHeight, text, m.styles.Inverse)
 	m.whenPromptConfirm = func() (Model, tea.Cmd) { return m.doSelectionActions(selectionActions) }
 	return m, nil
 }
@@ -885,6 +903,7 @@ func (m Model) handleNewLogsMsg(msg command.GetNewLogsMsg) (Model, tea.Cmd) {
 				Full:  localTime.Format("2006-01-02T15:04:05.000Z07:00"),
 			},
 			Terminated: entity.Container.Status.State == model.ContainerTerminated,
+			Styles:     &m.styles,
 		}
 		newLogs = append(newLogs, newLog)
 	}
@@ -1042,19 +1061,11 @@ func (m *Model) setFullscreen(fullscreen bool) {
 	m.syncDimensions()
 }
 
-// normalizeRunes adjusts for buffered key presses
-// under high log/update conditions, bubble tea will buffer key presses, so KeyMsg's arrive as e.g. "jjj" or
-// "kk" if the user is holding those keys down. This doesn't seem to happen for up/down keys
-func normalizeRunes(msg tea.KeyMsg) []rune {
-	if len(msg.Runes) > 1 {
-		if strings.Trim(msg.String(), "j") == "" {
-			return []rune{'j'}
-		}
-		if strings.Trim(msg.String(), "k") == "" {
-			return []rune{'k'}
-		}
-	}
-	return msg.Runes
+func (m *Model) setStyles(styles style.Styles) {
+	m.styles = styles
+	m.pages[page.EntitiesPageType] = m.pages[page.EntitiesPageType].WithStyles(styles)
+	m.pages[page.LogsPageType] = m.pages[page.LogsPageType].WithStyles(styles)
+	m.pages[page.SingleLogPageType] = m.pages[page.SingleLogPageType].WithStyles(styles)
 }
 
 func getLookbackMins(keyString string) int {

@@ -59,40 +59,41 @@ kl --mc "^my-container$" -d --logs-view --since 10m
 
 Press `?` in any view to see keyboard shortcuts specific to the current view and across the application.
 
-| Key     | Action                                          |
-|---------|-------------------------------------------------|
-| ↓/j     | down one line                                   |
-| ↑/k     | up one line                                     |
-| d       | down half page                                  |
-| u       | up half page                                    |
-| f       | down full page                                  |
-| b       | up full page                                    |
-| g       | go to top (will follow logs if descending)      |
-| G       | go to bottom (will follow logs if ascending)    |
-| l       | focus on logs view                              |
-| L       | focus on logs view in fullscreen                |
-| enter   | zoom in to single log view for selected log     |
-| esc     | back to all logs view when viewing single log   |
-| s       | focus on container selection view               |
-| S       | focus on container selection view in fullscreen |
-| F       | toggle fullscreen                               |
-| /       | edit exact match filter                         |
-| r       | edit regex filter                               |
-| enter   | when filtering, apply filter                    |
-| esc     | discard applied filter                          |
-| n       | next filter match                               |
-| N       | previous filter match                           |
-| x       | toggle showing only the logs matching filter    |
-| w       | toggle line wrap                                |
-| ←/→/h/l | pan left/right when not wrapped                 |
-| o       | reverse timestamp ordering                      |
-| p       | pause/resume log stream                         |
-| t       | change timestamp format                         |
-| c       | change container name format                    |
-| 0-9     | change time from which logs begin               |
-| ctrl+s  | save focused view to local file                 |
-| ctrl+y  | in single log view, copy to clipboard           |
-| ?       | show/hide help                                  |
+| Key            | Action                                          |
+|----------------|-------------------------------------------------|
+| ↓/j            | down one line                                   |
+| ↑/k            | up one line                                     |
+| d              | down half page                                  |
+| u              | up half page                                    |
+| f              | down full page                                  |
+| b              | up full page                                    |
+| g              | go to top (will follow logs if descending)      |
+| G              | go to bottom (will follow logs if ascending)    |
+| l              | focus on logs view                              |
+| L              | focus on logs view in fullscreen                |
+| enter          | zoom in to single log view for selected log     |
+| shift+<motion> | scroll on single log view                       |
+| esc            | back to all logs view when viewing single log   |
+| s              | focus on container selection view               |
+| S              | focus on container selection view in fullscreen |
+| F              | toggle fullscreen                               |
+| /              | edit exact match filter                         |
+| r              | edit regex filter                               |
+| enter          | when filtering, apply filter                    |
+| esc            | discard applied filter                          |
+| n              | next filter match                               |
+| N              | previous filter match                           |
+| x              | toggle showing only the logs matching filter    |
+| w              | toggle line wrap                                |
+| ←/→/h/l        | pan left/right when not wrapped                 |
+| o              | reverse timestamp ordering                      |
+| p              | pause/resume log stream                         |
+| t              | change timestamp format                         |
+| c              | change container name format                    |
+| 0-9            | change time from which logs begin               |
+| ctrl+s         | save focused view to local file                 |
+| ctrl+y         | in single log view, copy to clipboard           |
+| ?              | show/hide help                                  |
 
 ## Installation
 

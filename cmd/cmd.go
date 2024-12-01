@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/carlmjohnson/versioninfo"
-	tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal"
 	"github.com/robinovitch61/kl/internal/constants"
 	"github.com/robinovitch61/kl/internal/model"

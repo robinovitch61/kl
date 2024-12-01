@@ -1,6 +1,6 @@
 package viewport
 
-import "github.com/charmbracelet/bubbles/key"
+import "github.com/charmbracelet/bubbles/v2/key"
 
 // KeyMap contains viewport key bindings
 type KeyMap struct {
@@ -20,7 +20,7 @@ type KeyMap struct {
 func DefaultKeyMap() KeyMap {
 	return KeyMap{
 		PageDown: key.NewBinding(
-			key.WithKeys("pgdown", " ", "f", "ctrl+f"),
+			key.WithKeys("pgdown", "f", "ctrl+f"),
 			key.WithHelp("f", "pgdn"),
 		),
 		PageUp: key.NewBinding(
@@ -56,7 +56,7 @@ func DefaultKeyMap() KeyMap {
 			key.WithHelp("g", "top"),
 		),
 		Bottom: key.NewBinding(
-			key.WithKeys("G", "ctrl+G"),
+			key.WithKeys("shift+g"),
 			key.WithHelp("G", "bottom"),
 		),
 	}

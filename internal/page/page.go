@@ -1,7 +1,8 @@
 package page
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/robinovitch61/kl/internal/style"
 )
 
 type GenericPage interface {
@@ -12,6 +13,7 @@ type GenericPage interface {
 	WithDimensions(width, height int) GenericPage
 	WithFocus() GenericPage
 	WithBlur() GenericPage
+	WithStyles(style.Styles) GenericPage
 	Help() string
 }
 

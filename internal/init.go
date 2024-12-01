@@ -4,14 +4,15 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/command"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/k8s"
 	"github.com/robinovitch61/kl/internal/message"
 	"github.com/robinovitch61/kl/internal/model"
 	"github.com/robinovitch61/kl/internal/page"
+	"github.com/robinovitch61/kl/internal/style"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" // register OIDC auth provider
 	"k8s.io/client-go/tools/clientcmd"
@@ -84,6 +85,8 @@ func initializeKubeConfig(m Model) (Model, error) {
 	m.cancel = cancel
 	m.client = k8s.NewClient(ctx, clusterToClientSet)
 	m.entityTree = model.NewEntityTree(m.allClusterNamespaces)
+
+	m.termStyleData = style.NewTermStyleData()
 
 	return m, nil
 }
@@ -198,9 +201,9 @@ func initializePages(m Model) Model {
 
 	m.topBarHeight = lipgloss.Height(m.topBar())
 	contentHeight := m.height - m.topBarHeight
-	m.pages[page.EntitiesPageType] = page.NewEntitiesPage(m.keyMap, m.width, contentHeight, m.entityTree)
-	m.pages[page.LogsPageType] = page.NewLogsPage(m.keyMap, m.width, contentHeight, m.config.Descending)
-	m.pages[page.SingleLogPageType] = page.NewSingleLogPage(m.keyMap, m.width, contentHeight)
+	m.pages[page.EntitiesPageType] = page.NewEntitiesPage(m.keyMap, m.width, contentHeight, m.entityTree, style.Styles{})
+	m.pages[page.LogsPageType] = page.NewLogsPage(m.keyMap, m.width, contentHeight, m.config.Descending, style.Styles{})
+	m.pages[page.SingleLogPageType] = page.NewSingleLogPage(m.keyMap, m.width, contentHeight, style.Styles{})
 	// page focus happens on first containers received
 
 	if m.config.LogFilter.Value != "" {

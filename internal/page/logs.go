@@ -2,14 +2,15 @@ package page
 
 import (
 	"fmt"
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/key"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/filter"
 	"github.com/robinovitch61/kl/internal/filterable_viewport"
 	"github.com/robinovitch61/kl/internal/help"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/model"
+	"github.com/robinovitch61/kl/internal/style"
 )
 
 var (
@@ -23,12 +24,18 @@ type LogsPage struct {
 	logContainer       *model.PageLogContainer
 	timestampFormatIdx int
 	nameFormatIdx      int
+	styles             style.Styles
 }
 
 // assert LogsPage implements GenericPage
 var _ GenericPage = LogsPage{}
 
-func NewLogsPage(keyMap keymap.KeyMap, width, height int, descending bool) LogsPage {
+func NewLogsPage(
+	keyMap keymap.KeyMap,
+	width, height int,
+	descending bool,
+	styles style.Styles,
+) LogsPage {
 	lc := model.NewPageLogContainer(!descending)
 	filterableViewport := filterable_viewport.NewFilterableViewport[model.PageLog](
 		fmt.Sprintf("(L)ogs, %s", getOrder(!descending)),
@@ -43,6 +50,7 @@ func NewLogsPage(keyMap keymap.KeyMap, width, height int, descending bool) LogsP
 			return filter.Matches(log)
 		},
 		"No logs yet",
+		styles,
 	)
 	filterableViewport.SetMaintainSelection(true)
 	page := LogsPage{
@@ -110,17 +118,23 @@ func (p LogsPage) WithDimensions(width, height int) GenericPage {
 }
 
 func (p LogsPage) WithFocus() GenericPage {
-	p.filterableViewport.SetFocus(true, true)
+	p.filterableViewport.SetFocus(true)
 	return p
 }
 
 func (p LogsPage) WithBlur() GenericPage {
-	p.filterableViewport.SetFocus(false, false)
+	p.filterableViewport.SetFocus(false)
+	return p
+}
+
+func (p LogsPage) WithStyles(styles style.Styles) GenericPage {
+	p.styles = styles
+	p.filterableViewport.SetStyles(styles)
 	return p
 }
 
 func (p LogsPage) Help() string {
-	return help.MakeHelp(p.keyMap)
+	return help.MakeHelp(p.keyMap, p.styles.InverseUnderline)
 }
 
 func (p LogsPage) WithLogFilter(lf model.LogFilter) LogsPage {

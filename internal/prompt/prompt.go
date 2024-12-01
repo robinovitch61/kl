@@ -1,10 +1,9 @@
 package prompt
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/dev"
-	"github.com/robinovitch61/kl/internal/style"
 )
 
 type Model struct {
@@ -12,14 +11,16 @@ type Model struct {
 	proceedIsSelected bool
 	width, height     int
 	text              []string
+	selectedStyle     lipgloss.Style
 }
 
-func New(visible bool, width, height int, text []string) Model {
+func New(visible bool, width, height int, text []string, selectedStyle lipgloss.Style) Model {
 	return Model{
-		Visible: visible,
-		width:   width,
-		height:  height,
-		text:    text,
+		Visible:       visible,
+		width:         width,
+		height:        height,
+		text:          text,
+		selectedStyle: selectedStyle,
 	}
 }
 
@@ -41,9 +42,9 @@ func (m Model) View() string {
 		cancel := " NO, CANCEL "
 		proceed := " YES, PROCEED "
 		if m.proceedIsSelected {
-			proceed = style.Inverse.Render(proceed)
+			proceed = m.selectedStyle.Render(proceed)
 		} else {
-			cancel = style.Inverse.Render(cancel)
+			cancel = m.selectedStyle.Render(cancel)
 		}
 		view := lipgloss.JoinVertical(
 			lipgloss.Center,

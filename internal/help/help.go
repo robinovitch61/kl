@@ -1,22 +1,21 @@
 package help
 
 import (
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/keymap"
-	"github.com/robinovitch61/kl/internal/style"
 )
 
-func MakeHelp(keyMap keymap.KeyMap) string {
+func MakeHelp(keyMap keymap.KeyMap, keyColStyle lipgloss.Style) string {
 	title := lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1).Render("Help (press any key to hide)")
 	rowsPerCol := 10
 
 	generalHelp := lipgloss.JoinVertical(
 		lipgloss.Center,
 		"",
-		formatKeyBindings(keymap.GlobalKeyBindings(keyMap), rowsPerCol),
+		formatKeyBindings(keymap.GlobalKeyBindings(keyMap), rowsPerCol, keyColStyle),
 		"",
-		formatKeyBindings(keymap.LookbackKeyBindings(keyMap), 6),
+		formatKeyBindings(keymap.LookbackKeyBindings(keyMap), 6, keyColStyle),
 	)
 
 	res := lipgloss.JoinVertical(
@@ -27,7 +26,7 @@ func MakeHelp(keyMap keymap.KeyMap) string {
 	return res
 }
 
-func formatKeyBindings(bindings []key.Binding, maxRowsPerCol int) string {
+func formatKeyBindings(bindings []key.Binding, maxRowsPerCol int, keyColStyle lipgloss.Style) string {
 	if len(bindings) == 0 {
 		return ""
 	}
@@ -43,7 +42,7 @@ func formatKeyBindings(bindings []key.Binding, maxRowsPerCol int) string {
 	}
 	var formattedCols []string
 	for i, col := range columns {
-		formattedCol := formatColumn(col)
+		formattedCol := formatColumn(col, keyColStyle)
 		if i != len(columns)-1 {
 			formattedCol = formattedCol + "   "
 		}
@@ -53,7 +52,7 @@ func formatKeyBindings(bindings []key.Binding, maxRowsPerCol int) string {
 	return lipgloss.JoinHorizontal(lipgloss.Left, formattedCols...)
 }
 
-func formatColumn(bindings []key.Binding) string {
+func formatColumn(bindings []key.Binding, keyColStyle lipgloss.Style) string {
 	var keys []string
 	var help []string
 	for _, b := range bindings {
@@ -71,7 +70,7 @@ func formatColumn(bindings []key.Binding) string {
 			help = append(help, "")
 		}
 	}
-	keyCol := style.InverseUnderline.Render(lipgloss.JoinVertical(lipgloss.Right, keys...))
+	keyCol := keyColStyle.Render(lipgloss.JoinVertical(lipgloss.Right, keys...))
 	helpCol := lipgloss.JoinVertical(lipgloss.Left, help...)
 	return lipgloss.JoinHorizontal(lipgloss.Left, keyCol, helpCol)
 }

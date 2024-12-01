@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/k8s"
 	"github.com/robinovitch61/kl/internal/model"
 	"k8s.io/apimachinery/pkg/labels"

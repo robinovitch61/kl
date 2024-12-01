@@ -1,36 +1,26 @@
 package viewport
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/termenv"
-	"io"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"strings"
 	"testing"
 )
 
 var (
-	testKeyMap       = DefaultKeyMap()
-	downKeyMsg       = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(testKeyMap.Down.Keys()[0])}
-	halfPgDownKeyMsg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(testKeyMap.HalfPageDown.Keys()[0])}
-	fullPgDownKeyMsg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(testKeyMap.PageDown.Keys()[0])}
-	upKeyMsg         = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(testKeyMap.Up.Keys()[0])}
-	halfPgUpKeyMsg   = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(testKeyMap.HalfPageUp.Keys()[0])}
-	fullPgUpKeyMsg   = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(testKeyMap.PageUp.Keys()[0])}
-	goToTopKeyMsg    = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(testKeyMap.Top.Keys()[0])}
-	goToBottomKeyMsg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(testKeyMap.Bottom.Keys()[0])}
+	downKeyMsg       = tea.KeyPressMsg{Code: 'j', Text: "j"}
+	halfPgDownKeyMsg = tea.KeyPressMsg{Code: 'd', Text: "d"}
+	fullPgDownKeyMsg = tea.KeyPressMsg{Code: 'f', Text: "f"}
+	upKeyMsg         = tea.KeyPressMsg{Code: 'k', Text: "k"}
+	halfPgUpKeyMsg   = tea.KeyPressMsg{Code: 'u', Text: "u"}
+	fullPgUpKeyMsg   = tea.KeyPressMsg{Code: 'b', Text: "b"}
+	goToTopKeyMsg    = tea.KeyPressMsg{Code: 'g', Text: "g"}
+	goToBottomKeyMsg = tea.KeyPressMsg{Code: 'g', Text: "g", Mod: tea.ModShift}
 	red              = lipgloss.Color("#ff0000")
 	blue             = lipgloss.Color("#0000ff")
 	green            = lipgloss.Color("#00ff00")
-	selectionStyle   = renderer().NewStyle().Foreground(blue)
+	selectionStyle   = lipgloss.NewStyle().Foreground(blue)
 )
-
-func renderer() *lipgloss.Renderer {
-	r := lipgloss.NewRenderer(io.Discard)
-	r.SetColorProfile(termenv.TrueColor)
-	r.SetHasDarkBackground(true)
-	return r
-}
 
 func newViewport(width, height int) Model[RenderableString] {
 	vp := New[RenderableString](width, height)
@@ -80,16 +70,16 @@ func TestViewport_SelectionOff_WrapOff_Basic(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetContent([]RenderableString{
 		{Content: "first line"},
-		{Content: renderer().NewStyle().Foreground(red).Render("second") + " line"},
-		{Content: renderer().NewStyle().Foreground(red).Render("a really really long line")},
-		{Content: renderer().NewStyle().Foreground(red).Render("a") + " really really long line"},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("second") + " line"},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("a really really long line")},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line"},
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
 		"first line",
-		"\x1b[38;2;255;0;0msecond\x1b[0m line",
-		"\x1b[38;2;255;0;0ma really rea...\x1b[0m",
-		"\x1b[38;2;255;0;0ma\x1b[0m really rea...",
+		"\x1b[38;2;255;0;0msecond\x1b[m line",
+		"\x1b[38;2;255;0;0ma really rea...\x1b[m",
+		"\x1b[38;2;255;0;0ma\x1b[m really rea...",
 		"100% (4/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -123,15 +113,15 @@ func TestViewport_SelectionOff_WrapOff_ShowFooter(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetContent([]RenderableString{
 		{Content: "first line"},
-		{Content: renderer().NewStyle().Foreground(red).Render("second") + " line"},
-		{Content: renderer().NewStyle().Foreground(red).Render("a really really long line")},
-		{Content: renderer().NewStyle().Foreground(red).Render("a") + " really really long line"},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("second") + " line"},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("a really really long line")},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line"},
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
 		"first line",
-		"\x1b[38;2;255;0;0msecond\x1b[0m line",
-		"\x1b[38;2;255;0;0ma really rea...\x1b[0m",
+		"\x1b[38;2;255;0;0msecond\x1b[m line",
+		"\x1b[38;2;255;0;0ma really rea...\x1b[m",
 		"75% (3/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -140,9 +130,9 @@ func TestViewport_SelectionOff_WrapOff_ShowFooter(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"first line",
-		"\x1b[38;2;255;0;0msecond\x1b[0m line",
-		"\x1b[38;2;255;0;0ma really rea...\x1b[0m",
-		"\x1b[38;2;255;0;0ma\x1b[0m really rea...",
+		"\x1b[38;2;255;0;0msecond\x1b[m line",
+		"\x1b[38;2;255;0;0ma really rea...\x1b[m",
+		"\x1b[38;2;255;0;0ma\x1b[m really rea...",
 		"100% (4/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -151,9 +141,9 @@ func TestViewport_SelectionOff_WrapOff_ShowFooter(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"first line",
-		"\x1b[38;2;255;0;0msecond\x1b[0m line",
-		"\x1b[38;2;255;0;0ma really rea...\x1b[0m",
-		"\x1b[38;2;255;0;0ma\x1b[0m really rea...",
+		"\x1b[38;2;255;0;0msecond\x1b[m line",
+		"\x1b[38;2;255;0;0ma really rea...\x1b[m",
+		"\x1b[38;2;255;0;0ma\x1b[m really rea...",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -162,7 +152,7 @@ func TestViewport_SelectionOff_WrapOff_FooterStyle(t *testing.T) {
 	w, h := 15, 5
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
-	vp.FooterStyle = renderer().NewStyle().Foreground(red)
+	vp.FooterStyle = lipgloss.NewStyle().Foreground(red)
 	vp.SetContent([]RenderableString{
 		{Content: "1"},
 		{Content: "2"},
@@ -174,7 +164,7 @@ func TestViewport_SelectionOff_WrapOff_FooterStyle(t *testing.T) {
 		"1",
 		"2",
 		"3",
-		"\x1b[38;2;255;0;0m75% (3/4)\x1b[0m",
+		"\x1b[38;2;255;0;0m75% (3/4)\x1b[m",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -749,7 +739,7 @@ func TestViewport_SelectionOff_WrapOff_StringToHighlight(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetStringToHighlight("second")
-	vp.HighlightStyle = renderer().NewStyle().Foreground(red)
+	vp.HighlightStyle = lipgloss.NewStyle().Foreground(red)
 	vp.SetContent([]RenderableString{
 		{Content: "first"},
 		{Content: "second"},
@@ -759,8 +749,8 @@ func TestViewport_SelectionOff_WrapOff_StringToHighlight(t *testing.T) {
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
 		"first",
-		"\x1b[38;2;255;0;0msecond\x1b[0m",
-		"\x1b[38;2;255;0;0msecond\x1b[0m",
+		"\x1b[38;2;255;0;0msecond\x1b[m",
+		"\x1b[38;2;255;0;0msecond\x1b[m",
 		"75% (3/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -771,13 +761,13 @@ func TestViewport_SelectionOff_WrapOff_StringToHighlightAnsi(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetContent([]RenderableString{
-		{Content: "line \x1b[38;2;255;0;0mred\x1b[0m e again"},
+		{Content: "line \x1b[38;2;255;0;0mred\x1b[m e again"},
 	})
 	vp.SetStringToHighlight("e")
 	vp.HighlightStyle = selectionStyle
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"lin\x1b[38;2;0;0;255me\x1b[0m \x1b[38;2;255;0;0mr\x1b[0m\x1b[38;2;0;0;255me\x1b[0m\x1b[38;2;255;0;0md\x1b[0m \x1b[38;2;0;0;255me\x1b[0m again",
+		"lin\x1b[38;2;0;0;255me\x1b[m \x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;0;0;255me\x1b[m\x1b[38;2;255;0;0md\x1b[m \x1b[38;2;0;0;255me\x1b[m again",
 	})
 	compare(t, expectedView, vp.View())
 
@@ -785,7 +775,7 @@ func TestViewport_SelectionOff_WrapOff_StringToHighlightAnsi(t *testing.T) {
 	vp.SetStringToHighlight("38")
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"line \x1b[38;2;255;0;0mred\x1b[0m e again",
+		"line \x1b[38;2;255;0;0mred\x1b[m e again",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -826,7 +816,7 @@ func TestViewport_SelectionOn_WrapOff_SmolDimensions(t *testing.T) {
 	vp.SetHeight(3)
 	expectedView = pad(vp.width, vp.height, []string{
 		"...",
-		"\x1b[38;2;0;0;255mhi\x1b[0m",
+		"\x1b[38;2;0;0;255mhi\x1b[m",
 		"...",
 	})
 	compare(t, expectedView, vp.View())
@@ -839,16 +829,16 @@ func TestViewport_SelectionOn_WrapOff_Basic(t *testing.T) {
 	vp.SetSelectionEnabled(true)
 	vp.SetContent([]RenderableString{
 		{Content: "first line"},
-		{Content: renderer().NewStyle().Foreground(red).Render("second") + " line"},
-		{Content: renderer().NewStyle().Foreground(red).Render("a really really long line")},
-		{Content: renderer().NewStyle().Foreground(red).Render("a") + " really really long line"},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("second") + " line"},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("a really really long line")},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line"},
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst line\x1b[0m",
-		"\x1b[38;2;255;0;0msecond\x1b[0m line",
-		"\x1b[38;2;255;0;0ma really rea...\x1b[0m",
-		"\x1b[38;2;255;0;0ma\x1b[0m really rea...",
+		"\x1b[38;2;0;0;255mfirst line\x1b[m",
+		"\x1b[38;2;255;0;0msecond\x1b[m line",
+		"\x1b[38;2;255;0;0ma really rea...\x1b[m",
+		"\x1b[38;2;255;0;0ma\x1b[m really rea...",
 		"25% (1/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -888,15 +878,15 @@ func TestViewport_SelectionOn_WrapOff_ShowFooter(t *testing.T) {
 	vp.SetSelectionEnabled(true)
 	vp.SetContent([]RenderableString{
 		{Content: "first line"},
-		{Content: renderer().NewStyle().Foreground(red).Render("second") + " line"},
-		{Content: renderer().NewStyle().Foreground(red).Render("a really really long line")},
-		{Content: renderer().NewStyle().Foreground(red).Render("a") + " really really long line"},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("second") + " line"},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("a really really long line")},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line"},
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst line\x1b[0m",
-		"\x1b[38;2;255;0;0msecond\x1b[0m line",
-		"\x1b[38;2;255;0;0ma really rea...\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst line\x1b[m",
+		"\x1b[38;2;255;0;0msecond\x1b[m line",
+		"\x1b[38;2;255;0;0ma really rea...\x1b[m",
 		"25% (1/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -904,10 +894,10 @@ func TestViewport_SelectionOn_WrapOff_ShowFooter(t *testing.T) {
 	vp.SetHeight(6)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst line\x1b[0m",
-		"\x1b[38;2;255;0;0msecond\x1b[0m line",
-		"\x1b[38;2;255;0;0ma really rea...\x1b[0m",
-		"\x1b[38;2;255;0;0ma\x1b[0m really rea...",
+		"\x1b[38;2;0;0;255mfirst line\x1b[m",
+		"\x1b[38;2;255;0;0msecond\x1b[m line",
+		"\x1b[38;2;255;0;0ma really rea...\x1b[m",
+		"\x1b[38;2;255;0;0ma\x1b[m really rea...",
 		"25% (1/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -915,10 +905,10 @@ func TestViewport_SelectionOn_WrapOff_ShowFooter(t *testing.T) {
 	vp.SetHeight(7)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst line\x1b[0m",
-		"\x1b[38;2;255;0;0msecond\x1b[0m line",
-		"\x1b[38;2;255;0;0ma really rea...\x1b[0m",
-		"\x1b[38;2;255;0;0ma\x1b[0m really rea...",
+		"\x1b[38;2;0;0;255mfirst line\x1b[m",
+		"\x1b[38;2;255;0;0msecond\x1b[m line",
+		"\x1b[38;2;255;0;0ma really rea...\x1b[m",
+		"\x1b[38;2;255;0;0ma\x1b[m really rea...",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -928,7 +918,7 @@ func TestViewport_SelectionOn_WrapOff_FooterStyle(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
-	vp.FooterStyle = renderer().NewStyle().Foreground(red)
+	vp.FooterStyle = lipgloss.NewStyle().Foreground(red)
 	vp.SetContent([]RenderableString{
 		{Content: "1"},
 		{Content: "2"},
@@ -937,10 +927,10 @@ func TestViewport_SelectionOn_WrapOff_FooterStyle(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255m1\x1b[0m",
+		"\x1b[38;2;0;0;255m1\x1b[m",
 		"2",
 		"3",
-		"\x1b[38;2;255;0;0m25% (1/4)\x1b[0m",
+		"\x1b[38;2;255;0;0m25% (1/4)\x1b[m",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -958,7 +948,7 @@ func TestViewport_SelectionOn_WrapOff_FooterDisabled(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst line\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst line\x1b[m",
 		"second line",
 		"third line",
 		"25% (1/4)",
@@ -968,7 +958,7 @@ func TestViewport_SelectionOn_WrapOff_FooterDisabled(t *testing.T) {
 	vp.SetFooterVisible(false)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst line\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst line\x1b[m",
 		"second line",
 		"third line",
 		"fourth line",
@@ -988,7 +978,7 @@ func TestViewport_SelectionOn_WrapOff_SpaceAround(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255m    first li...\x1b[0m",
+		"\x1b[38;2;0;0;255m    first li...\x1b[m",
 		"          fi...",
 		"            ...",
 		"33% (1/3)",
@@ -1022,7 +1012,7 @@ func TestViewport_SelectionOn_WrapOff_MultiHeader(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header1",
 		"header2",
-		"\x1b[38;2;0;0;255mline1\x1b[0m",
+		"\x1b[38;2;0;0;255mline1\x1b[m",
 		"50% (1/2)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1031,7 +1021,7 @@ func TestViewport_SelectionOn_WrapOff_MultiHeader(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header1",
 		"header2",
-		"\x1b[38;2;0;0;255mline2\x1b[0m",
+		"\x1b[38;2;0;0;255mline2\x1b[m",
 		"100% (2/2)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1041,7 +1031,7 @@ func TestViewport_SelectionOn_WrapOff_MultiHeader(t *testing.T) {
 		"header1",
 		"header2",
 		"line1",
-		"\x1b[38;2;0;0;255mline2\x1b[0m",
+		"\x1b[38;2;0;0;255mline2\x1b[m",
 		"100% (2/2)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1051,7 +1041,7 @@ func TestViewport_SelectionOn_WrapOff_MultiHeader(t *testing.T) {
 		"header1",
 		"header2",
 		"line1",
-		"\x1b[38;2;0;0;255mline2\x1b[0m",
+		"\x1b[38;2;0;0;255mline2\x1b[m",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -1067,7 +1057,7 @@ func TestViewport_SelectionOn_WrapOff_OverflowLine(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"long header ...",
-		"\x1b[38;2;0;0;255m123456789012345\x1b[0m",
+		"\x1b[38;2;0;0;255m123456789012345\x1b[m",
 		"123456789012...",
 	})
 	compare(t, expectedView, vp.View())
@@ -1088,7 +1078,7 @@ func TestViewport_SelectionOn_WrapOff_OverflowHeight(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255m123456789012345\x1b[0m",
+		"\x1b[38;2;0;0;255m123456789012345\x1b[m",
 		"123456789012...",
 		"123456789012...",
 		"123456789012...",
@@ -1121,7 +1111,7 @@ func TestViewport_SelectionOn_WrapOff_Scrolling(t *testing.T) {
 	setContent()
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
 		"second",
 		"third",
 		"fourth",
@@ -1138,7 +1128,7 @@ func TestViewport_SelectionOn_WrapOff_Scrolling(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"first",
-		"\x1b[38;2;0;0;255msecond\x1b[0m",
+		"\x1b[38;2;0;0;255msecond\x1b[m",
 		"third",
 		"fourth",
 		"33% (2/6)",
@@ -1155,7 +1145,7 @@ func TestViewport_SelectionOn_WrapOff_Scrolling(t *testing.T) {
 		"third",
 		"fourth",
 		"fifth",
-		"\x1b[38;2;0;0;255msixth\x1b[0m",
+		"\x1b[38;2;0;0;255msixth\x1b[m",
 		"100% (6/6)",
 	})
 	validate(expectedView)
@@ -1180,7 +1170,7 @@ func TestViewport_SelectionOn_WrapOff_ScrollToItem(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
 		"second",
 		"16% (1/6)",
 	})
@@ -1190,7 +1180,7 @@ func TestViewport_SelectionOn_WrapOff_ScrollToItem(t *testing.T) {
 	vp.ScrollSoItemIdxInView(5)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
 		"second",
 		"16% (1/6)",
 	})
@@ -1201,7 +1191,7 @@ func TestViewport_SelectionOn_WrapOff_ScrollToItem(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"first",
-		"\x1b[38;2;0;0;255msecond\x1b[0m",
+		"\x1b[38;2;0;0;255msecond\x1b[m",
 		"33% (2/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1210,7 +1200,7 @@ func TestViewport_SelectionOn_WrapOff_ScrollToItem(t *testing.T) {
 	vp.ScrollSoItemIdxInView(2)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255msecond\x1b[0m",
+		"\x1b[38;2;0;0;255msecond\x1b[m",
 		"third",
 		"33% (2/6)",
 	})
@@ -1232,7 +1222,7 @@ func TestViewport_SelectionOn_WrapOff_BulkScrolling(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
 		"second",
 		"16% (1/6)",
 	})
@@ -1242,7 +1232,7 @@ func TestViewport_SelectionOn_WrapOff_BulkScrolling(t *testing.T) {
 	vp, _ = vp.Update(fullPgDownKeyMsg)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthird\x1b[0m",
+		"\x1b[38;2;0;0;255mthird\x1b[m",
 		"fourth",
 		"50% (3/6)",
 	})
@@ -1252,7 +1242,7 @@ func TestViewport_SelectionOn_WrapOff_BulkScrolling(t *testing.T) {
 	vp, _ = vp.Update(halfPgDownKeyMsg)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfourth\x1b[0m",
+		"\x1b[38;2;0;0;255mfourth\x1b[m",
 		"fifth",
 		"66% (4/6)",
 	})
@@ -1263,7 +1253,7 @@ func TestViewport_SelectionOn_WrapOff_BulkScrolling(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"fifth",
-		"\x1b[38;2;0;0;255msixth\x1b[0m",
+		"\x1b[38;2;0;0;255msixth\x1b[m",
 		"100% (6/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1273,7 +1263,7 @@ func TestViewport_SelectionOn_WrapOff_BulkScrolling(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"third",
-		"\x1b[38;2;0;0;255mfourth\x1b[0m",
+		"\x1b[38;2;0;0;255mfourth\x1b[m",
 		"66% (4/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1283,7 +1273,7 @@ func TestViewport_SelectionOn_WrapOff_BulkScrolling(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"second",
-		"\x1b[38;2;0;0;255mthird\x1b[0m",
+		"\x1b[38;2;0;0;255mthird\x1b[m",
 		"50% (3/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1293,7 +1283,7 @@ func TestViewport_SelectionOn_WrapOff_BulkScrolling(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"first",
-		"\x1b[38;2;0;0;255msecond\x1b[0m",
+		"\x1b[38;2;0;0;255msecond\x1b[m",
 		"33% (2/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1302,7 +1292,7 @@ func TestViewport_SelectionOn_WrapOff_BulkScrolling(t *testing.T) {
 	vp, _ = vp.Update(fullPgUpKeyMsg)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
 		"second",
 		"16% (1/6)",
 	})
@@ -1313,7 +1303,7 @@ func TestViewport_SelectionOn_WrapOff_BulkScrolling(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"fifth",
-		"\x1b[38;2;0;0;255msixth\x1b[0m",
+		"\x1b[38;2;0;0;255msixth\x1b[m",
 		"100% (6/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1322,7 +1312,7 @@ func TestViewport_SelectionOn_WrapOff_BulkScrolling(t *testing.T) {
 	vp, _ = vp.Update(goToTopKeyMsg)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
 		"second",
 		"16% (1/6)",
 	})
@@ -1353,7 +1343,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 	setContent()
 	expectedView := pad(vp.width, vp.height, []string{
 		"header ...",
-		"\x1b[38;2;0;0;255mfirst l...\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst l...\x1b[m",
 		"second ...",
 		"third l...",
 		"fourth",
@@ -1365,7 +1355,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 	vp.safelySetXOffset(5)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header ...",
-		"\x1b[38;2;0;0;255m...ne t...\x1b[0m",
+		"\x1b[38;2;0;0;255m...ne t...\x1b[m",
 		"...ine ...",
 		"...ne t...",
 		".",
@@ -1378,7 +1368,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header ...",
 		"...ne t...",
-		"\x1b[38;2;0;0;255m...ine ...\x1b[0m",
+		"\x1b[38;2;0;0;255m...ine ...\x1b[m",
 		"...ne t...",
 		".",
 		"33% (2/6)",
@@ -1390,7 +1380,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header ...",
 		"...",
-		"\x1b[38;2;0;0;255m...e first\x1b[0m",
+		"\x1b[38;2;0;0;255m...e first\x1b[m",
 		"...",
 		"...",
 		"33% (2/6)",
@@ -1403,7 +1393,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		"header ...",
 		"...",
 		"...e first",
-		"\x1b[38;2;0;0;255m...\x1b[0m",
+		"\x1b[38;2;0;0;255m...\x1b[m",
 		"...",
 		"50% (3/6)",
 	})
@@ -1416,7 +1406,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		"...",
 		"...e first",
 		"...",
-		"\x1b[38;2;0;0;255m...\x1b[0m",
+		"\x1b[38;2;0;0;255m...\x1b[m",
 		"66% (4/6)",
 	})
 	validate(expectedView)
@@ -1428,7 +1418,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		"...e first",
 		"...",
 		"...",
-		"\x1b[38;2;0;0;255m...\x1b[0m",
+		"\x1b[38;2;0;0;255m...\x1b[m",
 		"83% (5/6)",
 	})
 	validate(expectedView)
@@ -1440,7 +1430,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		"...ly long",
 		"...",
 		"...ly long",
-		"\x1b[38;2;0;0;255m...\x1b[0m",
+		"\x1b[38;2;0;0;255m...\x1b[m",
 		"100% (6/6)",
 	})
 	validate(expectedView)
@@ -1451,7 +1441,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 		"header ...",
 		"...ly long",
 		"...",
-		"\x1b[38;2;0;0;255m...ly long\x1b[0m",
+		"\x1b[38;2;0;0;255m...ly long\x1b[m",
 		"...",
 		"83% (5/6)",
 	})
@@ -1462,7 +1452,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header ...",
 		"...ly long",
-		"\x1b[38;2;0;0;255m...\x1b[0m",
+		"\x1b[38;2;0;0;255m...\x1b[m",
 		"...ly long",
 		"...",
 		"66% (4/6)",
@@ -1473,7 +1463,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 	vp, _ = vp.Update(upKeyMsg)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header ...",
-		"\x1b[38;2;0;0;255m...ly long\x1b[0m",
+		"\x1b[38;2;0;0;255m...ly long\x1b[m",
 		"...",
 		"...ly long",
 		"...",
@@ -1485,7 +1475,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 	vp, _ = vp.Update(upKeyMsg)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header ...",
-		"\x1b[38;2;0;0;255m...n mu...\x1b[0m",
+		"\x1b[38;2;0;0;255m...n mu...\x1b[m",
 		"...ly long",
 		"...",
 		"...ly long",
@@ -1497,7 +1487,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 	vp, _ = vp.Update(upKeyMsg)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header ...",
-		"\x1b[38;2;0;0;255m...ly long\x1b[0m",
+		"\x1b[38;2;0;0;255m...ly long\x1b[m",
 		"...n mu...",
 		"...ly long",
 		"...",
@@ -1511,7 +1501,7 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header ...",
-		"\x1b[38;2;0;0;255m...rst one\x1b[0m",
+		"\x1b[38;2;0;0;255m...rst one\x1b[m",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -1532,7 +1522,7 @@ func TestViewport_SelectionOn_WrapOff_MaintainSelection(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255msixth\x1b[0m",
+		"\x1b[38;2;0;0;255msixth\x1b[m",
 		"seventh",
 		"eighth",
 		"16% (1/6)",
@@ -1544,7 +1534,7 @@ func TestViewport_SelectionOn_WrapOff_MaintainSelection(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"sixth",
-		"\x1b[38;2;0;0;255mseventh\x1b[0m",
+		"\x1b[38;2;0;0;255mseventh\x1b[m",
 		"eighth",
 		"33% (2/6)",
 	})
@@ -1567,7 +1557,7 @@ func TestViewport_SelectionOn_WrapOff_MaintainSelection(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"sixth",
-		"\x1b[38;2;0;0;255mseventh\x1b[0m",
+		"\x1b[38;2;0;0;255mseventh\x1b[m",
 		"eighth",
 		"63% (7/11)",
 	})
@@ -1595,7 +1585,7 @@ func TestViewport_SelectionOn_WrapOff_MaintainSelection(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"sixth",
-		"\x1b[38;2;0;0;255mseventh\x1b[0m",
+		"\x1b[38;2;0;0;255mseventh\x1b[m",
 		"eighth",
 		"43% (7/16)",
 	})
@@ -1615,7 +1605,7 @@ func TestViewport_SelectionOn_WrapOff_StickyTop(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
 	})
 	compare(t, expectedView, vp.View())
 
@@ -1626,7 +1616,7 @@ func TestViewport_SelectionOn_WrapOff_StickyTop(t *testing.T) {
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255msecond\x1b[0m",
+		"\x1b[38;2;0;0;255msecond\x1b[m",
 		"first",
 		"50% (1/2)",
 	})
@@ -1637,7 +1627,7 @@ func TestViewport_SelectionOn_WrapOff_StickyTop(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"second",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
 		"100% (2/2)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1651,7 +1641,7 @@ func TestViewport_SelectionOn_WrapOff_StickyTop(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"second",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
 		"66% (2/3)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1670,7 +1660,7 @@ func TestViewport_SelectionOn_WrapOff_StickyBottom(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
 	})
 	compare(t, expectedView, vp.View())
 
@@ -1682,7 +1672,7 @@ func TestViewport_SelectionOn_WrapOff_StickyBottom(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"second",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
 		"100% (2/2)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1691,7 +1681,7 @@ func TestViewport_SelectionOn_WrapOff_StickyBottom(t *testing.T) {
 	vp, _ = vp.Update(upKeyMsg)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255msecond\x1b[0m",
+		"\x1b[38;2;0;0;255msecond\x1b[m",
 		"first",
 		"50% (1/2)",
 	})
@@ -1705,7 +1695,7 @@ func TestViewport_SelectionOn_WrapOff_StickyBottom(t *testing.T) {
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255msecond\x1b[0m",
+		"\x1b[38;2;0;0;255msecond\x1b[m",
 		"first",
 		"33% (1/3)",
 	})
@@ -1736,7 +1726,7 @@ func TestViewport_SelectionOn_WrapOff_StickyBottomOverflowHeight(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"first",
-		"\x1b[38;2;0;0;255mthird\x1b[0m",
+		"\x1b[38;2;0;0;255mthird\x1b[m",
 		"100% (3/3)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1756,7 +1746,7 @@ func TestViewport_SelectionOn_WrapOff_StickyTopBottom(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
 	})
 	compare(t, expectedView, vp.View())
 
@@ -1767,7 +1757,7 @@ func TestViewport_SelectionOn_WrapOff_StickyTopBottom(t *testing.T) {
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255msecond\x1b[0m",
+		"\x1b[38;2;0;0;255msecond\x1b[m",
 		"first",
 		"50% (1/2)",
 	})
@@ -1778,7 +1768,7 @@ func TestViewport_SelectionOn_WrapOff_StickyTopBottom(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"second",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
 		"100% (2/2)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1792,7 +1782,7 @@ func TestViewport_SelectionOn_WrapOff_StickyTopBottom(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"first",
-		"\x1b[38;2;0;0;255mthird\x1b[0m",
+		"\x1b[38;2;0;0;255mthird\x1b[m",
 		"100% (3/3)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1801,7 +1791,7 @@ func TestViewport_SelectionOn_WrapOff_StickyTopBottom(t *testing.T) {
 	vp, _ = vp.Update(upKeyMsg)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
 		"third",
 		"66% (2/3)",
 	})
@@ -1816,7 +1806,7 @@ func TestViewport_SelectionOn_WrapOff_StickyTopBottom(t *testing.T) {
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
 		"third",
 		"50% (2/4)",
 	})
@@ -1838,7 +1828,7 @@ func TestViewport_SelectionOn_WrapOff_RemoveLogsWhenSelectionBottom(t *testing.T
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255msecond\x1b[0m",
+		"\x1b[38;2;0;0;255msecond\x1b[m",
 		"25% (1/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1847,7 +1837,7 @@ func TestViewport_SelectionOn_WrapOff_RemoveLogsWhenSelectionBottom(t *testing.T
 	vp.SetSelectedItemIdx(3)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfourth\x1b[0m",
+		"\x1b[38;2;0;0;255mfourth\x1b[m",
 		"100% (4/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1859,7 +1849,7 @@ func TestViewport_SelectionOn_WrapOff_RemoveLogsWhenSelectionBottom(t *testing.T
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
 		"100% (2/2)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1880,7 +1870,7 @@ func TestViewport_SelectionOn_WrapOff_ChangeHeight(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
 		"16% (1/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1889,7 +1879,7 @@ func TestViewport_SelectionOn_WrapOff_ChangeHeight(t *testing.T) {
 	vp.SetHeight(8)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
 		"second",
 		"third",
 		"fourth",
@@ -1906,7 +1896,7 @@ func TestViewport_SelectionOn_WrapOff_ChangeHeight(t *testing.T) {
 		"header",
 		"first",
 		"second",
-		"\x1b[38;2;0;0;255mthird\x1b[0m",
+		"\x1b[38;2;0;0;255mthird\x1b[m",
 		"fourth",
 		"fifth",
 		"sixth",
@@ -1918,7 +1908,7 @@ func TestViewport_SelectionOn_WrapOff_ChangeHeight(t *testing.T) {
 	vp.SetHeight(3)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthird\x1b[0m",
+		"\x1b[38;2;0;0;255mthird\x1b[m",
 		"50% (3/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1929,7 +1919,7 @@ func TestViewport_SelectionOn_WrapOff_ChangeHeight(t *testing.T) {
 		"header",
 		"first",
 		"second",
-		"\x1b[38;2;0;0;255mthird\x1b[0m",
+		"\x1b[38;2;0;0;255mthird\x1b[m",
 		"fourth",
 		"fifth",
 		"sixth",
@@ -1948,7 +1938,7 @@ func TestViewport_SelectionOn_WrapOff_ChangeHeight(t *testing.T) {
 		"third",
 		"fourth",
 		"fifth",
-		"\x1b[38;2;0;0;255msixth\x1b[0m",
+		"\x1b[38;2;0;0;255msixth\x1b[m",
 		"100% (6/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1957,7 +1947,7 @@ func TestViewport_SelectionOn_WrapOff_ChangeHeight(t *testing.T) {
 	vp.SetHeight(3)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255msixth\x1b[0m",
+		"\x1b[38;2;0;0;255msixth\x1b[m",
 		"100% (6/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1971,7 +1961,7 @@ func TestViewport_SelectionOn_WrapOff_ChangeHeight(t *testing.T) {
 		"third",
 		"fourth",
 		"fifth",
-		"\x1b[38;2;0;0;255msixth\x1b[0m",
+		"\x1b[38;2;0;0;255msixth\x1b[m",
 		"100% (6/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -1992,7 +1982,7 @@ func TestViewport_SelectionOn_WrapOff_ChangeContent(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
 		"second",
 		"third",
 		"16% (1/6)",
@@ -2005,7 +1995,7 @@ func TestViewport_SelectionOn_WrapOff_ChangeContent(t *testing.T) {
 		"header",
 		"fourth",
 		"fifth",
-		"\x1b[38;2;0;0;255msixth\x1b[0m",
+		"\x1b[38;2;0;0;255msixth\x1b[m",
 		"100% (6/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -2016,7 +2006,7 @@ func TestViewport_SelectionOn_WrapOff_ChangeContent(t *testing.T) {
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255msecond\x1b[0m",
+		"\x1b[38;2;0;0;255msecond\x1b[m",
 	})
 	compare(t, expectedView, vp.View())
 
@@ -2038,7 +2028,7 @@ func TestViewport_SelectionOn_WrapOff_ChangeContent(t *testing.T) {
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
 		"second",
 		"third",
 		"16% (1/6)",
@@ -2052,8 +2042,8 @@ func TestViewport_SelectionOn_WrapOff_StringToHighlight(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
 	vp.SetStringToHighlight("second")
-	vp.HighlightStyle = renderer().NewStyle().Foreground(green)
-	vp.HighlightStyleIfSelected = renderer().NewStyle().Foreground(red)
+	vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
+	vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
 	vp.SetContent([]RenderableString{
 		{Content: "the first line"},
 		{Content: "the second line"},
@@ -2062,9 +2052,9 @@ func TestViewport_SelectionOn_WrapOff_StringToHighlight(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe first line\x1b[0m",
-		"the \x1b[38;2;0;255;0msecond\x1b[0m line",
-		"the \x1b[38;2;0;255;0msecond\x1b[0m line",
+		"\x1b[38;2;0;0;255mthe first line\x1b[m",
+		"the \x1b[38;2;0;255;0msecond\x1b[m line",
+		"the \x1b[38;2;0;255;0msecond\x1b[m line",
 		"25% (1/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -2072,7 +2062,7 @@ func TestViewport_SelectionOn_WrapOff_StringToHighlight(t *testing.T) {
 	vp.SetStringToHighlight("first")
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe \x1b[0m\x1b[38;2;255;0;0mfirst\x1b[0m\x1b[38;2;0;0;255m line\x1b[0m",
+		"\x1b[38;2;0;0;255mthe \x1b[m\x1b[38;2;255;0;0mfirst\x1b[m\x1b[38;2;0;0;255m line\x1b[m",
 		"the second line",
 		"the second line",
 		"25% (1/4)",
@@ -2087,7 +2077,7 @@ func TestViewport_SelectionOn_WrapOff_StringToHighlight(t *testing.T) {
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;255;0;0mfirst\x1b[0m\x1b[38;2;0;0;255m line\x1b[0m",
+		"\x1b[38;2;255;0;0mfirst\x1b[m\x1b[38;2;0;0;255m line\x1b[m",
 		"second line",
 		"second line",
 		"25% (1/4)",
@@ -2101,11 +2091,11 @@ func TestViewport_SelectionOn_WrapOff_AnsiOnSelection(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
 	vp.SetContent([]RenderableString{
-		{Content: "line with \x1b[38;2;255;0;0mred\x1b[0m text"},
+		{Content: "line with \x1b[38;2;255;0;0mred\x1b[m text"},
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mline with \x1b[0m\x1b[38;2;255;0;0mred\x1b[0m\x1b[38;2;0;0;255m text\x1b[0m",
+		"\x1b[38;2;0;0;255mline with \x1b[m\x1b[38;2;255;0;0mred\x1b[m\x1b[38;2;0;0;255m text\x1b[m",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -2120,7 +2110,7 @@ func TestViewport_SelectionOn_WrapOff_SelectionEmpty(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255m \x1b[0m",
+		"\x1b[38;2;0;0;255m \x1b[m",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -2131,11 +2121,11 @@ func TestViewport_SelectionOn_WrapOff_ExtraSlash(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
 	vp.SetContent([]RenderableString{
-		{Content: "|2024|\x1b[38;2;0mfl..lq\x1b[0m/\x1b[38;2;0mflask-3\x1b[0m|"},
+		{Content: "|2024|\x1b[38;2;0mfl..lq\x1b[m/\x1b[38;2;0mflask-3\x1b[m|"},
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255m|2024|\x1b[0m\x1b[38;2;0mfl..lq\x1b[0m\x1b[38;2;0;0;255m/\x1b[0m\x1b[38;2;0mflask-3\x1b[0m\x1b[38;2;0;0;255m|\x1b[0m",
+		"\x1b[38;2;0;0;255m|2024|\x1b[m\x1b[38;2;0mfl..lq\x1b[m\x1b[38;2;0;0;255m/\x1b[m\x1b[38;2;0mflask-3\x1b[m\x1b[38;2;0;0;255m|\x1b[m",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -2190,16 +2180,16 @@ func TestViewport_SelectionOff_WrapOn_Basic(t *testing.T) {
 	vp.SetWrapText(true)
 	vp.SetContent([]RenderableString{
 		{Content: "first line"},
-		{Content: renderer().NewStyle().Foreground(red).Render("second") + " line"},
-		{Content: renderer().NewStyle().Foreground(red).Render("a really really long line")},
-		{Content: renderer().NewStyle().Foreground(red).Render("a") + " really really long line"},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("second") + " line"},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("a really really long line")},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line"},
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
 		"first line",
-		"\x1b[38;2;255;0;0msecond\x1b[0m line",
-		"\x1b[38;2;255;0;0ma really really\x1b[0m",
-		"\x1b[38;2;255;0;0m long line\x1b[0m",
+		"\x1b[38;2;255;0;0msecond\x1b[m line",
+		"\x1b[38;2;255;0;0ma really really\x1b[m",
+		"\x1b[38;2;255;0;0m long line\x1b[m",
 		"75% (3/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -2235,17 +2225,17 @@ func TestViewport_SelectionOff_WrapOn_ShowFooter(t *testing.T) {
 	vp.SetWrapText(true)
 	vp.SetContent([]RenderableString{
 		{Content: "first line"},
-		{Content: renderer().NewStyle().Foreground(red).Render("second") + " line"},
-		{Content: renderer().NewStyle().Foreground(red).Render("a really really long line")},
-		{Content: renderer().NewStyle().Foreground(red).Render("a") + " really really long line"},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("second") + " line"},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("a really really long line")},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line"},
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
 		"first line",
-		"\x1b[38;2;255;0;0msecond\x1b[0m line",
-		"\x1b[38;2;255;0;0ma really really\x1b[0m",
-		"\x1b[38;2;255;0;0m long line\x1b[0m",
-		"\x1b[38;2;255;0;0ma\x1b[0m really really",
+		"\x1b[38;2;255;0;0msecond\x1b[m line",
+		"\x1b[38;2;255;0;0ma really really\x1b[m",
+		"\x1b[38;2;255;0;0m long line\x1b[m",
+		"\x1b[38;2;255;0;0ma\x1b[m really really",
 		"99% (4/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -2254,11 +2244,11 @@ func TestViewport_SelectionOff_WrapOn_ShowFooter(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"first line",
-		"\x1b[38;2;255;0;0msecond\x1b[0m line",
-		"\x1b[38;2;255;0;0ma really really\x1b[0m",
-		"\x1b[38;2;255;0;0m long line\x1b[0m",
-		"\x1b[38;2;255;0;0ma\x1b[0m really really",
-		"\x1b[38;2;255;0;0m\x1b[0m long line",
+		"\x1b[38;2;255;0;0msecond\x1b[m line",
+		"\x1b[38;2;255;0;0ma really really\x1b[m",
+		"\x1b[38;2;255;0;0m long line\x1b[m",
+		"\x1b[38;2;255;0;0ma\x1b[m really really",
+		"\x1b[38;2;255;0;0m\x1b[m long line",
 		"100% (4/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -2267,11 +2257,11 @@ func TestViewport_SelectionOff_WrapOn_ShowFooter(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"first line",
-		"\x1b[38;2;255;0;0msecond\x1b[0m line",
-		"\x1b[38;2;255;0;0ma really really\x1b[0m",
-		"\x1b[38;2;255;0;0m long line\x1b[0m",
-		"\x1b[38;2;255;0;0ma\x1b[0m really really",
-		"\x1b[38;2;255;0;0m\x1b[0m long line",
+		"\x1b[38;2;255;0;0msecond\x1b[m line",
+		"\x1b[38;2;255;0;0ma really really\x1b[m",
+		"\x1b[38;2;255;0;0m long line\x1b[m",
+		"\x1b[38;2;255;0;0ma\x1b[m really really",
+		"\x1b[38;2;255;0;0m\x1b[m long line",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -2281,7 +2271,7 @@ func TestViewport_SelectionOff_WrapOn_FooterStyle(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
-	vp.FooterStyle = renderer().NewStyle().Foreground(red)
+	vp.FooterStyle = lipgloss.NewStyle().Foreground(red)
 	vp.SetContent([]RenderableString{
 		{Content: "1"},
 		{Content: "2"},
@@ -2293,7 +2283,7 @@ func TestViewport_SelectionOff_WrapOn_FooterStyle(t *testing.T) {
 		"1",
 		"2",
 		"3",
-		"\x1b[38;2;255;0;0m75% (3/4)\x1b[0m",
+		"\x1b[38;2;255;0;0m75% (3/4)\x1b[m",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -2870,7 +2860,7 @@ func TestViewport_SelectionOff_WrapOn_StringToHighlight(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
 	vp.SetStringToHighlight("second")
-	vp.HighlightStyle = renderer().NewStyle().Foreground(red)
+	vp.HighlightStyle = lipgloss.NewStyle().Foreground(red)
 	vp.SetContent([]RenderableString{
 		{Content: "first"},
 		{Content: "second"},
@@ -2880,8 +2870,8 @@ func TestViewport_SelectionOff_WrapOn_StringToHighlight(t *testing.T) {
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
 		"first",
-		"\x1b[38;2;255;0;0msecond\x1b[0m",
-		"\x1b[38;2;255;0;0msecond\x1b[0m",
+		"\x1b[38;2;255;0;0msecond\x1b[m",
+		"\x1b[38;2;255;0;0msecond\x1b[m",
 		"75% (3/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -2892,9 +2882,9 @@ func TestViewport_SelectionOff_WrapOn_StringToHighlight(t *testing.T) {
 	vp.SetStringToHighlight("wraps")
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"averylongw\x1b[38;2;255;0;0m\x1b[0m", // no-op artifact of applyAnsi, maybe fix later
-		"ordthat\x1b[38;2;255;0;0mwra\x1b[0m",
-		"\x1b[38;2;255;0;0mps\x1b[0m",
+		"averylongw\x1b[38;2;255;0;0m\x1b[m", // no-op artifact of applyAnsi, maybe fix later
+		"ordthat\x1b[38;2;255;0;0mwra\x1b[m",
+		"\x1b[38;2;255;0;0mps\x1b[m",
 		"100% (1/1)",
 	})
 	compare(t, expectedView, vp.View())
@@ -2906,14 +2896,14 @@ func TestViewport_SelectionOff_WrapOn_StringToHighlightAnsi(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
 	vp.SetContent([]RenderableString{
-		{Content: "line \x1b[38;2;255;0;0mred\x1b[0m e again"},
+		{Content: "line \x1b[38;2;255;0;0mred\x1b[m e again"},
 	})
 	vp.SetStringToHighlight("e")
 	vp.HighlightStyle = selectionStyle
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"lin\x1b[38;2;0;0;255me\x1b[0m \x1b[38;2;255;0;0mr\x1b[0m\x1b[38;2;0;0;255me\x1b[0m\x1b[38;2;255;0;0md\x1b[0m \x1b[38;2;0;0;255me\x1b[0m",
-		"\x1b[38;2;0;0;255m\x1b[0m\x1b[38;2;255;0;0m\x1b[0m\x1b[38;2;0;0;255m\x1b[0m\x1b[38;2;255;0;0m\x1b[0m\x1b[38;2;0;0;255m\x1b[0m again",
+		"lin\x1b[38;2;0;0;255me\x1b[m \x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;0;0;255me\x1b[m\x1b[38;2;255;0;0md\x1b[m \x1b[38;2;0;0;255me\x1b[m",
+		"\x1b[38;2;0;0;255m\x1b[m\x1b[38;2;255;0;0m\x1b[m\x1b[38;2;0;0;255m\x1b[m\x1b[38;2;255;0;0m\x1b[m\x1b[38;2;0;0;255m\x1b[m again",
 	})
 	compare(t, expectedView, vp.View())
 
@@ -2921,8 +2911,8 @@ func TestViewport_SelectionOff_WrapOn_StringToHighlightAnsi(t *testing.T) {
 	vp.SetStringToHighlight("38")
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"line \x1b[38;2;255;0;0mred\x1b[0m e",
-		"\x1b[38;2;255;0;0m\x1b[0m again",
+		"line \x1b[38;2;255;0;0mred\x1b[m e",
+		"\x1b[38;2;255;0;0m\x1b[m again",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -3021,7 +3011,7 @@ func TestViewport_SelectionOn_WrapOn_SmolDimensions(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"head",
 		"er",
-		"\x1b[38;2;0;0;255mhi\x1b[0m",
+		"\x1b[38;2;0;0;255mhi\x1b[m",
 		"1...",
 	})
 	compare(t, expectedView, vp.View())
@@ -3036,16 +3026,16 @@ func TestViewport_SelectionOn_WrapOn_Basic(t *testing.T) {
 	vp.SetSelectionEnabled(true)
 	vp.SetContent([]RenderableString{
 		{Content: "first line"},
-		{Content: renderer().NewStyle().Foreground(red).Render("second") + " line"},
-		{Content: renderer().NewStyle().Foreground(red).Render("a really really long line")},
-		{Content: renderer().NewStyle().Foreground(red).Render("a") + " really really long line"},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("second") + " line"},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("a really really long line")},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line"},
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst line\x1b[0m",
-		"\x1b[38;2;255;0;0msecond\x1b[0m line",
-		"\x1b[38;2;255;0;0ma really really\x1b[0m",
-		"\x1b[38;2;255;0;0m long line\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst line\x1b[m",
+		"\x1b[38;2;255;0;0msecond\x1b[m line",
+		"\x1b[38;2;255;0;0ma really really\x1b[m",
+		"\x1b[38;2;255;0;0m long line\x1b[m",
 		"25% (1/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3087,17 +3077,17 @@ func TestViewport_SelectionOn_WrapOn_ShowFooter(t *testing.T) {
 	vp.SetSelectionEnabled(true)
 	vp.SetContent([]RenderableString{
 		{Content: "first line"},
-		{Content: renderer().NewStyle().Foreground(red).Render("second") + " line"},
-		{Content: renderer().NewStyle().Foreground(red).Render("a really really long line")},
-		{Content: renderer().NewStyle().Foreground(red).Render("a") + " really really long line"},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("second") + " line"},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("a really really long line")},
+		{Content: lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line"},
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst line\x1b[0m",
-		"\x1b[38;2;255;0;0msecond\x1b[0m line",
-		"\x1b[38;2;255;0;0ma really really\x1b[0m",
-		"\x1b[38;2;255;0;0m long line\x1b[0m",
-		"\x1b[38;2;255;0;0ma\x1b[0m really really",
+		"\x1b[38;2;0;0;255mfirst line\x1b[m",
+		"\x1b[38;2;255;0;0msecond\x1b[m line",
+		"\x1b[38;2;255;0;0ma really really\x1b[m",
+		"\x1b[38;2;255;0;0m long line\x1b[m",
+		"\x1b[38;2;255;0;0ma\x1b[m really really",
 		"25% (1/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3105,12 +3095,12 @@ func TestViewport_SelectionOn_WrapOn_ShowFooter(t *testing.T) {
 	vp.SetHeight(8)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst line\x1b[0m",
-		"\x1b[38;2;255;0;0msecond\x1b[0m line",
-		"\x1b[38;2;255;0;0ma really really\x1b[0m",
-		"\x1b[38;2;255;0;0m long line\x1b[0m",
-		"\x1b[38;2;255;0;0ma\x1b[0m really really",
-		"\x1b[38;2;255;0;0m\x1b[0m long line",
+		"\x1b[38;2;0;0;255mfirst line\x1b[m",
+		"\x1b[38;2;255;0;0msecond\x1b[m line",
+		"\x1b[38;2;255;0;0ma really really\x1b[m",
+		"\x1b[38;2;255;0;0m long line\x1b[m",
+		"\x1b[38;2;255;0;0ma\x1b[m really really",
+		"\x1b[38;2;255;0;0m\x1b[m long line",
 		"25% (1/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3118,12 +3108,12 @@ func TestViewport_SelectionOn_WrapOn_ShowFooter(t *testing.T) {
 	vp.SetHeight(9)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst line\x1b[0m",
-		"\x1b[38;2;255;0;0msecond\x1b[0m line",
-		"\x1b[38;2;255;0;0ma really really\x1b[0m",
-		"\x1b[38;2;255;0;0m long line\x1b[0m",
-		"\x1b[38;2;255;0;0ma\x1b[0m really really",
-		"\x1b[38;2;255;0;0m\x1b[0m long line",
+		"\x1b[38;2;0;0;255mfirst line\x1b[m",
+		"\x1b[38;2;255;0;0msecond\x1b[m line",
+		"\x1b[38;2;255;0;0ma really really\x1b[m",
+		"\x1b[38;2;255;0;0m long line\x1b[m",
+		"\x1b[38;2;255;0;0ma\x1b[m really really",
+		"\x1b[38;2;255;0;0m\x1b[m long line",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -3134,7 +3124,7 @@ func TestViewport_SelectionOn_WrapOn_FooterStyle(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
 	vp.SetSelectionEnabled(true)
-	vp.FooterStyle = renderer().NewStyle().Foreground(red)
+	vp.FooterStyle = lipgloss.NewStyle().Foreground(red)
 	vp.SetContent([]RenderableString{
 		{Content: "1"},
 		{Content: "2"},
@@ -3143,10 +3133,10 @@ func TestViewport_SelectionOn_WrapOn_FooterStyle(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255m1\x1b[0m",
+		"\x1b[38;2;0;0;255m1\x1b[m",
 		"2",
 		"3",
-		"\x1b[38;2;255;0;0m25% (1/4)\x1b[0m",
+		"\x1b[38;2;255;0;0m25% (1/4)\x1b[m",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -3165,7 +3155,7 @@ func TestViewport_SelectionOn_WrapOn_FooterDisabled(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst line\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst line\x1b[m",
 		"second line",
 		"third line",
 		"25% (1/4)",
@@ -3175,7 +3165,7 @@ func TestViewport_SelectionOn_WrapOn_FooterDisabled(t *testing.T) {
 	vp.SetFooterVisible(false)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst line\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst line\x1b[m",
 		"second line",
 		"third line",
 		"fourth line",
@@ -3196,7 +3186,7 @@ func TestViewport_SelectionOn_WrapOn_SpaceAround(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255m    first line\x1b[0m",
+		"\x1b[38;2;0;0;255m    first line\x1b[m",
 		"          first",
 		" line",
 		"33% (1/3)",
@@ -3231,7 +3221,7 @@ func TestViewport_SelectionOn_WrapOn_MultiHeader(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header1",
 		"header2",
-		"\x1b[38;2;0;0;255mline1\x1b[0m",
+		"\x1b[38;2;0;0;255mline1\x1b[m",
 		"50% (1/2)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3240,7 +3230,7 @@ func TestViewport_SelectionOn_WrapOn_MultiHeader(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header1",
 		"header2",
-		"\x1b[38;2;0;0;255mline2\x1b[0m",
+		"\x1b[38;2;0;0;255mline2\x1b[m",
 		"100% (2/2)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3250,7 +3240,7 @@ func TestViewport_SelectionOn_WrapOn_MultiHeader(t *testing.T) {
 		"header1",
 		"header2",
 		"line1",
-		"\x1b[38;2;0;0;255mline2\x1b[0m",
+		"\x1b[38;2;0;0;255mline2\x1b[m",
 		"100% (2/2)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3260,7 +3250,7 @@ func TestViewport_SelectionOn_WrapOn_MultiHeader(t *testing.T) {
 		"header1",
 		"header2",
 		"line1",
-		"\x1b[38;2;0;0;255mline2\x1b[0m",
+		"\x1b[38;2;0;0;255mline2\x1b[m",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -3278,7 +3268,7 @@ func TestViewport_SelectionOn_WrapOn_OverflowLine(t *testing.T) {
 	expectedView := pad(vp.width, vp.height, []string{
 		"long header ove",
 		"rflows",
-		"\x1b[38;2;0;0;255m123456789012345\x1b[0m",
+		"\x1b[38;2;0;0;255m123456789012345\x1b[m",
 		"123456789012345",
 		"6",
 		"50% (1/2)",
@@ -3304,8 +3294,8 @@ func TestViewport_SelectionOn_WrapOn_OverflowHeight(t *testing.T) {
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
 		"123456789012345",
-		"\x1b[38;2;0;0;255m123456789012345\x1b[0m",
-		"\x1b[38;2;0;0;255m6\x1b[0m",
+		"\x1b[38;2;0;0;255m123456789012345\x1b[m",
+		"\x1b[38;2;0;0;255m6\x1b[m",
 		"123456789012345",
 		"33% (2/6)",
 	})
@@ -3337,7 +3327,7 @@ func TestViewport_SelectionOn_WrapOn_Scrolling(t *testing.T) {
 	setContent()
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
 		"second",
 		"third",
 		"fourth",
@@ -3354,7 +3344,7 @@ func TestViewport_SelectionOn_WrapOn_Scrolling(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"first",
-		"\x1b[38;2;0;0;255msecond\x1b[0m",
+		"\x1b[38;2;0;0;255msecond\x1b[m",
 		"third",
 		"fourth",
 		"33% (2/6)",
@@ -3367,7 +3357,7 @@ func TestViewport_SelectionOn_WrapOn_Scrolling(t *testing.T) {
 		"header",
 		"first",
 		"second",
-		"\x1b[38;2;0;0;255mthird\x1b[0m",
+		"\x1b[38;2;0;0;255mthird\x1b[m",
 		"fourth",
 		"50% (3/6)",
 	})
@@ -3382,7 +3372,7 @@ func TestViewport_SelectionOn_WrapOn_Scrolling(t *testing.T) {
 		"third",
 		"fourth",
 		"fifth",
-		"\x1b[38;2;0;0;255msixth\x1b[0m",
+		"\x1b[38;2;0;0;255msixth\x1b[m",
 		"100% (6/6)",
 	})
 	validate(expectedView)
@@ -3405,8 +3395,8 @@ func TestViewport_SelectionOn_WrapOn_ScrollToItem(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe first \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe first \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"the second",
 		" line",
 		"33% (1/3)",
@@ -3417,8 +3407,8 @@ func TestViewport_SelectionOn_WrapOn_ScrollToItem(t *testing.T) {
 	vp.ScrollSoItemIdxInView(2)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe first \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe first \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"the second",
 		" line",
 		"33% (1/3)",
@@ -3431,8 +3421,8 @@ func TestViewport_SelectionOn_WrapOn_ScrollToItem(t *testing.T) {
 		"header",
 		"the first",
 		"line",
-		"\x1b[38;2;0;0;255mthe second\x1b[0m",
-		"\x1b[38;2;0;0;255m line\x1b[0m",
+		"\x1b[38;2;0;0;255mthe second\x1b[m",
+		"\x1b[38;2;0;0;255m line\x1b[m",
 		"66% (2/3)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3441,8 +3431,8 @@ func TestViewport_SelectionOn_WrapOn_ScrollToItem(t *testing.T) {
 	vp.ScrollSoItemIdxInView(2)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe second\x1b[0m",
-		"\x1b[38;2;0;0;255m line\x1b[0m",
+		"\x1b[38;2;0;0;255mthe second\x1b[m",
+		"\x1b[38;2;0;0;255m line\x1b[m",
 		"the third",
 		"line",
 		"66% (2/3)",
@@ -3463,8 +3453,8 @@ func TestViewport_SelectionOn_WrapOn_BulkScrolling(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe first \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe first \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"33% (1/3)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3473,8 +3463,8 @@ func TestViewport_SelectionOn_WrapOn_BulkScrolling(t *testing.T) {
 	vp, _ = vp.Update(fullPgDownKeyMsg)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe second\x1b[0m",
-		"\x1b[38;2;0;0;255m line\x1b[0m",
+		"\x1b[38;2;0;0;255mthe second\x1b[m",
+		"\x1b[38;2;0;0;255m line\x1b[m",
 		"66% (2/3)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3483,8 +3473,8 @@ func TestViewport_SelectionOn_WrapOn_BulkScrolling(t *testing.T) {
 	vp, _ = vp.Update(halfPgDownKeyMsg)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe third \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe third \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"100% (3/3)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3497,8 +3487,8 @@ func TestViewport_SelectionOn_WrapOn_BulkScrolling(t *testing.T) {
 	vp, _ = vp.Update(fullPgUpKeyMsg)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe second\x1b[0m",
-		"\x1b[38;2;0;0;255m line\x1b[0m",
+		"\x1b[38;2;0;0;255mthe second\x1b[m",
+		"\x1b[38;2;0;0;255m line\x1b[m",
 		"66% (2/3)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3507,8 +3497,8 @@ func TestViewport_SelectionOn_WrapOn_BulkScrolling(t *testing.T) {
 	vp, _ = vp.Update(halfPgUpKeyMsg)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe first \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe first \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"33% (1/3)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3521,8 +3511,8 @@ func TestViewport_SelectionOn_WrapOn_BulkScrolling(t *testing.T) {
 	vp, _ = vp.Update(goToBottomKeyMsg)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe third \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe third \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"100% (3/3)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3531,8 +3521,8 @@ func TestViewport_SelectionOn_WrapOn_BulkScrolling(t *testing.T) {
 	vp, _ = vp.Update(goToTopKeyMsg)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe first \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe first \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"33% (1/3)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3564,9 +3554,9 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	expectedView := pad(vp.width, vp.height, []string{
 		"header lon",
 		"g",
-		"\x1b[38;2;0;0;255mfirst line\x1b[0m",
-		"\x1b[38;2;0;0;255m that is f\x1b[0m",
-		"\x1b[38;2;0;0;255mairly long\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst line\x1b[m",
+		"\x1b[38;2;0;0;255m that is f\x1b[m",
+		"\x1b[38;2;0;0;255mairly long\x1b[m",
 		"second lin",
 		"16% (1/6)",
 	})
@@ -3581,10 +3571,10 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header lon",
 		"g",
-		"\x1b[38;2;0;0;255msecond lin\x1b[0m",
-		"\x1b[38;2;0;0;255me that is \x1b[0m",
-		"\x1b[38;2;0;0;255meven much \x1b[0m",
-		"\x1b[38;2;0;0;255mlonger tha\x1b[0m",
+		"\x1b[38;2;0;0;255msecond lin\x1b[m",
+		"\x1b[38;2;0;0;255me that is \x1b[m",
+		"\x1b[38;2;0;0;255meven much \x1b[m",
+		"\x1b[38;2;0;0;255mlonger tha\x1b[m",
 		"33% (2/6)",
 	})
 	validate(expectedView)
@@ -3598,10 +3588,10 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header lon",
 		"g",
-		"\x1b[38;2;0;0;255mthird line\x1b[0m",
-		"\x1b[38;2;0;0;255m that is f\x1b[0m",
-		"\x1b[38;2;0;0;255mairly long\x1b[0m",
-		"\x1b[38;2;0;0;255m as well\x1b[0m",
+		"\x1b[38;2;0;0;255mthird line\x1b[m",
+		"\x1b[38;2;0;0;255m that is f\x1b[m",
+		"\x1b[38;2;0;0;255mairly long\x1b[m",
+		"\x1b[38;2;0;0;255m as well\x1b[m",
 		"50% (3/6)",
 	})
 	validate(expectedView)
@@ -3613,8 +3603,8 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 		"g",
 		"airly long",
 		" as well",
-		"\x1b[38;2;0;0;255mfourth kin\x1b[0m",
-		"\x1b[38;2;0;0;255mda long\x1b[0m",
+		"\x1b[38;2;0;0;255mfourth kin\x1b[m",
+		"\x1b[38;2;0;0;255mda long\x1b[m",
 		"66% (4/6)",
 	})
 	validate(expectedView)
@@ -3626,8 +3616,8 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 		"g",
 		"fourth kin",
 		"da long",
-		"\x1b[38;2;0;0;255mfifth kind\x1b[0m",
-		"\x1b[38;2;0;0;255ma long too\x1b[0m",
+		"\x1b[38;2;0;0;255mfifth kind\x1b[m",
+		"\x1b[38;2;0;0;255ma long too\x1b[m",
 		"83% (5/6)",
 	})
 	validate(expectedView)
@@ -3640,7 +3630,7 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 		"da long",
 		"fifth kind",
 		"a long too",
-		"\x1b[38;2;0;0;255msixth\x1b[0m",
+		"\x1b[38;2;0;0;255msixth\x1b[m",
 		"100% (6/6)",
 	})
 	validate(expectedView)
@@ -3651,8 +3641,8 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 		"header lon",
 		"g",
 		"da long",
-		"\x1b[38;2;0;0;255mfifth kind\x1b[0m",
-		"\x1b[38;2;0;0;255ma long too\x1b[0m",
+		"\x1b[38;2;0;0;255mfifth kind\x1b[m",
+		"\x1b[38;2;0;0;255ma long too\x1b[m",
 		"sixth",
 		"83% (5/6)",
 	})
@@ -3663,8 +3653,8 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header lon",
 		"g",
-		"\x1b[38;2;0;0;255mfourth kin\x1b[0m",
-		"\x1b[38;2;0;0;255mda long\x1b[0m",
+		"\x1b[38;2;0;0;255mfourth kin\x1b[m",
+		"\x1b[38;2;0;0;255mda long\x1b[m",
 		"fifth kind",
 		"a long too",
 		"66% (4/6)",
@@ -3676,10 +3666,10 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header lon",
 		"g",
-		"\x1b[38;2;0;0;255mthird line\x1b[0m",
-		"\x1b[38;2;0;0;255m that is f\x1b[0m",
-		"\x1b[38;2;0;0;255mairly long\x1b[0m",
-		"\x1b[38;2;0;0;255m as well\x1b[0m",
+		"\x1b[38;2;0;0;255mthird line\x1b[m",
+		"\x1b[38;2;0;0;255m that is f\x1b[m",
+		"\x1b[38;2;0;0;255mairly long\x1b[m",
+		"\x1b[38;2;0;0;255m as well\x1b[m",
 		"50% (3/6)",
 	})
 	validate(expectedView)
@@ -3689,10 +3679,10 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header lon",
 		"g",
-		"\x1b[38;2;0;0;255msecond lin\x1b[0m",
-		"\x1b[38;2;0;0;255me that is \x1b[0m",
-		"\x1b[38;2;0;0;255meven much \x1b[0m",
-		"\x1b[38;2;0;0;255mlonger tha\x1b[0m",
+		"\x1b[38;2;0;0;255msecond lin\x1b[m",
+		"\x1b[38;2;0;0;255me that is \x1b[m",
+		"\x1b[38;2;0;0;255meven much \x1b[m",
+		"\x1b[38;2;0;0;255mlonger tha\x1b[m",
 		"33% (2/6)",
 	})
 	validate(expectedView)
@@ -3702,9 +3692,9 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header lon",
 		"g",
-		"\x1b[38;2;0;0;255mfirst line\x1b[0m",
-		"\x1b[38;2;0;0;255m that is f\x1b[0m",
-		"\x1b[38;2;0;0;255mairly long\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst line\x1b[m",
+		"\x1b[38;2;0;0;255m that is f\x1b[m",
+		"\x1b[38;2;0;0;255mairly long\x1b[m",
 		"second lin",
 		"16% (1/6)",
 	})
@@ -3728,7 +3718,7 @@ func TestViewport_SelectionOn_WrapOn_MaintainSelection(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255msixth item\x1b[0m",
+		"\x1b[38;2;0;0;255msixth item\x1b[m",
 		"seventh it",
 		"em",
 		"eighth ite",
@@ -3741,8 +3731,8 @@ func TestViewport_SelectionOn_WrapOn_MaintainSelection(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"sixth item",
-		"\x1b[38;2;0;0;255mseventh it\x1b[0m",
-		"\x1b[38;2;0;0;255mem\x1b[0m",
+		"\x1b[38;2;0;0;255mseventh it\x1b[m",
+		"\x1b[38;2;0;0;255mem\x1b[m",
 		"eighth ite",
 		"33% (2/6)",
 	})
@@ -3765,8 +3755,8 @@ func TestViewport_SelectionOn_WrapOn_MaintainSelection(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"sixth item",
-		"\x1b[38;2;0;0;255mseventh it\x1b[0m",
-		"\x1b[38;2;0;0;255mem\x1b[0m",
+		"\x1b[38;2;0;0;255mseventh it\x1b[m",
+		"\x1b[38;2;0;0;255mem\x1b[m",
 		"eighth ite",
 		"63% (7/11)",
 	})
@@ -3794,8 +3784,8 @@ func TestViewport_SelectionOn_WrapOn_MaintainSelection(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"sixth item",
-		"\x1b[38;2;0;0;255mseventh it\x1b[0m",
-		"\x1b[38;2;0;0;255mem\x1b[0m",
+		"\x1b[38;2;0;0;255mseventh it\x1b[m",
+		"\x1b[38;2;0;0;255mem\x1b[m",
 		"eighth ite",
 		"43% (7/16)",
 	})
@@ -3816,8 +3806,8 @@ func TestViewport_SelectionOn_WrapOn_StickyTop(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe first \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe first \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"100% (1/1)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3829,8 +3819,8 @@ func TestViewport_SelectionOn_WrapOn_StickyTop(t *testing.T) {
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe second\x1b[0m",
-		"\x1b[38;2;0;0;255m line\x1b[0m",
+		"\x1b[38;2;0;0;255mthe second\x1b[m",
+		"\x1b[38;2;0;0;255m line\x1b[m",
 		"50% (1/2)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3839,8 +3829,8 @@ func TestViewport_SelectionOn_WrapOn_StickyTop(t *testing.T) {
 	vp, _ = vp.Update(downKeyMsg)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe first \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe first \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"100% (2/2)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3853,8 +3843,8 @@ func TestViewport_SelectionOn_WrapOn_StickyTop(t *testing.T) {
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe first \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe first \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"66% (2/3)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3874,8 +3864,8 @@ func TestViewport_SelectionOn_WrapOn_StickyBottom(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe first \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe first \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"100% (1/1)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3887,8 +3877,8 @@ func TestViewport_SelectionOn_WrapOn_StickyBottom(t *testing.T) {
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe first \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe first \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"100% (2/2)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3897,8 +3887,8 @@ func TestViewport_SelectionOn_WrapOn_StickyBottom(t *testing.T) {
 	vp, _ = vp.Update(upKeyMsg)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe second\x1b[0m",
-		"\x1b[38;2;0;0;255m line\x1b[0m",
+		"\x1b[38;2;0;0;255mthe second\x1b[m",
+		"\x1b[38;2;0;0;255m line\x1b[m",
 		"50% (1/2)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3911,8 +3901,8 @@ func TestViewport_SelectionOn_WrapOn_StickyBottom(t *testing.T) {
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe second\x1b[0m",
-		"\x1b[38;2;0;0;255m line\x1b[0m",
+		"\x1b[38;2;0;0;255mthe second\x1b[m",
+		"\x1b[38;2;0;0;255m line\x1b[m",
 		"33% (1/3)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3942,8 +3932,8 @@ func TestViewport_SelectionOn_WrapOn_StickyBottomOverflowHeight(t *testing.T) {
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe third \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe third \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"100% (3/3)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3964,8 +3954,8 @@ func TestViewport_SelectionOn_WrapOn_StickyTopBottom(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe first \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe first \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"100% (1/1)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3977,8 +3967,8 @@ func TestViewport_SelectionOn_WrapOn_StickyTopBottom(t *testing.T) {
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe second\x1b[0m",
-		"\x1b[38;2;0;0;255m line\x1b[0m",
+		"\x1b[38;2;0;0;255mthe second\x1b[m",
+		"\x1b[38;2;0;0;255m line\x1b[m",
 		"50% (1/2)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3987,8 +3977,8 @@ func TestViewport_SelectionOn_WrapOn_StickyTopBottom(t *testing.T) {
 	vp, _ = vp.Update(downKeyMsg)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe first \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe first \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"100% (2/2)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4001,8 +3991,8 @@ func TestViewport_SelectionOn_WrapOn_StickyTopBottom(t *testing.T) {
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe third \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe third \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"100% (3/3)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4011,8 +4001,8 @@ func TestViewport_SelectionOn_WrapOn_StickyTopBottom(t *testing.T) {
 	vp, _ = vp.Update(upKeyMsg)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe first \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe first \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"66% (2/3)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4026,8 +4016,8 @@ func TestViewport_SelectionOn_WrapOn_StickyTopBottom(t *testing.T) {
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe first \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe first \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"50% (2/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4049,7 +4039,7 @@ func TestViewport_SelectionOn_WrapOn_RemoveLogsWhenSelectionBottom(t *testing.T)
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe second\x1b[0m",
+		"\x1b[38;2;0;0;255mthe second\x1b[m",
 		"25% (1/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4058,7 +4048,7 @@ func TestViewport_SelectionOn_WrapOn_RemoveLogsWhenSelectionBottom(t *testing.T)
 	vp.SetSelectedItemIdx(3)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe fourth\x1b[0m",
+		"\x1b[38;2;0;0;255mthe fourth\x1b[m",
 		"100% (4/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4070,7 +4060,7 @@ func TestViewport_SelectionOn_WrapOn_RemoveLogsWhenSelectionBottom(t *testing.T)
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe first \x1b[0m",
+		"\x1b[38;2;0;0;255mthe first \x1b[m",
 		"100% (2/2)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4092,7 +4082,7 @@ func TestViewport_SelectionOn_WrapOn_ChangeHeight(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe first \x1b[0m",
+		"\x1b[38;2;0;0;255mthe first \x1b[m",
 		"16% (1/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4101,8 +4091,8 @@ func TestViewport_SelectionOn_WrapOn_ChangeHeight(t *testing.T) {
 	vp.SetHeight(6)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe first \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe first \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"the second",
 		" line",
 		"16% (1/6)",
@@ -4116,8 +4106,8 @@ func TestViewport_SelectionOn_WrapOn_ChangeHeight(t *testing.T) {
 		"header",
 		"the second",
 		" line",
-		"\x1b[38;2;0;0;255mthe third \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe third \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"50% (3/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4126,7 +4116,7 @@ func TestViewport_SelectionOn_WrapOn_ChangeHeight(t *testing.T) {
 	vp.SetHeight(3)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe third \x1b[0m",
+		"\x1b[38;2;0;0;255mthe third \x1b[m",
 		"50% (3/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4135,8 +4125,8 @@ func TestViewport_SelectionOn_WrapOn_ChangeHeight(t *testing.T) {
 	vp.SetHeight(8)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe third \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe third \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"the fourth",
 		" line",
 		"the fifth ",
@@ -4155,8 +4145,8 @@ func TestViewport_SelectionOn_WrapOn_ChangeHeight(t *testing.T) {
 		" line",
 		"the fifth ",
 		"line",
-		"\x1b[38;2;0;0;255mthe sixth \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe sixth \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"100% (6/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4165,7 +4155,7 @@ func TestViewport_SelectionOn_WrapOn_ChangeHeight(t *testing.T) {
 	vp.SetHeight(3)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe sixth \x1b[0m",
+		"\x1b[38;2;0;0;255mthe sixth \x1b[m",
 		"100% (6/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4187,8 +4177,8 @@ func TestViewport_SelectionOn_WrapOn_ChangeContent(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe first \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe first \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"the second",
 		"16% (1/6)",
 	})
@@ -4199,8 +4189,8 @@ func TestViewport_SelectionOn_WrapOn_ChangeContent(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"line",
-		"\x1b[38;2;0;0;255mthe sixth \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe sixth \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"100% (6/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4213,8 +4203,8 @@ func TestViewport_SelectionOn_WrapOn_ChangeContent(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		" line",
-		"\x1b[38;2;0;0;255mthe third \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe third \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"100% (2/2)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4237,8 +4227,8 @@ func TestViewport_SelectionOn_WrapOn_ChangeContent(t *testing.T) {
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe first \x1b[0m",
-		"\x1b[38;2;0;0;255mline\x1b[0m",
+		"\x1b[38;2;0;0;255mthe first \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
 		"the second",
 		"16% (1/6)",
 	})
@@ -4252,8 +4242,8 @@ func TestViewport_SelectionOn_WrapOn_StringToHighlight(t *testing.T) {
 	vp.SetSelectionEnabled(true)
 	vp.SetWrapText(true)
 	vp.SetStringToHighlight("second")
-	vp.HighlightStyle = renderer().NewStyle().Foreground(green)
-	vp.HighlightStyleIfSelected = renderer().NewStyle().Foreground(red)
+	vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
+	vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
 	vp.SetContent([]RenderableString{
 		{Content: "first"},
 		{Content: "second"},
@@ -4262,9 +4252,9 @@ func TestViewport_SelectionOn_WrapOn_StringToHighlight(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst\x1b[0m",
-		"\x1b[38;2;0;255;0msecond\x1b[0m",
-		"\x1b[38;2;0;255;0msecond\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst\x1b[m",
+		"\x1b[38;2;0;255;0msecond\x1b[m",
+		"\x1b[38;2;0;255;0msecond\x1b[m",
 		"25% (1/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4272,7 +4262,7 @@ func TestViewport_SelectionOn_WrapOn_StringToHighlight(t *testing.T) {
 	vp.SetStringToHighlight("first")
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;255;0;0mfirst\x1b[0m",
+		"\x1b[38;2;255;0;0mfirst\x1b[m",
 		"second",
 		"second",
 		"25% (1/4)",
@@ -4285,9 +4275,9 @@ func TestViewport_SelectionOn_WrapOn_StringToHighlight(t *testing.T) {
 	vp.SetStringToHighlight("wraps")
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255maverylongw\x1b[0m\x1b[38;2;255;0;0m\x1b[0m",
-		"\x1b[38;2;0;0;255mordthat\x1b[0m\x1b[38;2;255;0;0mwra\x1b[0m",
-		"\x1b[38;2;255;0;0mps\x1b[0m\x1b[38;2;0;0;255mover\x1b[0m",
+		"\x1b[38;2;0;0;255maverylongw\x1b[m\x1b[38;2;255;0;0m\x1b[m",
+		"\x1b[38;2;0;0;255mordthat\x1b[m\x1b[38;2;255;0;0mwra\x1b[m",
+		"\x1b[38;2;255;0;0mps\x1b[m\x1b[38;2;0;0;255mover\x1b[m",
 		"100% (1/1)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4300,13 +4290,13 @@ func TestViewport_SelectionOn_WrapOn_AnsiOnSelection(t *testing.T) {
 	vp.SetSelectionEnabled(true)
 	vp.SetWrapText(true)
 	vp.SetContent([]RenderableString{
-		{Content: "line with some \x1b[38;2;255;0;0mred\x1b[0m text"},
+		{Content: "line with some \x1b[38;2;255;0;0mred\x1b[m text"},
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mline with \x1b[0m\x1b[38;2;255;0;0m\x1b[0m",
-		"\x1b[38;2;0;0;255msome \x1b[0m\x1b[38;2;255;0;0mred\x1b[0m\x1b[38;2;0;0;255m t\x1b[0m",
-		"\x1b[38;2;255;0;0m\x1b[0m\x1b[38;2;0;0;255mext\x1b[0m",
+		"\x1b[38;2;0;0;255mline with \x1b[m\x1b[38;2;255;0;0m\x1b[m",
+		"\x1b[38;2;0;0;255msome \x1b[m\x1b[38;2;255;0;0mred\x1b[m\x1b[38;2;0;0;255m t\x1b[m",
+		"\x1b[38;2;255;0;0m\x1b[m\x1b[38;2;0;0;255mext\x1b[m",
 		"100% (1/1)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4323,7 +4313,7 @@ func TestViewport_SelectionOn_WrapOn_SelectionEmpty(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255m \x1b[0m",
+		"\x1b[38;2;0;0;255m \x1b[m",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -4335,13 +4325,13 @@ func TestViewport_SelectionOn_WrapOn_ExtraSlash(t *testing.T) {
 	vp.SetSelectionEnabled(true)
 	vp.SetWrapText(true)
 	vp.SetContent([]RenderableString{
-		{Content: "|2024|\x1b[38;2;0mfl..lq\x1b[0m/\x1b[38;2;0mflask-3\x1b[0m|"},
+		{Content: "|2024|\x1b[38;2;0mfl..lq\x1b[m/\x1b[38;2;0mflask-3\x1b[m|"},
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255m|2024|\x1b[0m\x1b[38;2;0mfl..\x1b[0m\x1b[38;2;0m\x1b[0m",
-		"\x1b[38;2;0mlq\x1b[0m\x1b[38;2;0;0;255m/\x1b[0m\x1b[38;2;0mflask-3\x1b[0m",
-		"\x1b[38;2;0m\x1b[0m\x1b[38;2;0m\x1b[0m\x1b[38;2;0;0;255m|\x1b[0m",
+		"\x1b[38;2;0;0;255m|2024|\x1b[m\x1b[38;2;0mfl..\x1b[m\x1b[38;2;0m\x1b[m",
+		"\x1b[38;2;0mlq\x1b[m\x1b[38;2;0;0;255m/\x1b[m\x1b[38;2;0mflask-3\x1b[m",
+		"\x1b[38;2;0m\x1b[m\x1b[38;2;0m\x1b[m\x1b[38;2;0;0;255m|\x1b[m",
 		"100% (1/1)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4360,7 +4350,7 @@ func TestViewport_SelectionOn_WrapOn_SuperLongWrappedLine(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255msmol\x1b[0m",
+		"\x1b[38;2;0;0;255msmol\x1b[m",
 		"1234567812",
 		"3456781234",
 		"33% (1/3)",
@@ -4370,9 +4360,9 @@ func TestViewport_SelectionOn_WrapOn_SuperLongWrappedLine(t *testing.T) {
 	vp, _ = vp.Update(downKeyMsg)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255m1234567812\x1b[0m",
-		"\x1b[38;2;0;0;255m3456781234\x1b[0m",
-		"\x1b[38;2;0;0;255m5678123456\x1b[0m",
+		"\x1b[38;2;0;0;255m1234567812\x1b[m",
+		"\x1b[38;2;0;0;255m3456781234\x1b[m",
+		"\x1b[38;2;0;0;255m5678123456\x1b[m",
 		"66% (2/3)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4382,7 +4372,7 @@ func TestViewport_SelectionOn_WrapOn_SuperLongWrappedLine(t *testing.T) {
 		"header",
 		"5678123456",
 		"7812345678",
-		"\x1b[38;2;0;0;255msmol\x1b[0m",
+		"\x1b[38;2;0;0;255msmol\x1b[m",
 		"100% (3/3)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4407,7 +4397,7 @@ func TestViewport_SelectionOn_ToggleWrap_PreserveSelection(t *testing.T) {
 	// wrap off, selection on first line
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mfirst line t...\x1b[0m",
+		"\x1b[38;2;0;0;255mfirst line t...\x1b[m",
 		"second line ...",
 		"third line t...",
 		"fourth",
@@ -4422,7 +4412,7 @@ func TestViewport_SelectionOn_ToggleWrap_PreserveSelection(t *testing.T) {
 		"header",
 		"first line t...",
 		"second line ...",
-		"\x1b[38;2;0;0;255mthird line t...\x1b[0m",
+		"\x1b[38;2;0;0;255mthird line t...\x1b[m",
 		"fourth",
 		"50% (3/6)",
 	})
@@ -4434,8 +4424,8 @@ func TestViewport_SelectionOn_ToggleWrap_PreserveSelection(t *testing.T) {
 		"header",
 		"longer than the",
 		" first",
-		"\x1b[38;2;0;0;255mthird line that\x1b[0m",
-		"\x1b[38;2;0;0;255m is fairly long\x1b[0m",
+		"\x1b[38;2;0;0;255mthird line that\x1b[m",
+		"\x1b[38;2;0;0;255m is fairly long\x1b[m",
 		"50% (3/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4446,7 +4436,7 @@ func TestViewport_SelectionOn_ToggleWrap_PreserveSelection(t *testing.T) {
 		"header",
 		"first line t...",
 		"second line ...",
-		"\x1b[38;2;0;0;255mthird line t...\x1b[0m",
+		"\x1b[38;2;0;0;255mthird line t...\x1b[m",
 		"fourth",
 		"50% (3/6)",
 	})
@@ -4461,7 +4451,7 @@ func TestViewport_SelectionOn_ToggleWrap_PreserveSelection(t *testing.T) {
 		"third line t...",
 		"fourth",
 		"fifth line t...",
-		"\x1b[38;2;0;0;255msixth\x1b[0m",
+		"\x1b[38;2;0;0;255msixth\x1b[m",
 		"100% (6/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4473,7 +4463,7 @@ func TestViewport_SelectionOn_ToggleWrap_PreserveSelection(t *testing.T) {
 		"fourth",
 		"fifth line that",
 		" is fairly long",
-		"\x1b[38;2;0;0;255msixth\x1b[0m",
+		"\x1b[38;2;0;0;255msixth\x1b[m",
 		"100% (6/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4485,7 +4475,7 @@ func TestViewport_SelectionOn_ToggleWrap_PreserveSelection(t *testing.T) {
 		"third line t...",
 		"fourth",
 		"fifth line t...",
-		"\x1b[38;2;0;0;255msixth\x1b[0m",
+		"\x1b[38;2;0;0;255msixth\x1b[m",
 		"100% (6/6)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4508,7 +4498,7 @@ func TestViewport_SelectionOn_ToggleWrap_PreserveSelectionInView(t *testing.T) {
 		"a really rea...",
 		"first line t...",
 		"second line ...",
-		"\x1b[38;2;0;0;255mthird line t...\x1b[0m",
+		"\x1b[38;2;0;0;255mthird line t...\x1b[m",
 		"100% (4/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4519,8 +4509,8 @@ func TestViewport_SelectionOn_ToggleWrap_PreserveSelectionInView(t *testing.T) {
 		"header",
 		"longer than the",
 		" first",
-		"\x1b[38;2;0;0;255mthird line that\x1b[0m",
-		"\x1b[38;2;0;0;255m is fairly long\x1b[0m",
+		"\x1b[38;2;0;0;255mthird line that\x1b[m",
+		"\x1b[38;2;0;0;255m is fairly long\x1b[m",
 		"100% (4/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4532,7 +4522,7 @@ func TestViewport_SelectionOn_ToggleWrap_PreserveSelectionInView(t *testing.T) {
 		"a really rea...",
 		"first line t...",
 		"second line ...",
-		"\x1b[38;2;0;0;255mthird line t...\x1b[0m",
+		"\x1b[38;2;0;0;255mthird line t...\x1b[m",
 		"100% (4/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4559,8 +4549,8 @@ func TestViewport_SelectionOn_ToggleWrap_ScrollInBounds(t *testing.T) {
 	vp, _ = vp.Update(upKeyMsg)
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe fourth\x1b[0m",
-		"\x1b[38;2;0;0;255m line\x1b[0m",
+		"\x1b[38;2;0;0;255mthe fourth\x1b[m",
+		"\x1b[38;2;0;0;255m line\x1b[m",
 		"the fifth ",
 		"line",
 		"the sixth ",
@@ -4574,7 +4564,7 @@ func TestViewport_SelectionOn_ToggleWrap_ScrollInBounds(t *testing.T) {
 		"header",
 		"the sec...",
 		"the thi...",
-		"\x1b[38;2;0;0;255mthe fou...\x1b[0m",
+		"\x1b[38;2;0;0;255mthe fou...\x1b[m",
 		"the fif...",
 		"the six...",
 		"66% (4/6)",

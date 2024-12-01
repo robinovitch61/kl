@@ -2,7 +2,7 @@ package fileio
 
 import (
 	"fmt"
-	tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"os"
 	"os/user"
 	"path/filepath"

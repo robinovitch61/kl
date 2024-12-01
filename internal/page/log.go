@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/filter"
 	"github.com/robinovitch61/kl/internal/filterable_viewport"
 	"github.com/robinovitch61/kl/internal/help"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/model"
+	"github.com/robinovitch61/kl/internal/style"
 	"github.com/robinovitch61/kl/internal/viewport"
 	"strings"
 )
@@ -19,12 +20,17 @@ type SingleLogPage struct {
 	filterableViewport filterable_viewport.FilterableViewport[viewport.RenderableString]
 	log                model.PageLog
 	keyMap             keymap.KeyMap
+	styles             style.Styles
 }
 
 // assert SingleLogPage implements GenericPage
 var _ GenericPage = SingleLogPage{}
 
-func NewSingleLogPage(keyMap keymap.KeyMap, width, height int) SingleLogPage {
+func NewSingleLogPage(
+	keyMap keymap.KeyMap,
+	width, height int,
+	styles style.Styles,
+) SingleLogPage {
 	filterableViewport := filterable_viewport.NewFilterableViewport[viewport.RenderableString](
 		"Single Log",
 		true,
@@ -38,6 +44,7 @@ func NewSingleLogPage(keyMap keymap.KeyMap, width, height int) SingleLogPage {
 			return filter.Matches(s)
 		},
 		"",
+		styles,
 	)
 	filterableViewport.SetUpDownMovementWithShift()
 	return SingleLogPage{
@@ -84,17 +91,23 @@ func (p SingleLogPage) WithDimensions(width, height int) GenericPage {
 }
 
 func (p SingleLogPage) WithFocus() GenericPage {
-	p.filterableViewport.SetFocus(true, false)
+	p.filterableViewport.SetFocus(true)
 	return p
 }
 
 func (p SingleLogPage) WithBlur() GenericPage {
-	p.filterableViewport.SetFocus(false, false)
+	p.filterableViewport.SetFocus(false)
+	return p
+}
+
+func (p SingleLogPage) WithStyles(styles style.Styles) GenericPage {
+	p.styles = styles
+	p.filterableViewport.SetStyles(styles)
 	return p
 }
 
 func (p SingleLogPage) Help() string {
-	return help.MakeHelp(p.keyMap)
+	return help.MakeHelp(p.keyMap, p.styles.InverseUnderline)
 }
 
 func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {

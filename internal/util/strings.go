@@ -1,12 +1,12 @@
 package util
 
 import (
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/v2"
 	"regexp"
 	"strings"
 )
 
-var ansiRegex = regexp.MustCompile(`(\x1b\[[0-9;]*m.*?\x1b\[0m)`)
+var ansiRegex = regexp.MustCompile(`(\x1b\[[0-9;]*m.*?\x1b\[0?m)`)
 
 // GetUniqueShortNames takes in the set of names and tries to create a unique set of substrings of them,
 // starting at minChars length and increasing if necessary. If fromRight is true, it starts from the

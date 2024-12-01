@@ -1,7 +1,7 @@
 package model
 
 import (
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/emirpasic/gods/trees/redblacktree"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/style"
@@ -30,12 +30,13 @@ type PageLog struct {
 	Timestamps       PageLogTimestamps
 	CurrentTimestamp string
 	Terminated       bool
+	Styles           *style.Styles
 }
 
 func (l PageLog) Render() string {
 	ts := ""
 	if l.CurrentTimestamp != "" {
-		ts = style.Green.Render(l.CurrentTimestamp)
+		ts = l.Styles.Green.Render(l.CurrentTimestamp)
 	}
 	label := ""
 	if l.CurrentName.ContainerName != "" {

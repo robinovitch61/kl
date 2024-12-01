@@ -1,18 +1,9 @@
 package util
 
 import (
-	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/termenv"
-	"io"
+	"github.com/charmbracelet/lipgloss/v2"
 	"testing"
 )
-
-func renderer() *lipgloss.Renderer {
-	r := lipgloss.NewRenderer(io.Discard)
-	r.SetColorProfile(termenv.TrueColor)
-	r.SetHasDarkBackground(true)
-	return r
-}
 
 func TestGetUniqueShortNames(t *testing.T) {
 	tests := []struct {
@@ -153,15 +144,15 @@ func TestStyleStyledString(t *testing.T) {
 	}{
 		{
 			name:     "no ansi",
-			style:    renderer().NewStyle(),
+			style:    lipgloss.NewStyle(),
 			input:    "No ANSI here, just plain text",
 			expected: "No ANSI here, just plain text",
 		},
 		{
 			name:     "has ansi",
-			style:    renderer().NewStyle().Foreground(lipgloss.Color("#0000ff")),
-			input:    "some \x1b[31mred\x1b[0m text",
-			expected: "\x1b[38;2;0;0;255msome \x1b[0m\x1b[31mred\x1b[0m\x1b[38;2;0;0;255m text\x1b[0m",
+			style:    lipgloss.NewStyle().Foreground(lipgloss.Color("#0000ff")),
+			input:    "some \x1b[31mred\x1b[m text",
+			expected: "\x1b[38;2;0;0;255msome \x1b[m\x1b[31mred\x1b[m\x1b[38;2;0;0;255m text\x1b[m",
 		},
 	}
 

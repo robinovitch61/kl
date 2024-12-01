@@ -4,10 +4,11 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/v2"
+	"image/color"
 )
 
-var containerNameColors = []lipgloss.Color{
+var containerNameColors = []color.Color{
 	lipgloss.Color("#58A2EE"), // blue
 	lipgloss.Color("#3FE34B"), // bright green
 	lipgloss.Color("#7c60d7"), // purple
@@ -23,7 +24,7 @@ var containerNameColors = []lipgloss.Color{
 	lipgloss.Color("#FF7E6A"), // tomato
 }
 
-func GetColor(name string) lipgloss.Color {
+func GetColor(name string) color.Color {
 	hash := md5.Sum([]byte(name))
 	hashStr := hex.EncodeToString(hash[:])
 	var hashValue int64

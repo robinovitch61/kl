@@ -1,7 +1,7 @@
 package model
 
 import (
-	"github.com/charmbracelet/lipgloss"
+	"image/color"
 	"strings"
 )
 
@@ -54,7 +54,7 @@ func (c Container) inPodOf(other Container) bool {
 
 type ContainerColors struct {
 	// the entire container's ID (full specification)
-	ID lipgloss.Color
+	ID color.Color
 	// just the container name
-	Name lipgloss.Color
+	Name color.Color
 }
