@@ -187,13 +187,12 @@ func (e Entity) Delete(tree EntityTree, delta ContainerDelta) (Entity, EntityTre
 	}()
 	switch e.State {
 	case Inactive:
-		tree.Remove(e)
-		return e, tree, []EntityAction{}
+		return e, tree, []EntityAction{RemoveEntity}
 	case WantScanning:
-		tree.Remove(e)
+		// only remove entity if user actively deselects
 		return e, tree, []EntityAction{}
 	case ScannerStarting:
-		tree.Remove(e)
+		// only remove entity if user actively deselects
 		return e, tree, []EntityAction{StopScanner}
 	case Scanning:
 		e.State = Deleted
@@ -201,16 +200,16 @@ func (e Entity) Delete(tree EntityTree, delta ContainerDelta) (Entity, EntityTre
 		tree.AddOrReplace(e)
 		return e, tree, []EntityAction{StopScannerKeepLogs, MarkLogsTerminated}
 	case ScannerStopping:
-		tree.Remove(e)
-		return e, tree, []EntityAction{StopScanner}
+		return e, tree, []EntityAction{StopScanner, RemoveEntity}
 	default:
 		panic(fmt.Sprintf("Delete called for entity in %v state", e.State))
 	}
 }
 
 func (e Entity) Create(tree EntityTree, delta ContainerDelta) (Entity, EntityTree, []EntityAction) {
+	dev.Debug(fmt.Sprintf("Create %v starts %v", e.Container.HumanReadable(), e.State))
 	defer func() {
-		dev.Debug(fmt.Sprintf("CreateEntity %v ends %v", e.Container.HumanReadable(), delta.ToActivate))
+		dev.Debug(fmt.Sprintf("Create %v ends %v", e.Container.HumanReadable(), e.State))
 	}()
 	if delta.ToActivate {
 		switch e.Container.Status.State {
@@ -240,6 +239,10 @@ type UpdateResult struct {
 }
 
 func (e Entity) Update(tree EntityTree, delta ContainerDelta) (Entity, EntityTree, []EntityAction) {
+	dev.Debug(fmt.Sprintf("Update %v starts %v", e.Container.HumanReadable(), e.State))
+	defer func() {
+		dev.Debug(fmt.Sprintf("Update %v ends %v", e.Container.HumanReadable(), e.State))
+	}()
 	e.Container = delta.Container
 	tree.AddOrReplace(e)
 
