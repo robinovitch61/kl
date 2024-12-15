@@ -231,6 +231,7 @@ func (fv *FilterableViewport[T]) SetMaintainSelection(maintainSelection bool) {
 func (fv *FilterableViewport[T]) ToggleFilteringWithContext() {
 	fv.Filter.SetFilteringWithContext(!fv.Filter.FilteringWithContext)
 	fv.updateVisibleRows()
+	fv.updateViewportHeader()
 }
 
 func (fv *FilterableViewport[T]) SetUpDownMovementWithShift() {

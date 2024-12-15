@@ -250,7 +250,7 @@ func (m *Model) changeFilteredSelectionNum(delta int) {
 
 func (m *Model) UpdateLabelAndSuffix() {
 	if !m.FilteringWithContext {
-		m.SetSuffix("")
+		m.SetSuffix(" (matches only)")
 		return
 	}
 
