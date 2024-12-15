@@ -2248,7 +2248,7 @@ func TestViewport_SelectionOff_WrapOn_ShowFooter(t *testing.T) {
 		"\x1b[38;2;255;0;0ma really really\x1b[m",
 		"\x1b[38;2;255;0;0m long line\x1b[m",
 		"\x1b[38;2;255;0;0ma\x1b[m really really",
-		"\x1b[38;2;255;0;0m\x1b[m long line",
+		" long line",
 		"100% (4/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -2261,7 +2261,7 @@ func TestViewport_SelectionOff_WrapOn_ShowFooter(t *testing.T) {
 		"\x1b[38;2;255;0;0ma really really\x1b[m",
 		"\x1b[38;2;255;0;0m long line\x1b[m",
 		"\x1b[38;2;255;0;0ma\x1b[m really really",
-		"\x1b[38;2;255;0;0m\x1b[m long line",
+		" long line",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -2882,7 +2882,7 @@ func TestViewport_SelectionOff_WrapOn_StringToHighlight(t *testing.T) {
 	vp.SetStringToHighlight("wraps")
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"averylongw\x1b[38;2;255;0;0m\x1b[m", // no-op artifact of applyAnsi, maybe fix later
+		"averylongw",
 		"ordthat\x1b[38;2;255;0;0mwra\x1b[m",
 		"\x1b[38;2;255;0;0mps\x1b[m",
 		"100% (1/1)",
@@ -2903,7 +2903,7 @@ func TestViewport_SelectionOff_WrapOn_StringToHighlightAnsi(t *testing.T) {
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
 		"lin\x1b[38;2;0;0;255me\x1b[m \x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;0;0;255me\x1b[m\x1b[38;2;255;0;0md\x1b[m \x1b[38;2;0;0;255me\x1b[m",
-		"\x1b[38;2;0;0;255m\x1b[m\x1b[38;2;255;0;0m\x1b[m\x1b[38;2;0;0;255m\x1b[m\x1b[38;2;255;0;0m\x1b[m\x1b[38;2;0;0;255m\x1b[m again",
+		" again",
 	})
 	compare(t, expectedView, vp.View())
 
@@ -2912,7 +2912,7 @@ func TestViewport_SelectionOff_WrapOn_StringToHighlightAnsi(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"line \x1b[38;2;255;0;0mred\x1b[m e",
-		"\x1b[38;2;255;0;0m\x1b[m again",
+		" again",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -3100,7 +3100,7 @@ func TestViewport_SelectionOn_WrapOn_ShowFooter(t *testing.T) {
 		"\x1b[38;2;255;0;0ma really really\x1b[m",
 		"\x1b[38;2;255;0;0m long line\x1b[m",
 		"\x1b[38;2;255;0;0ma\x1b[m really really",
-		"\x1b[38;2;255;0;0m\x1b[m long line",
+		" long line",
 		"25% (1/4)",
 	})
 	compare(t, expectedView, vp.View())
@@ -3113,7 +3113,7 @@ func TestViewport_SelectionOn_WrapOn_ShowFooter(t *testing.T) {
 		"\x1b[38;2;255;0;0ma really really\x1b[m",
 		"\x1b[38;2;255;0;0m long line\x1b[m",
 		"\x1b[38;2;255;0;0ma\x1b[m really really",
-		"\x1b[38;2;255;0;0m\x1b[m long line",
+		" long line",
 	})
 	compare(t, expectedView, vp.View())
 }
@@ -4275,9 +4275,22 @@ func TestViewport_SelectionOn_WrapOn_StringToHighlight(t *testing.T) {
 	vp.SetStringToHighlight("wraps")
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255maverylongw\x1b[m\x1b[38;2;255;0;0m\x1b[m",
+		"\x1b[38;2;0;0;255maverylongw\x1b[m",
 		"\x1b[38;2;0;0;255mordthat\x1b[m\x1b[38;2;255;0;0mwra\x1b[m",
 		"\x1b[38;2;255;0;0mps\x1b[m\x1b[38;2;0;0;255mover\x1b[m",
+		"100% (1/1)",
+	})
+	compare(t, expectedView, vp.View())
+
+	vp.SetContent([]RenderableString{
+		{Content: "a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line "},
+	})
+	vp.SetStringToHighlight("l")
+	expectedView = pad(vp.width, vp.height, []string{
+		"header",
+		"\x1b[38;2;0;0;255ma super \x1b[m\x1b[38;2;255;0;0ml\x1b[m\x1b[38;2;0;0;255mo\x1b[m",
+		"\x1b[38;2;0;0;255mng \x1b[m\x1b[38;2;255;0;0ml\x1b[m\x1b[38;2;0;0;255mine a \x1b[m",
+		"\x1b[38;2;0;0;255msuper \x1b[m\x1b[38;2;255;0;0ml\x1b[m\x1b[38;2;0;0;255mong\x1b[m",
 		"100% (1/1)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4294,9 +4307,9 @@ func TestViewport_SelectionOn_WrapOn_AnsiOnSelection(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mline with \x1b[m\x1b[38;2;255;0;0m\x1b[m",
+		"\x1b[38;2;0;0;255mline with \x1b[m",
 		"\x1b[38;2;0;0;255msome \x1b[m\x1b[38;2;255;0;0mred\x1b[m\x1b[38;2;0;0;255m t\x1b[m",
-		"\x1b[38;2;255;0;0m\x1b[m\x1b[38;2;0;0;255mext\x1b[m",
+		"\x1b[38;2;0;0;255mext\x1b[m",
 		"100% (1/1)",
 	})
 	compare(t, expectedView, vp.View())
@@ -4329,9 +4342,9 @@ func TestViewport_SelectionOn_WrapOn_ExtraSlash(t *testing.T) {
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255m|2024|\x1b[m\x1b[38;2;0mfl..\x1b[m\x1b[38;2;0m\x1b[m",
+		"\x1b[38;2;0;0;255m|2024|\x1b[m\x1b[38;2;0mfl..\x1b[m",
 		"\x1b[38;2;0mlq\x1b[m\x1b[38;2;0;0;255m/\x1b[m\x1b[38;2;0mflask-3\x1b[m",
-		"\x1b[38;2;0m\x1b[m\x1b[38;2;0m\x1b[m\x1b[38;2;0;0;255m|\x1b[m",
+		"\x1b[38;2;0;0;255m|\x1b[m",
 		"100% (1/1)",
 	})
 	compare(t, expectedView, vp.View())
