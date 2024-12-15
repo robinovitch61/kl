@@ -3,6 +3,7 @@ package viewport
 import (
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/google/go-cmp/cmp"
+	"github.com/robinovitch61/kl/internal/constants"
 	"github.com/robinovitch61/kl/internal/linebuffer"
 	"strings"
 	"testing"
@@ -22,7 +23,6 @@ func wrap(line string, width int, maxLinesEachEnd int) []string {
 	if strings.TrimSpace(line) != "" {
 		line = strings.TrimRightFunc(line, unicode.IsSpace)
 	}
-	//println(fmt.Sprintf("after trim time: %v", time.Since(start)))
 
 	// preserve empty lines
 	if line == "" {
@@ -126,7 +126,8 @@ func highlightLine(line, highlight string, highlightStyle lipgloss.Style) string
 		i++
 	}
 
-	return result.String()
+	// removing empty sequences may hurt performance, but helps legibility
+	return constants.EmptySequenceRegex.ReplaceAllString(result.String(), "")
 }
 
 // pad is a test helper function that pads the given lines to the given width and height.

@@ -208,6 +208,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
+	dev.Debug("App view")
+	defer dev.Debug("App view complete")
 	if m.err != nil {
 		errString := wrap.String(m.err.Error(), m.width)
 		return lipgloss.JoinVertical(
