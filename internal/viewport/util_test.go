@@ -3,6 +3,7 @@ package viewport
 import (
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/google/go-cmp/cmp"
+	"strings"
 	"testing"
 )
 
@@ -109,5 +110,108 @@ func TestPad_Ansi(t *testing.T) {
 	expected := "\x1b[38;2;255;0;0ma\x1b[m    \nb    \nc    \n     "
 	if diff := cmp.Diff(expected, pad(width, height, lines)); diff != "" {
 		t.Errorf("Mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestWrap(t *testing.T) {
+	tests := []struct {
+		name            string
+		input           string
+		width           int
+		maxLinesEachEnd int
+		want            []string
+	}{
+		{
+			name:            "Empty string",
+			input:           "",
+			width:           10,
+			maxLinesEachEnd: 2,
+			want:            []string{""},
+		},
+		{
+			name:            "Single line within width",
+			input:           "Hello",
+			width:           10,
+			maxLinesEachEnd: 2,
+			want:            []string{"Hello"},
+		},
+		{
+			name:            "Zero width",
+			input:           "Hello",
+			width:           0,
+			maxLinesEachEnd: 2,
+			want:            []string{},
+		},
+		{
+			name:            "Zero maxLinesEachEnd",
+			input:           "This is a very long line that needs wrapping",
+			width:           10,
+			maxLinesEachEnd: 0,
+			want:            []string{"This is a ", "very long ", "line that ", "needs wrap", "ping"},
+		},
+		{
+			name:            "Negative maxLinesEachEnd",
+			input:           "This is a very long line that needs wrapping",
+			width:           10,
+			maxLinesEachEnd: -1,
+			want:            []string{"This is a ", "very long ", "line that ", "needs wrap", "ping"},
+		},
+		// TODO LEO: profile this
+		{
+			name:            "Long input with truncation",
+			input:           strings.Repeat("This is a \x1b[38;2;0;0;255mtest\x1b[0m sentence. ", 200),
+			width:           1,
+			maxLinesEachEnd: 0,
+			want:            []string{},
+		},
+		{
+			name:            "Input with trailing spaces",
+			input:           "Hello   ",
+			width:           10,
+			maxLinesEachEnd: 2,
+			want:            []string{"Hello"},
+		},
+		{
+			name:            "Input with only spaces",
+			input:           "     ",
+			width:           10,
+			maxLinesEachEnd: 2,
+			want:            []string{"     "},
+		},
+		//{
+		//	name:            "Unicode characters",
+		//	input:           "Hello 世界! This is a test with unicode characters 🌟",
+		//	width:           10,
+		//	maxLinesEachEnd: 3,
+		//	want:            []string{"Hello 世界! ", "This is a ", "test with ", "unicode ch", "aracters 🌟"},
+		//},
+		{
+			name:            "Width exactly matches input length",
+			input:           "Hello World",
+			width:           11,
+			maxLinesEachEnd: 2,
+			want:            []string{"Hello World"},
+		},
+		{
+			name:            "Very large maxLinesEachEnd",
+			input:           "Short text",
+			width:           5,
+			maxLinesEachEnd: 100,
+			want:            []string{"Short", " text"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := wrap(tt.input, tt.width, tt.maxLinesEachEnd)
+
+			for i := range got {
+				if i < len(tt.want) {
+					if got[i] != tt.want[i] {
+						t.Errorf("wrap() line %d = %q, want %q", i, got[i], tt.want[i])
+					}
+				}
+			}
+		})
 	}
 }
