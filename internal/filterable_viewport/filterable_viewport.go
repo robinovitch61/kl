@@ -14,49 +14,55 @@ import (
 )
 
 type FilterableViewport[T viewport.RenderableComparable] struct {
-	Filter            filter.Model
-	viewport          *viewport.Model[T]
-	allRows           []T
-	matchesFilter     func(T, filter.Model) bool
-	keyMap            keymap.KeyMap
-	filterWithContext bool
-	whenEmpty         string
-	topHeader         string
-	focused           bool
-	styles            style.Styles
+	Filter                     filter.Model
+	viewport                   *viewport.Model[T]
+	allRows                    []T
+	matchesFilter              func(T, filter.Model) bool
+	keyMap                     keymap.KeyMap
+	filterWithContext          bool
+	canToggleFilterWithContext bool
+	whenEmpty                  string
+	topHeader                  string
+	focused                    bool
+	styles                     style.Styles
 }
 
-func NewFilterableViewport[T viewport.RenderableComparable](
-	topHeader string,
-	filterWithContext bool,
-	startSelectionEnabled bool,
-	startWrapOn bool,
-	km keymap.KeyMap,
-	width, height int,
-	allRows []T,
-	matchesFilter func(T, filter.Model) bool,
-	viewWhenEmpty string,
-	styles style.Styles,
-) FilterableViewport[T] {
-	f := filter.New(km)
-	f.SetFilteringWithContext(filterWithContext)
+type FilterableViewportConfig[T viewport.RenderableComparable] struct {
+	TopHeader                  string
+	StartFilterWithContext     bool
+	CanToggleFilterWithContext bool
+	StartSelectionEnabled      bool
+	StartWrapOn                bool
+	KeyMap                     keymap.KeyMap
+	Width                      int
+	Height                     int
+	AllRows                    []T
+	MatchesFilter              func(T, filter.Model) bool
+	ViewWhenEmpty              string
+	Styles                     style.Styles
+}
 
-	var vp = viewport.New[T](width, height)
+func NewFilterableViewport[T viewport.RenderableComparable](config FilterableViewportConfig[T]) FilterableViewport[T] {
+	f := filter.New(config.KeyMap)
+	f.SetFilteringWithContext(config.StartFilterWithContext, config.CanToggleFilterWithContext)
 
-	vp.SetSelectionEnabled(startSelectionEnabled)
-	vp.SetWrapText(startWrapOn)
+	var vp = viewport.New[T](config.Width, config.Height)
+	vp.SetSelectionEnabled(config.StartSelectionEnabled)
+	vp.SetWrapText(config.StartWrapOn)
 
 	fv := FilterableViewport[T]{
-		Filter:            f,
-		viewport:          &vp,
-		allRows:           allRows,
-		matchesFilter:     matchesFilter,
-		keyMap:            km,
-		filterWithContext: filterWithContext,
-		whenEmpty:         viewWhenEmpty,
-		topHeader:         topHeader,
-		styles:            styles,
+		Filter:                     f,
+		viewport:                   &vp,
+		allRows:                    config.AllRows,
+		matchesFilter:              config.MatchesFilter,
+		keyMap:                     config.KeyMap,
+		filterWithContext:          config.StartFilterWithContext,
+		canToggleFilterWithContext: config.CanToggleFilterWithContext,
+		whenEmpty:                  config.ViewWhenEmpty,
+		topHeader:                  config.TopHeader,
+		styles:                     config.Styles,
 	}
+
 	fv.updateViewportStyles()
 	fv.updateViewportHeader()
 	return fv
@@ -229,7 +235,10 @@ func (fv *FilterableViewport[T]) SetMaintainSelection(maintainSelection bool) {
 }
 
 func (fv *FilterableViewport[T]) ToggleFilteringWithContext() {
-	fv.Filter.SetFilteringWithContext(!fv.Filter.FilteringWithContext)
+	if !fv.canToggleFilterWithContext {
+		return
+	}
+	fv.Filter.SetFilteringWithContext(!fv.Filter.FilteringWithContext, fv.canToggleFilterWithContext)
 	fv.updateVisibleRows()
 	fv.updateViewportHeader()
 }

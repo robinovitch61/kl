@@ -18,15 +18,16 @@ type Renderable interface {
 }
 
 type Model struct {
-	KeyMap                filterKeyMap
-	FilteringWithContext  bool
-	isRegex               bool
-	regexp                *regexp.Regexp
-	currentMatchNum       int
-	indexesMatchingFilter []int
-	textinput             textinput.Model
-	suffix                string
-	styles                style.Styles
+	KeyMap                     filterKeyMap
+	FilteringWithContext       bool
+	canToggleFilterWithContext bool
+	isRegex                    bool
+	regexp                     *regexp.Regexp
+	currentMatchNum            int
+	indexesMatchingFilter      []int
+	textinput                  textinput.Model
+	suffix                     string
+	styles                     style.Styles
 }
 
 func New(km keymap.KeyMap) Model {
@@ -180,8 +181,9 @@ func (m *Model) SetStyles(styles style.Styles) {
 	m.styles = styles
 }
 
-func (m *Model) SetFilteringWithContext(filteringWithContext bool) {
+func (m *Model) SetFilteringWithContext(filteringWithContext bool, canToggleFilterWithContext bool) {
 	m.FilteringWithContext = filteringWithContext
+	m.canToggleFilterWithContext = canToggleFilterWithContext
 	m.UpdateLabelAndSuffix()
 }
 
@@ -249,8 +251,12 @@ func (m *Model) changeFilteredSelectionNum(delta int) {
 }
 
 func (m *Model) UpdateLabelAndSuffix() {
+	if !m.canToggleFilterWithContext {
+		return
+	}
+
 	if !m.FilteringWithContext {
-		m.SetSuffix(" (matches only)")
+		m.SetSuffix(" (matches only) ")
 		return
 	}
 

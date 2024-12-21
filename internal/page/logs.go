@@ -2,7 +2,6 @@ package page
 
 import (
 	"fmt"
-	"github.com/charmbracelet/bubbles/v2/key"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/filter"
@@ -38,19 +37,22 @@ func NewLogsPage(
 ) LogsPage {
 	lc := model.NewPageLogContainer(!descending)
 	filterableViewport := filterable_viewport.NewFilterableViewport[model.PageLog](
-		fmt.Sprintf("(L)ogs, %s", getOrder(!descending)),
-		true,
-		true,
-		true,
-		keyMap,
-		width,
-		height,
-		lc.GetOrderedLogs(),
-		func(log model.PageLog, filter filter.Model) bool {
-			return filter.Matches(log)
+		filterable_viewport.FilterableViewportConfig[model.PageLog]{
+			TopHeader:                  fmt.Sprintf("(L)ogs, %s", getOrder(!descending)),
+			StartFilterWithContext:     true,
+			CanToggleFilterWithContext: true,
+			StartSelectionEnabled:      true,
+			StartWrapOn:                true,
+			KeyMap:                     keyMap,
+			Width:                      width,
+			Height:                     height,
+			AllRows:                    lc.GetOrderedLogs(),
+			MatchesFilter: func(log model.PageLog, filter filter.Model) bool {
+				return filter.Matches(log)
+			},
+			ViewWhenEmpty: "No logs yet",
+			Styles:        styles,
 		},
-		"No logs yet",
-		styles,
 	)
 	filterableViewport.SetMaintainSelection(true)
 	page := LogsPage{
@@ -79,12 +81,6 @@ func (p LogsPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
 			cmds = append(cmds, cmd)
 			return p, tea.Batch(cmds...)
 		}
-
-		// toggle filtering with context
-		if key.Matches(msg, p.keyMap.Context) {
-			p.filterableViewport.ToggleFilteringWithContext()
-			return p, nil
-		}
 	}
 
 	p.filterableViewport, cmd = p.filterableViewport.Update(msg)
@@ -110,6 +106,11 @@ func (p LogsPage) ContentForFile() []string {
 		}
 	}
 	return content
+}
+
+func (p LogsPage) ToggleFilteringWithContext() GenericPage {
+	p.filterableViewport.ToggleFilteringWithContext()
+	return p
 }
 
 func (p LogsPage) WithDimensions(width, height int) GenericPage {
