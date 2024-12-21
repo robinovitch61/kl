@@ -43,6 +43,7 @@ func New(line, lineContinuationIndicator string) LineBuffer {
 	}
 }
 
+// TODO LEO: highlight word in this function
 func (l LineBuffer) Truncate(xOffset, width int) string {
 	if width <= 0 {
 		return ""

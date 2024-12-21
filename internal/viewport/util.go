@@ -36,16 +36,12 @@ func wrap(line string, width int, maxLinesEachEnd int) []string {
 	lineBuffer := linebuffer.New(line, "")
 
 	if maxLinesEachEnd > 0 && totalLines > maxLinesEachEnd*2 {
-		i := 0
 		for xOffset := 0; xOffset < width*maxLinesEachEnd; xOffset += width {
-			i += 1
 			res = append(res, lineBuffer.Truncate(xOffset, width))
 		}
 
 		startOffset := lineWidth - (maxLinesEachEnd * width)
-		i = 0
 		for xOffset := startOffset; xOffset < lineWidth; xOffset += width {
-			i += 1
 			res = append(res, lineBuffer.Truncate(xOffset, width))
 		}
 	} else {
