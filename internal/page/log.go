@@ -81,7 +81,7 @@ func (p SingleLogPage) ContentForFile() []string {
 	return append(res, content...)
 }
 
-func (p SingleLogPage) ToggleFilteringWithContext() GenericPage {
+func (p SingleLogPage) ToggleShowContext() GenericPage {
 	p.filterableViewport.ToggleShowContext()
 	return p
 }

@@ -9,7 +9,7 @@ type GenericPage interface {
 	Update(msg tea.Msg) (GenericPage, tea.Cmd)
 	View() string
 	ContentForFile() []string
-	ToggleFilteringWithContext() GenericPage
+	ToggleShowContext() GenericPage
 	HighjackingInput() bool
 	WithDimensions(width, height int) GenericPage
 	WithFocus() GenericPage

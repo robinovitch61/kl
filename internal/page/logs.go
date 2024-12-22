@@ -108,7 +108,7 @@ func (p LogsPage) ContentForFile() []string {
 	return content
 }
 
-func (p LogsPage) ToggleFilteringWithContext() GenericPage {
+func (p LogsPage) ToggleShowContext() GenericPage {
 	p.filterableViewport.ToggleShowContext()
 	return p
 }

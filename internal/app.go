@@ -418,7 +418,7 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	// toggle filtering with context
 	if key.Matches(msg, m.keyMap.Context) {
-		m.pages[m.focusedPageType] = m.pages[m.focusedPageType].ToggleFilteringWithContext()
+		m.pages[m.focusedPageType] = m.pages[m.focusedPageType].ToggleShowContext()
 		return m, tea.Batch(cmds...)
 	}
 

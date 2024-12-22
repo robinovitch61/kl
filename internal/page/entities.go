@@ -98,7 +98,7 @@ func (p EntityPage) ContentForFile() []string {
 	return content
 }
 
-func (p EntityPage) ToggleFilteringWithContext() GenericPage {
+func (p EntityPage) ToggleShowContext() GenericPage {
 	p.filterableViewport.ToggleShowContext()
 	return p
 }
