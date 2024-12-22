@@ -8,7 +8,8 @@ import (
 
 func Cmp(t *testing.T, expected, actual string) {
 	_, file, line, _ := runtime.Caller(1)
+	testName := t.Name()
 	if diff := cmp.Diff(expected, actual); diff != "" {
-		t.Errorf("\nTest failed at %s:%d\nMismatch (-expected, +actual):\n%s", file, line, diff)
+		t.Errorf("\nTest %q failed at %s:%d\nDiff (-expected +actual):\n%s", testName, file, line, diff)
 	}
 }

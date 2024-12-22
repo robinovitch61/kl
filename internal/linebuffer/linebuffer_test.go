@@ -1,7 +1,7 @@
 package linebuffer
 
 import (
-	"github.com/google/go-cmp/cmp"
+	"github.com/robinovitch61/kl/internal/fixtures"
 	"testing"
 )
 
@@ -214,9 +214,7 @@ func TestTruncateLine(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			lb := New(tt.s, tt.lineContinuationIndicator)
 			actual := lb.Truncate(tt.xOffset, tt.width)
-			if diff := cmp.Diff(tt.expected, actual); diff != "" {
-				t.Errorf("Mismatch (-want +got):\n%s", diff)
-			}
+			fixtures.Cmp(t, tt.expected, actual)
 		})
 	}
 }
