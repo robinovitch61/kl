@@ -2,8 +2,11 @@ package util
 
 import (
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/google/go-cmp/cmp"
 	"regexp"
+	"runtime"
 	"strings"
+	"testing"
 )
 
 var ansiRegex = regexp.MustCompile(`(\x1b\[[0-9;]*m.*?\x1b\[0?m)`)
@@ -150,4 +153,13 @@ func StyleStyledString(s string, st lipgloss.Style) string {
 		}
 	}
 	return finalResult
+}
+
+// CmpStr compares two strings and fails the test if they are not equal
+func CmpStr(t *testing.T, expected, actual string) {
+	_, file, line, _ := runtime.Caller(1)
+	testName := t.Name()
+	if diff := cmp.Diff(expected, actual); diff != "" {
+		t.Errorf("\nTest %q failed at %s:%d\nDiff (-expected +actual):\n%s", testName, file, line, diff)
+	}
 }

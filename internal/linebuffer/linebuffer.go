@@ -150,7 +150,8 @@ func (l LineBuffer) reapplyANSI(truncated string, startBytes int) string {
 		result = append(result, l.line[codeStart:codeEnd]...)
 	}
 
-	return string(result)
+	// removing empty sequences may hurt performance, but helps legibility
+	return constants.EmptySequenceRegex.ReplaceAllString(string(result), "")
 }
 
 func initByteOffsets(runes []rune) []int {

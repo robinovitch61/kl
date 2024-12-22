@@ -6,6 +6,7 @@ import (
 	"github.com/robinovitch61/kl/internal/filter"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/style"
+	"github.com/robinovitch61/kl/internal/util"
 	"regexp"
 	"strings"
 	"testing"
@@ -148,15 +149,19 @@ func TestFilterableViewport_FilterNoContext(t *testing.T) {
 
 	// check filter correctly identifies lines in view
 	lines := getTestLines(fv)
-	if lines[0] != "Test Header \x1b[48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m\x1b[38;2;0;0;0;48;2;225;225;225mfilter: \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225mone\x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m(matches only) \x1b[m\x1b[m" {
-		t.Errorf("unexpected header with filter\n%q", fv.View())
-	}
+	util.CmpStr(
+		t,
+		"Test Header \x1b[48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m\x1b[38;2;0;0;0;48;2;225;225;225mfilter: \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225mone\x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m(matches only) \x1b[m\x1b[m",
+		lines[0],
+	)
 	if len(lines) != 2 { // 1 for header
 		t.Errorf("expected 1 visible item, got %d", len(lines)-1)
 	}
-	if lines[1] != "item \x1b[38;2;0;0;0;48;2;255;255;255mone\x1b[m" {
-		t.Errorf("expected 'item one', got '%q'", lines[1])
-	}
+	util.CmpStr(
+		t,
+		"item \x1b[38;2;0;0;0;48;2;255;255;255mone\x1b[m",
+		lines[1],
+	)
 
 	// check adding matching lines
 	newItems := []TestItem{

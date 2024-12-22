@@ -1,7 +1,7 @@
 package linebuffer
 
 import (
-	"github.com/google/go-cmp/cmp"
+	"github.com/robinovitch61/kl/internal/util"
 	"testing"
 )
 
@@ -156,7 +156,7 @@ func TestTruncateLine(t *testing.T) {
 			xOffset:                   41,
 			width:                     10,
 			lineContinuationIndicator: "...",
-			expected:                  "\x1b[38;2;0;0;255m\x1b[m",
+			expected:                  "",
 		},
 		{
 			name:                      "offset overflow, ansi 2",
@@ -164,7 +164,7 @@ func TestTruncateLine(t *testing.T) {
 			xOffset:                   41,
 			width:                     10,
 			lineContinuationIndicator: "...",
-			expected:                  "\x1b[38;2;0;0;255m\x1b[m",
+			expected:                  "",
 		},
 		{
 			name: "offset start space ansi",
@@ -174,7 +174,7 @@ func TestTruncateLine(t *testing.T) {
 			xOffset:                   15,
 			width:                     15,
 			lineContinuationIndicator: "",
-			expected:                  "\x1b[38;2;255;0;0m\x1b[m long line",
+			expected:                  " long line",
 		},
 		{
 			name:                      "ansi short",
@@ -214,9 +214,7 @@ func TestTruncateLine(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			lb := New(tt.s, tt.lineContinuationIndicator)
 			actual := lb.Truncate(tt.xOffset, tt.width)
-			if diff := cmp.Diff(tt.expected, actual); diff != "" {
-				t.Errorf("Mismatch (-want +got):\n%s", diff)
-			}
+			util.CmpStr(t, tt.expected, actual)
 		})
 	}
 }

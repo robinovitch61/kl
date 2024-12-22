@@ -2,10 +2,9 @@ package viewport
 
 import (
 	"github.com/charmbracelet/lipgloss/v2"
-	"github.com/google/go-cmp/cmp"
+	"github.com/robinovitch61/kl/internal/constants"
 	"github.com/robinovitch61/kl/internal/linebuffer"
 	"strings"
-	"testing"
 	"unicode"
 )
 
@@ -22,7 +21,6 @@ func wrap(line string, width int, maxLinesEachEnd int) []string {
 	if strings.TrimSpace(line) != "" {
 		line = strings.TrimRightFunc(line, unicode.IsSpace)
 	}
-	//println(fmt.Sprintf("after trim time: %v", time.Since(start)))
 
 	// preserve empty lines
 	if line == "" {
@@ -36,16 +34,12 @@ func wrap(line string, width int, maxLinesEachEnd int) []string {
 	lineBuffer := linebuffer.New(line, "")
 
 	if maxLinesEachEnd > 0 && totalLines > maxLinesEachEnd*2 {
-		i := 0
 		for xOffset := 0; xOffset < width*maxLinesEachEnd; xOffset += width {
-			i += 1
 			res = append(res, lineBuffer.Truncate(xOffset, width))
 		}
 
 		startOffset := lineWidth - (maxLinesEachEnd * width)
-		i = 0
 		for xOffset := startOffset; xOffset < lineWidth; xOffset += width {
-			i += 1
 			res = append(res, lineBuffer.Truncate(xOffset, width))
 		}
 	} else {
@@ -126,7 +120,8 @@ func highlightLine(line, highlight string, highlightStyle lipgloss.Style) string
 		i++
 	}
 
-	return result.String()
+	// removing empty sequences may hurt performance, but helps legibility
+	return constants.EmptySequenceRegex.ReplaceAllString(result.String(), "")
 }
 
 // pad is a test helper function that pads the given lines to the given width and height.
@@ -151,13 +146,6 @@ func pad(width, height int, lines []string) string {
 		res = append(res, strings.Repeat(" ", width))
 	}
 	return strings.Join(res, "\n")
-}
-
-// compare is a test helper function that compares two strings and fails the test if they are different
-func compare(t *testing.T, expected, actual string) {
-	if diff := cmp.Diff(expected, actual); diff != "" {
-		t.Errorf("Mismatch (-want +got):\n%s", diff)
-	}
 }
 
 func safeSliceUpToIdx[T any](s []T, i int) []T {
