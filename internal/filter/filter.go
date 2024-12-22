@@ -251,6 +251,7 @@ func (m *Model) changeFilteredSelectionNum(delta int) {
 }
 
 func (m *Model) UpdateLabelAndSuffix() {
+	// don't show the label "matches only" if you can't toggle show context
 	if !m.canToggleShowContext && !m.ShowContext {
 		return
 	}
