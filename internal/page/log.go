@@ -32,19 +32,22 @@ func NewSingleLogPage(
 	styles style.Styles,
 ) SingleLogPage {
 	filterableViewport := filterable_viewport.NewFilterableViewport[viewport.RenderableString](
-		"Single Log",
-		true,
-		false,
-		true,
-		keyMap,
-		width,
-		height,
-		[]viewport.RenderableString{},
-		func(s viewport.RenderableString, filter filter.Model) bool {
-			return filter.Matches(s)
+		filterable_viewport.FilterableViewportConfig[viewport.RenderableString]{
+			TopHeader:             "Single Log",
+			StartShowContext:      true,
+			CanToggleShowContext:  false,
+			StartSelectionEnabled: false,
+			StartWrapOn:           true,
+			KeyMap:                keyMap,
+			Width:                 width,
+			Height:                height,
+			AllRows:               []viewport.RenderableString{},
+			MatchesFilter: func(s viewport.RenderableString, filter filter.Model) bool {
+				return filter.Matches(s)
+			},
+			ViewWhenEmpty: "",
+			Styles:        styles,
 		},
-		"",
-		styles,
 	)
 	filterableViewport.SetUpDownMovementWithShift()
 	return SingleLogPage{
@@ -76,6 +79,11 @@ func (p SingleLogPage) ContentForFile() []string {
 	header, content := veryNicelyFormatThisLog(p.log, true)
 	res := []string{header}
 	return append(res, content...)
+}
+
+func (p SingleLogPage) ToggleShowContext() GenericPage {
+	p.filterableViewport.ToggleShowContext()
+	return p
 }
 
 func (p SingleLogPage) ContentForClipboard() []string {

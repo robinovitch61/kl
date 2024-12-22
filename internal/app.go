@@ -62,7 +62,7 @@ type Model struct {
 func InitialModel(c Config) Model {
 	return Model{
 		config: c,
-		keyMap: keymap.DefaultKeyMap,
+		keyMap: keymap.DefaultKeyMap(),
 	}
 }
 
@@ -416,7 +416,13 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 	}
 
-	// update current page
+	// toggle filtering with context
+	if key.Matches(msg, m.keyMap.Context) {
+		m.pages[m.focusedPageType] = m.pages[m.focusedPageType].ToggleShowContext()
+		return m, tea.Batch(cmds...)
+	}
+
+	// update current page with key msg
 	m.pages[m.focusedPageType], cmd = m.pages[m.focusedPageType].Update(msg)
 	cmds = append(cmds, cmd)
 

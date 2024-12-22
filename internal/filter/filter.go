@@ -19,7 +19,8 @@ type Renderable interface {
 
 type Model struct {
 	KeyMap                filterKeyMap
-	FilteringWithContext  bool
+	ShowContext           bool
+	canToggleShowContext  bool
 	isRegex               bool
 	regexp                *regexp.Regexp
 	currentMatchNum       int
@@ -138,7 +139,7 @@ func (m Model) Value() string {
 }
 
 func (m Model) GetContextualMatchIdx() int {
-	if !m.FilteringWithContext {
+	if !m.ShowContext {
 		return 0
 	}
 	if m.currentMatchNum < 0 || m.currentMatchNum >= len(m.indexesMatchingFilter) {
@@ -148,7 +149,7 @@ func (m Model) GetContextualMatchIdx() int {
 }
 
 func (m Model) HasContextualMatches() bool {
-	return m.FilteringWithContext && len(m.indexesMatchingFilter) > 0
+	return m.ShowContext && len(m.indexesMatchingFilter) > 0
 }
 
 func (m Model) HasFilterText() bool {
@@ -180,13 +181,14 @@ func (m *Model) SetStyles(styles style.Styles) {
 	m.styles = styles
 }
 
-func (m *Model) SetFilteringWithContext(filteringWithContext bool) {
-	m.FilteringWithContext = filteringWithContext
+func (m *Model) SetShowContext(showContext bool, canToggleShowContext bool) {
+	m.ShowContext = showContext
+	m.canToggleShowContext = canToggleShowContext
 	m.UpdateLabelAndSuffix()
 }
 
 func (m *Model) ResetContextualFilterMatchNum() {
-	if !m.FilteringWithContext {
+	if !m.ShowContext {
 		return
 	}
 	m.currentMatchNum = 0
@@ -249,8 +251,13 @@ func (m *Model) changeFilteredSelectionNum(delta int) {
 }
 
 func (m *Model) UpdateLabelAndSuffix() {
-	if !m.FilteringWithContext {
-		m.SetSuffix(" (matches only)")
+	// don't show the label "matches only" if you can't toggle show context
+	if !m.canToggleShowContext && !m.ShowContext {
+		return
+	}
+
+	if !m.ShowContext {
+		m.SetSuffix(" (matches only) ")
 		return
 	}
 
