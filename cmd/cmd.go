@@ -428,5 +428,5 @@ func getConfig(cmd *cobra.Command) internal.Config {
 
 func setup(cmd *cobra.Command) (internal.Model, []tea.ProgramOption) {
 	initialModel := internal.InitialModel(getConfig(cmd))
-	return initialModel, []tea.ProgramOption{tea.WithAltScreen()}
+	return initialModel, []tea.ProgramOption{tea.WithAltScreen(), tea.WithFerociousRenderer()}
 }

@@ -87,14 +87,14 @@ init_db()
 # exit_thread = threading.Thread(target=exit_after_delay, daemon=True)
 # exit_thread.start()
 
-def periodic_logger():
+def log_a_lot():
     while True:
         logger.info("Periodic log message")
         time.sleep(0.05)
 
-# Start the periodic logging thread
-# logging_thread = threading.Thread(target=periodic_logger, daemon=True)
-# logging_thread.start()
+# Start the thread that creates a lot of log messages
+logging_thread = threading.Thread(target=log_a_lot, daemon=True)
+logging_thread.start()
 
 @app.route("/health")
 def health():
