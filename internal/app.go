@@ -62,7 +62,7 @@ type Model struct {
 func InitialModel(c Config) Model {
 	return Model{
 		config: c,
-		keyMap: keymap.DefaultKeyMap,
+		keyMap: keymap.DefaultKeyMap(),
 	}
 }
 

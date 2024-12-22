@@ -38,15 +38,15 @@ func NewLogsPage(
 	lc := model.NewPageLogContainer(!descending)
 	filterableViewport := filterable_viewport.NewFilterableViewport[model.PageLog](
 		filterable_viewport.FilterableViewportConfig[model.PageLog]{
-			TopHeader:                  fmt.Sprintf("(L)ogs, %s", getOrder(!descending)),
-			StartFilterWithContext:     true,
-			CanToggleFilterWithContext: true,
-			StartSelectionEnabled:      true,
-			StartWrapOn:                true,
-			KeyMap:                     keyMap,
-			Width:                      width,
-			Height:                     height,
-			AllRows:                    lc.GetOrderedLogs(),
+			TopHeader:             fmt.Sprintf("(L)ogs, %s", getOrder(!descending)),
+			StartShowContext:      true,
+			CanToggleShowContext:  true,
+			StartSelectionEnabled: true,
+			StartWrapOn:           true,
+			KeyMap:                keyMap,
+			Width:                 width,
+			Height:                height,
+			AllRows:               lc.GetOrderedLogs(),
 			MatchesFilter: func(log model.PageLog, filter filter.Model) bool {
 				return filter.Matches(log)
 			},
@@ -99,7 +99,7 @@ func (p LogsPage) HighjackingInput() bool {
 func (p LogsPage) ContentForFile() []string {
 	var content []string
 	for _, l := range p.logContainer.GetOrderedLogs() {
-		if p.filterableViewport.Filter.FilteringWithContext {
+		if p.filterableViewport.Filter.ShowContext {
 			content = append(content, l.Render())
 		} else if p.filterableViewport.Filter.Matches(l) {
 			content = append(content, l.Render())
@@ -109,7 +109,7 @@ func (p LogsPage) ContentForFile() []string {
 }
 
 func (p LogsPage) ToggleFilteringWithContext() GenericPage {
-	p.filterableViewport.ToggleFilteringWithContext()
+	p.filterableViewport.ToggleShowContext()
 	return p
 }
 

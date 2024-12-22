@@ -32,107 +32,105 @@ type KeyMap struct {
 	Wrap                key.Binding
 }
 
-// DefaultKeyMap for app. General principles:
-// - toggles and actions on the same page start with ctrl
-// - pages are single letters
-// - selecting or drilling down is enter
-var DefaultKeyMap = KeyMap{
-	Clear: key.NewBinding(
-		key.WithKeys("esc"),
-		key.WithHelp("esc", "discard filter"),
-	),
-	Copy: key.NewBinding(
-		key.WithKeys("ctrl+y"),
-		key.WithHelp("ctrl+y", "copy zoomed log"),
-	),
-	Context: key.NewBinding(
-		key.WithKeys("x"),
-		key.WithHelp("x", "filter matches only"),
-	),
-	Enter: key.NewBinding(
-		key.WithKeys("enter"),
-		key.WithHelp("enter", ""), // means different things on different pages
-	),
-	Filter: key.NewBinding(
-		key.WithKeys("/"),
-		key.WithHelp("/", "edit filter"),
-	),
-	FilterRegex: key.NewBinding(
-		key.WithKeys("r"),
-		key.WithHelp("r", "regex filter"),
-	),
-	FilterNextRow: key.NewBinding(
-		key.WithKeys("n"),
-		key.WithHelp("n", "next filter match"),
-	),
-	FilterPrevRow: key.NewBinding(
-		key.WithKeys("shift+n"),
-		key.WithHelp("N", "prev filter match"),
-	),
-	Fullscreen: key.NewBinding(
-		key.WithKeys("shift+f"),
-		key.WithHelp("F", "toggle fullscreen"),
-	),
-	Help: key.NewBinding(
-		key.WithKeys("?"),
-		key.WithHelp("?", "show/hide help"),
-	),
-	Logs: key.NewBinding(
-		key.WithKeys("l"),
-		key.WithHelp("l", "focus logs"),
-	),
-	LogsFullScreen: key.NewBinding(
-		key.WithKeys("shift+l"),
-		key.WithHelp("L", "logs fullscreen"),
-	),
-	Name: key.NewBinding(
-		key.WithKeys("c"),
-		key.WithHelp("c", "show short/full/no container names"),
-	),
-	NextLog: key.NewBinding(
-		key.WithKeys("j", "down"),
-		key.WithHelp("↓/j", "next log"),
-	),
-	PrevLog: key.NewBinding(
-		key.WithKeys("k", "up"),
-		key.WithHelp("↑/k", "previous log"),
-	),
-	Quit: key.NewBinding(
-		key.WithKeys("ctrl+c"),
-		key.WithHelp("ctrl+c", "quit"),
-	),
-	ReverseOrder: key.NewBinding(
-		key.WithKeys("o"),
-		key.WithHelp("o", "reverse timestamp order"),
-	),
-	Save: key.NewBinding(
-		key.WithKeys("ctrl+s"),
-		key.WithHelp("ctrl+s", "save focus to file"),
-	),
-	Selection: key.NewBinding(
-		key.WithKeys("s"),
-		key.WithHelp("s", "focus selection"),
-	),
-	SelectionFullScreen: key.NewBinding(
-		key.WithKeys("shift+s"),
-		key.WithHelp("S", "selection fullscreen"),
-	),
-	SinceTime: key.NewBinding(
-		key.WithKeys("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"),
-		key.WithHelp("0-9", "change log start time"),
-	),
-	Timestamps: key.NewBinding(
-		key.WithKeys("t"),
-		key.WithHelp("t", "show short/full/no timestamps"),
-	),
-	TogglePause: key.NewBinding(
-		key.WithKeys("p"),
-		key.WithHelp("p", "pause/resume logs"),
-	),
-	Wrap: key.NewBinding(
-		key.WithKeys("w"),
-		key.WithHelp("w", "toggle line wrap"),
-	),
+func DefaultKeyMap() KeyMap {
+	return KeyMap{
+		Clear: key.NewBinding(
+			key.WithKeys("esc"),
+			key.WithHelp("esc", "discard filter"),
+		),
+		Copy: key.NewBinding(
+			key.WithKeys("ctrl+y"),
+			key.WithHelp("ctrl+y", "copy zoomed log"),
+		),
+		Context: key.NewBinding(
+			key.WithKeys("x"),
+			key.WithHelp("x", "filter matches only"),
+		),
+		Enter: key.NewBinding(
+			key.WithKeys("enter"),
+			key.WithHelp("enter", ""), // means different things on different pages
+		),
+		Filter: key.NewBinding(
+			key.WithKeys("/"),
+			key.WithHelp("/", "edit filter"),
+		),
+		FilterRegex: key.NewBinding(
+			key.WithKeys("r"),
+			key.WithHelp("r", "regex filter"),
+		),
+		FilterNextRow: key.NewBinding(
+			key.WithKeys("n"),
+			key.WithHelp("n", "next filter match"),
+		),
+		FilterPrevRow: key.NewBinding(
+			key.WithKeys("shift+n"),
+			key.WithHelp("N", "prev filter match"),
+		),
+		Fullscreen: key.NewBinding(
+			key.WithKeys("shift+f"),
+			key.WithHelp("F", "toggle fullscreen"),
+		),
+		Help: key.NewBinding(
+			key.WithKeys("?"),
+			key.WithHelp("?", "show/hide help"),
+		),
+		Logs: key.NewBinding(
+			key.WithKeys("l"),
+			key.WithHelp("l", "focus logs"),
+		),
+		LogsFullScreen: key.NewBinding(
+			key.WithKeys("shift+l"),
+			key.WithHelp("L", "logs fullscreen"),
+		),
+		Name: key.NewBinding(
+			key.WithKeys("c"),
+			key.WithHelp("c", "show short/full/no container names"),
+		),
+		NextLog: key.NewBinding(
+			key.WithKeys("j", "down"),
+			key.WithHelp("↓/j", "next log"),
+		),
+		PrevLog: key.NewBinding(
+			key.WithKeys("k", "up"),
+			key.WithHelp("↑/k", "previous log"),
+		),
+		Quit: key.NewBinding(
+			key.WithKeys("ctrl+c"),
+			key.WithHelp("ctrl+c", "quit"),
+		),
+		ReverseOrder: key.NewBinding(
+			key.WithKeys("o"),
+			key.WithHelp("o", "reverse timestamp order"),
+		),
+		Save: key.NewBinding(
+			key.WithKeys("ctrl+s"),
+			key.WithHelp("ctrl+s", "save focus to file"),
+		),
+		Selection: key.NewBinding(
+			key.WithKeys("s"),
+			key.WithHelp("s", "focus selection"),
+		),
+		SelectionFullScreen: key.NewBinding(
+			key.WithKeys("shift+s"),
+			key.WithHelp("S", "selection fullscreen"),
+		),
+		SinceTime: key.NewBinding(
+			key.WithKeys("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"),
+			key.WithHelp("0-9", "change log start time"),
+		),
+		Timestamps: key.NewBinding(
+			key.WithKeys("t"),
+			key.WithHelp("t", "show short/full/no timestamps"),
+		),
+		TogglePause: key.NewBinding(
+			key.WithKeys("p"),
+			key.WithHelp("p", "pause/resume logs"),
+		),
+		Wrap: key.NewBinding(
+			key.WithKeys("w"),
+			key.WithHelp("w", "toggle line wrap"),
+		),
+	}
 }
 
 func LookbackKeyBindings(km KeyMap) []key.Binding {

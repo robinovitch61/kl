@@ -43,18 +43,18 @@ func NewEntitiesPage(
 
 	filterableViewport := filterable_viewport.NewFilterableViewport[model.Entity](
 		filterable_viewport.FilterableViewportConfig[model.Entity]{
-			TopHeader:                  "(S)election",
-			StartFilterWithContext:     false,
-			CanToggleFilterWithContext: false,
-			StartSelectionEnabled:      true,
-			StartWrapOn:                false,
-			KeyMap:                     keyMap,
-			Width:                      width,
-			Height:                     height,
-			AllRows:                    entityTree.GetEntities(),
-			MatchesFilter:              entityTree.IsVisibleGivenFilter,
-			ViewWhenEmpty:              viewWhenEmpty,
-			Styles:                     styles,
+			TopHeader:             "(S)election",
+			StartShowContext:      false,
+			CanToggleShowContext:  false,
+			StartSelectionEnabled: true,
+			StartWrapOn:           false,
+			KeyMap:                keyMap,
+			Width:                 width,
+			Height:                height,
+			AllRows:               entityTree.GetEntities(),
+			MatchesFilter:         entityTree.IsVisibleGivenFilter,
+			ViewWhenEmpty:         viewWhenEmpty,
+			Styles:                styles,
 		},
 	)
 	return EntityPage{
@@ -99,7 +99,7 @@ func (p EntityPage) ContentForFile() []string {
 }
 
 func (p EntityPage) ToggleFilteringWithContext() GenericPage {
-	p.filterableViewport.ToggleFilteringWithContext()
+	p.filterableViewport.ToggleShowContext()
 	return p
 }
 
@@ -149,7 +149,7 @@ func (p EntityPage) GetSelectionActions() (model.Entity, map[model.Entity]bool) 
 }
 
 func (p EntityPage) getVisibleEntities() []model.Entity {
-	if p.filterableViewport.Filter.FilteringWithContext {
+	if p.filterableViewport.Filter.ShowContext {
 		return p.entityTree.GetEntities()
 	}
 	return p.entityTree.GetVisibleEntities(p.filterableViewport.Filter)

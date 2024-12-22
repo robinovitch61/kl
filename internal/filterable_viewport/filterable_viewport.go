@@ -14,57 +14,54 @@ import (
 )
 
 type FilterableViewport[T viewport.RenderableComparable] struct {
-	Filter                     filter.Model
-	viewport                   *viewport.Model[T]
-	allRows                    []T
-	matchesFilter              func(T, filter.Model) bool
-	keyMap                     keymap.KeyMap
-	filterWithContext          bool
-	canToggleFilterWithContext bool
-	whenEmpty                  string
-	topHeader                  string
-	focused                    bool
-	styles                     style.Styles
+	Filter               filter.Model
+	viewport             *viewport.Model[T]
+	allRows              []T
+	matchesFilter        func(T, filter.Model) bool
+	keyMap               keymap.KeyMap
+	canToggleShowContext bool
+	whenEmpty            string
+	topHeader            string
+	focused              bool
+	styles               style.Styles
 }
 
 type FilterableViewportConfig[T viewport.RenderableComparable] struct {
-	TopHeader                  string
-	StartFilterWithContext     bool
-	CanToggleFilterWithContext bool
-	StartSelectionEnabled      bool
-	StartWrapOn                bool
-	KeyMap                     keymap.KeyMap
-	Width                      int
-	Height                     int
-	AllRows                    []T
-	MatchesFilter              func(T, filter.Model) bool
-	ViewWhenEmpty              string
-	Styles                     style.Styles
+	TopHeader             string
+	StartShowContext      bool
+	CanToggleShowContext  bool
+	StartSelectionEnabled bool
+	StartWrapOn           bool
+	KeyMap                keymap.KeyMap
+	Width                 int
+	Height                int
+	AllRows               []T
+	MatchesFilter         func(T, filter.Model) bool
+	ViewWhenEmpty         string
+	Styles                style.Styles
 }
 
 func NewFilterableViewport[T viewport.RenderableComparable](config FilterableViewportConfig[T]) FilterableViewport[T] {
 	f := filter.New(config.KeyMap)
-	f.SetFilteringWithContext(config.StartFilterWithContext, config.CanToggleFilterWithContext)
+	f.SetShowContext(config.StartShowContext, config.CanToggleShowContext)
 
 	var vp = viewport.New[T](config.Width, config.Height)
 	vp.SetSelectionEnabled(config.StartSelectionEnabled)
 	vp.SetWrapText(config.StartWrapOn)
 
 	fv := FilterableViewport[T]{
-		Filter:                     f,
-		viewport:                   &vp,
-		allRows:                    config.AllRows,
-		matchesFilter:              config.MatchesFilter,
-		keyMap:                     config.KeyMap,
-		filterWithContext:          config.StartFilterWithContext,
-		canToggleFilterWithContext: config.CanToggleFilterWithContext,
-		whenEmpty:                  config.ViewWhenEmpty,
-		topHeader:                  config.TopHeader,
-		styles:                     config.Styles,
+		Filter:               f,
+		viewport:             &vp,
+		allRows:              config.AllRows,
+		matchesFilter:        config.MatchesFilter,
+		keyMap:               config.KeyMap,
+		canToggleShowContext: config.CanToggleShowContext,
+		whenEmpty:            config.ViewWhenEmpty,
+		topHeader:            config.TopHeader,
+		styles:               config.Styles,
 	}
 
-	fv.updateViewportStyles()
-	fv.updateViewportHeader()
+	fv.SetStyles(config.Styles)
 	return fv
 }
 
@@ -103,7 +100,7 @@ func (fv FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.
 			// handle next match/prev match
 			if key.Matches(msg, fv.Filter.KeyMap.FilterNextRow) || key.Matches(msg, fv.Filter.KeyMap.FilterPrevRow) {
 				// if not filtering with context, or no filter text, ignore
-				if !fv.Filter.FilteringWithContext || !fv.Filter.HasFilterText() {
+				if !fv.Filter.ShowContext || !fv.Filter.HasFilterText() {
 					return fv, nil
 				}
 				if key.Matches(msg, fv.Filter.KeyMap.FilterNextRow) {
@@ -150,7 +147,7 @@ func (fv FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.
 			fv.Filter.UpdateLabelAndSuffix()
 
 			// if filtering with context, reset the match number and scroll to the first match
-			if fv.Filter.FilteringWithContext {
+			if fv.Filter.ShowContext {
 				fv.Filter.ResetContextualFilterMatchNum()
 				fv.scrollViewportToItemIdx(fv.Filter.GetContextualMatchIdx())
 			}
@@ -208,6 +205,7 @@ func (fv *FilterableViewport[T]) SetTopHeader(topHeader string) {
 func (fv *FilterableViewport[T]) SetAllRows(allRows []T) {
 	fv.allRows = allRows
 	fv.updateVisibleRows()
+	fv.updateViewportHeader()
 }
 
 func (fv *FilterableViewport[T]) SetFocus(focused bool) {
@@ -234,11 +232,11 @@ func (fv *FilterableViewport[T]) SetMaintainSelection(maintainSelection bool) {
 	fv.viewport.SetMaintainSelection(maintainSelection)
 }
 
-func (fv *FilterableViewport[T]) ToggleFilteringWithContext() {
-	if !fv.canToggleFilterWithContext {
+func (fv *FilterableViewport[T]) ToggleShowContext() {
+	if !fv.canToggleShowContext {
 		return
 	}
-	fv.Filter.SetFilteringWithContext(!fv.Filter.FilteringWithContext, fv.canToggleFilterWithContext)
+	fv.Filter.SetShowContext(!fv.Filter.ShowContext, fv.canToggleShowContext)
 	fv.updateVisibleRows()
 	fv.updateViewportHeader()
 }
@@ -267,7 +265,7 @@ func (fv *FilterableViewport[T]) updateVisibleRows() {
 	dev.Debug("Updating visible rows")
 	defer dev.Debug("Done updating visible rows")
 
-	if fv.Filter.FilteringWithContext && fv.Filter.Value() != "" {
+	if fv.Filter.ShowContext && fv.Filter.Value() != "" {
 		var entityIndexesMatchingFilter []int
 		for i := range fv.allRows {
 			if fv.matchesFilter(fv.allRows[i], fv.Filter) {
@@ -321,18 +319,19 @@ func (fv *FilterableViewport[T]) SetStyles(styles style.Styles) {
 }
 
 func (fv *FilterableViewport[T]) updateViewportStyles() {
+	fv.viewport.HighlightStyle = fv.styles.Inverse
+
 	if fv.focused {
 		fv.viewport.SelectedItemStyle = fv.styles.Inverse
 		fv.viewport.FooterStyle = lipgloss.NewStyle()
+		fv.viewport.HighlightStyleIfSelected = fv.styles.Unset
 	} else {
 		fv.viewport.SelectedItemStyle = lipgloss.NewStyle()
 		fv.viewport.FooterStyle = fv.styles.Alt
+		fv.viewport.HighlightStyleIfSelected = fv.styles.Inverse
 	}
 
 	if fv.Filter.Focused() {
 		fv.viewport.SelectedItemStyle = fv.styles.AltInverse
 	}
-
-	fv.viewport.HighlightStyle = fv.styles.Inverse
-	fv.viewport.HighlightStyleIfSelected = fv.styles.Unset
 }
