@@ -12,9 +12,11 @@ import (
 )
 
 var (
-	filterKeyMsg = tea.KeyPressMsg{Code: '/', Text: "/"}
-	enterKeyMsg  = tea.KeyPressMsg{Code: tea.KeyEnter, Text: "enter"}
-	clearKeyMsg  = tea.KeyPressMsg{Code: tea.KeyEscape, Text: "esc"}
+	focusFilterKeyMsg      = tea.KeyPressMsg{Code: '/', Text: "/"}
+	focusRegexFilterKeyMsg = tea.KeyPressMsg{Code: 'r', Text: "r"}
+	enterKeyMsg            = tea.KeyPressMsg{Code: tea.KeyEnter, Text: "enter"}
+	clearKeyMsg            = tea.KeyPressMsg{Code: tea.KeyEscape, Text: "esc"}
+	wrapKeyMsg             = tea.KeyPressMsg{Code: 'w', Text: "w"}
 )
 
 func makeKeyPressMsg(key rune) tea.Msg {
@@ -81,7 +83,7 @@ func newFilterableViewport() FilterableViewport[TestItem] {
 	)
 }
 
-func getLines(fv FilterableViewport[TestItem]) []string {
+func getTestLines(fv FilterableViewport[TestItem]) []string {
 	var lines []string
 	for _, line := range strings.Split(fv.View(), "\n") {
 		if strings.TrimSpace(line) != "" {
@@ -89,6 +91,18 @@ func getLines(fv FilterableViewport[TestItem]) []string {
 		}
 	}
 	return lines
+}
+
+func applyTestFilter(fv FilterableViewport[TestItem], km tea.KeyPressMsg, s string) FilterableViewport[TestItem] {
+	fv, _ = fv.Update(km)
+	if !fv.Filter.Focused() {
+		panic("filter should be focused")
+	}
+	for _, r := range s {
+		fv, _ = fv.Update(makeKeyPressMsg(r))
+	}
+	fv, _ = fv.Update(enterKeyMsg)
+	return fv
 }
 
 func TestNewFilterableViewport(t *testing.T) {
@@ -117,6 +131,9 @@ func TestNewFilterableViewport(t *testing.T) {
 	if fv.Filter.Focused() {
 		t.Error("filter should not be focused")
 	}
+	if fv.focused {
+		t.Error("viewport should start unfocused")
+	}
 }
 
 func TestFilterableViewport_FilterNoContext(t *testing.T) {
@@ -127,18 +144,10 @@ func TestFilterableViewport_FilterNoContext(t *testing.T) {
 		{content: "another item"},
 	})
 
-	// apply filter
-	fv, _ = fv.Update(filterKeyMsg)
-	if !fv.Filter.Focused() {
-		t.Errorf("filter should be focused after %s key", filterKeyMsg.String())
-	}
-	for _, r := range "one" {
-		fv, _ = fv.Update(makeKeyPressMsg(r))
-	}
-	fv, _ = fv.Update(enterKeyMsg)
+	fv = applyTestFilter(fv, focusFilterKeyMsg, "one")
 
 	// check filter correctly identifies lines in view
-	lines := getLines(fv)
+	lines := getTestLines(fv)
 	if lines[0] != "Test Header \x1b[48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m\x1b[38;2;0;0;0;48;2;225;225;225mfilter: \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225mone\x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m(matches only) \x1b[m\x1b[m" {
 		t.Errorf("unexpected header with filter\n%q", fv.View())
 	}
@@ -157,7 +166,7 @@ func TestFilterableViewport_FilterNoContext(t *testing.T) {
 		{content: "another item"},
 	}
 	fv.SetAllRows(newItems)
-	lines = getLines(fv)
+	lines = getTestLines(fv)
 	if len(lines) != 3 { // 1 for header
 		t.Errorf("expected 2 visible item, got %d", len(lines)-1)
 	}
@@ -167,7 +176,7 @@ func TestFilterableViewport_FilterNoContext(t *testing.T) {
 
 	// clear filter
 	fv, _ = fv.Update(clearKeyMsg)
-	lines = getLines(fv)
+	lines = getTestLines(fv)
 	if lines[0] != "Test Header  '/' or 'r' to filter" {
 		t.Errorf("unexpected header with filter\n%q", fv.View())
 	}
@@ -185,14 +194,7 @@ func TestFilterableViewport_FilterShowContext(t *testing.T) {
 	})
 
 	// apply filter
-	fv, _ = fv.Update(filterKeyMsg)
-	if !fv.Filter.Focused() {
-		t.Errorf("filter should be focused after %s key", filterKeyMsg.String())
-	}
-	for _, r := range "one" {
-		fv, _ = fv.Update(makeKeyPressMsg(r))
-	}
-	fv, _ = fv.Update(enterKeyMsg)
+	fv = applyTestFilter(fv, focusFilterKeyMsg, "one")
 
 	// check show context
 	if fv.Filter.ShowContext {
@@ -203,7 +205,7 @@ func TestFilterableViewport_FilterShowContext(t *testing.T) {
 		t.Error("contextual filtering should be enabled")
 	}
 
-	lines := getLines(fv)
+	lines := getTestLines(fv)
 	if lines[0] != "Test Header \x1b[48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m\x1b[38;2;0;0;0;48;2;225;225;225mfilter: \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225mone\x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m(1/1, n/N to cycle) \x1b[m\x1b[m" {
 		t.Errorf("unexpected header with show context filter\n%q", fv.View())
 	}
@@ -219,7 +221,7 @@ func TestFilterableViewport_FilterShowContext(t *testing.T) {
 		{content: "item two"},
 		{content: "another item"},
 	})
-	lines = getLines(fv)
+	lines = getTestLines(fv)
 	if lines[0] != "Test Header \x1b[48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m\x1b[38;2;0;0;0;48;2;225;225;225mfilter: \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225mone\x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m(1/2, n/N to cycle) \x1b[m\x1b[m" {
 		t.Errorf("unexpected header with show context filter\n%q", fv.View())
 	}
@@ -232,14 +234,14 @@ func TestFilterableViewport_FilterShowContext(t *testing.T) {
 	if fv.Filter.ShowContext {
 		t.Error("contextual filtering should be disabled")
 	}
-	lines = getLines(fv)
+	lines = getTestLines(fv)
 	if lines[0] != "Test Header \x1b[48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m\x1b[38;2;0;0;0;48;2;225;225;225mfilter: \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225mone\x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m(matches only) \x1b[m\x1b[m" {
 		t.Errorf("unexpected header with filter\n%q", fv.View())
 	}
 
 	// clear filter
 	fv, _ = fv.Update(clearKeyMsg)
-	lines = getLines(fv)
+	lines = getTestLines(fv)
 	if lines[0] != "Test Header  '/' or 'r' to filter" {
 		t.Errorf("unexpected header with filter\n%q", fv.View())
 	}
@@ -248,119 +250,88 @@ func TestFilterableViewport_FilterShowContext(t *testing.T) {
 	}
 }
 
-// TODO focus filterable viewport
+func TestFilterableViewport_Focus(t *testing.T) {
+	fv := newFilterableViewport()
+	fv.SetAllRows([]TestItem{
+		{content: "item one"},
+	})
 
-// TODO regex filter
+	fv.SetFocus(true)
+	if !fv.focused {
+		t.Error("viewport should be focused after SetFocus(true)")
+	}
 
-// TODO clear filter
+	// header should be styled when focused
+	lines := getTestLines(fv)
+	if lines[0] != "\x1b[38;2;0;0;0;46mTest Header\x1b[m  '/' or 'r' to filter" {
+		t.Errorf("unexpected header\n%q", fv.View())
+	}
 
-// TODO filter filterable viewport
+	// selection should be styled when focused
+	if lines[1] != "\x1b[38;2;0;0;0;48;2;255;255;255mitem one\x1b[m" {
+		t.Errorf("unexpected selection\n%q", fv.View())
+	}
 
-//func TestFilterableViewport_RegexFilter(t *testing.T) {
-//	fv := newFilterableViewport()
-//
-//	// Activate regex filter
-//	msg := tea.KeyMsg{Type: tea.KeyCtrl, Runes: []rune("/")}
-//	fv, _ = fv.Update(msg)
-//	if !fv.Filter.IsRegex() {
-//		t.Error("filter should be in regex mode")
-//	}
-//
-//	// Type regex pattern
-//	msg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("^item")}
-//	fv, _ = fv.Update(msg)
-//
-//	// Apply filter
-//	msg = tea.KeyMsg{Type: tea.KeyEnter}
-//	fv, _ = fv.Update(msg)
-//
-//	// Verify only items starting with "item" are visible
-//	content := fv.viewport.GetContent()
-//	if len(content) != 2 {
-//		t.Errorf("expected 2 visible items, got %d", len(content))
-//	}
-//	if content[0].String() != "item one" {
-//		t.Errorf("expected 'item one', got '%s'", content[0].String())
-//	}
-//	if content[1].String() != "item two" {
-//		t.Errorf("expected 'item two', got '%s'", content[1].String())
-//	}
-//}
-//
-//func TestFilterableViewport_ClearFilter(t *testing.T) {
-//	fv := newFilterableViewport()
-//
-//	// Set up a filter first
-//	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("/")}
-//	fv, _ = fv.Update(msg)
-//	msg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("one")}
-//	fv, _ = fv.Update(msg)
-//	msg = tea.KeyMsg{Type: tea.KeyEnter}
-//	fv, _ = fv.Update(msg)
-//
-//	// Clear the filter
-//	msg = tea.KeyMsg{Type: tea.KeyEsc}
-//	fv, _ = fv.Update(msg)
-//
-//	// Verify all items are visible again
-//	if len(fv.viewport.GetContent()) != 3 {
-//		t.Errorf("expected 3 visible items after clear, got %d", len(fv.viewport.GetContent()))
-//	}
-//	if fv.Filter.Value() != "" {
-//		t.Errorf("expected empty filter value, got '%s'", fv.Filter.Value())
-//	}
-//}
-//
-//func TestFilterableViewport_ToggleWrap(t *testing.T) {
-//	fv := newFilterableViewport()
-//
-//	initialWrap := fv.viewport.GetWrapText()
-//
-//	// Toggle wrap
-//	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("w")}
-//	fv, _ = fv.Update(msg)
-//
-//	if fv.viewport.GetWrapText() == initialWrap {
-//		t.Error("wrap text should have toggled")
-//	}
-//}
-//
-//func TestFilterableViewport_Focus(t *testing.T) {
-//	fv := newFilterableViewport()
-//
-//	// Test unfocused state
-//	if fv.focused {
-//		t.Error("viewport should start unfocused")
-//	}
-//
-//	// Focus the viewport
-//	fv.SetFocus(true)
-//	if !fv.focused {
-//		t.Error("viewport should be focused after SetFocus(true)")
-//	}
-//
-//	// Verify styles are updated
-//	if fv.viewport.SelectedItemStyle != fv.styles.Inverse {
-//		t.Error("focused viewport should have inverse selection style")
-//	}
-//}
-//
-//func TestFilterableViewport_Selection(t *testing.T) {
-//	fv := newFilterableViewport()
-//
-//	// Test initial selection
-//	selection := fv.GetSelection()
-//	if selection == nil {
-//		t.Fatal("initial selection should not be nil")
-//	}
-//	if selection.Render() != "item one" {
-//		t.Errorf("expected initial selection 'item one', got '%s'", selection.Render())
-//	}
-//
-//	// Change selection
-//	fv.SetSelectedContentIdx(1)
-//	selection = fv.GetSelection()
-//	if selection.Render() != "item two" {
-//		t.Errorf("expected selection 'item two', got '%s'", selection.Render())
-//	}
-//}
+	// apply filter
+	fv = applyTestFilter(fv, focusFilterKeyMsg, "one")
+
+	// selection should have styled filtered line
+	lines = getTestLines(fv)
+	if lines[1] != "\x1b[38;2;0;0;0;48;2;255;255;255mitem \x1b[m\x1b[38;2;255;255;255;48;2;0;0;0mone\x1b[m" {
+		t.Errorf("unexpected selection\n%q", fv.View())
+	}
+}
+
+func TestFilterableViewport_Clear(t *testing.T) {
+	fv := newFilterableViewport()
+	fv.SetAllRows([]TestItem{
+		{content: "item one"},
+		{content: "item two"},
+	})
+
+	// apply filter, focus filter, and clear
+	fv = applyTestFilter(fv, focusFilterKeyMsg, "one")
+	fv, _ = fv.Update(focusFilterKeyMsg)
+	fv, _ = fv.Update(clearKeyMsg)
+	lines := getTestLines(fv)
+	if lines[0] != "Test Header  '/' or 'r' to filter" {
+		t.Errorf("unexpected header\n%q", fv.View())
+	}
+
+	// apply filter and clear
+	fv = applyTestFilter(fv, focusFilterKeyMsg, "one")
+	fv, _ = fv.Update(clearKeyMsg)
+	lines = getTestLines(fv)
+	if lines[0] != "Test Header  '/' or 'r' to filter" {
+		t.Errorf("unexpected header\n%q", fv.View())
+	}
+}
+
+func TestFilterableViewport_ToggleWrap(t *testing.T) {
+	fv := newFilterableViewport()
+
+	initialWrap := fv.viewport.GetWrapText()
+
+	fv, _ = fv.Update(wrapKeyMsg)
+
+	if fv.viewport.GetWrapText() == initialWrap {
+		t.Error("wrap text should have toggled")
+	}
+}
+
+func TestFilterableViewport_FilterRegex(t *testing.T) {
+	fv := newFilterableViewport()
+	fv.SetAllRows([]TestItem{
+		{content: "item one"},
+		{content: "item two"},
+	})
+
+	fv = applyTestFilter(fv, focusRegexFilterKeyMsg, "i.*m")
+	lines := getTestLines(fv)
+	if lines[0] != "Test Header \x1b[48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m\x1b[38;2;0;0;0;48;2;225;225;225mregex filter: \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225mi.*m\x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m(matches only) \x1b[m\x1b[m" {
+		t.Errorf("unexpected header with regex filter\n%q", fv.View())
+	}
+	if len(lines) != 3 { // 1 for header
+		t.Errorf("expected 2 visible item, got %d", len(lines)-1)
+	}
+}
