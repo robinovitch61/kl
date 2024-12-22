@@ -2,11 +2,9 @@ package viewport
 
 import (
 	"github.com/charmbracelet/lipgloss/v2"
-	"github.com/google/go-cmp/cmp"
 	"github.com/robinovitch61/kl/internal/constants"
 	"github.com/robinovitch61/kl/internal/linebuffer"
 	"strings"
-	"testing"
 	"unicode"
 )
 
@@ -148,13 +146,6 @@ func pad(width, height int, lines []string) string {
 		res = append(res, strings.Repeat(" ", width))
 	}
 	return strings.Join(res, "\n")
-}
-
-// compare is a test helper function that compares two strings and fails the test if they are different
-func compare(t *testing.T, expected, actual string) {
-	if diff := cmp.Diff(expected, actual); diff != "" {
-		t.Errorf("Mismatch (-want +got):\n%s", diff)
-	}
 }
 
 func safeSliceUpToIdx[T any](s []T, i int) []T {
