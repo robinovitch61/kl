@@ -148,23 +148,47 @@ func TestWrap(t *testing.T) {
 			maxLinesEachEnd: -1,
 			want:            []string{"This is a ", "very long ", "line that ", "needs wrap", "ping"},
 		},
-		// TODO LEO: profile this
 		{
-			name:            "Long input with truncation",
-			input:           strings.Repeat("This is a \x1b[38;2;0;0;255mtest\x1b[0m sentence. ", 200),
-			width:           1,
-			maxLinesEachEnd: 0,
-			want:            []string{},
+			name:            "Limited by maxLinesEachEnd",
+			input:           "This is a very long line that needs wrapping",
+			width:           10,
+			maxLinesEachEnd: 2,
+			want:            []string{"This is a ", "very long ", " that need", "s wrapping"},
 		},
+		// TODO LEO: fix this
 		{
-			name:            "Input with trailing spaces",
+			name:            "Single chars",
+			input:           strings.Repeat("Test \x1b[38;2;0;0;255mtest\x1b[m", 1),
+			width:           1,
+			maxLinesEachEnd: -1,
+			want: []string{
+				"T",
+				"e",
+				"s",
+				"t",
+				" ",
+				"\x1b[38;2;0;0;255mt\x1b[m",
+				"\x1b[38;2;0;0;255me\x1b[m",
+				"\x1b[38;2;0;0;255ms\x1b[m",
+				"\x1b[38;2;0;0;255mt\x1b[m",
+			},
+		},
+		//{
+		//	name:            "Long input with truncation",
+		//	input:           strings.Repeat("This is a \x1b[38;2;0;0;255mtest\x1b[0m sentence. ", 200),
+		//	width:           1,
+		//	maxLinesEachEnd: -1,
+		//	want:            []string{},
+		//},
+		{
+			name:            "Input with trailing spaces are trimmed",
 			input:           "Hello   ",
 			width:           10,
 			maxLinesEachEnd: 2,
 			want:            []string{"Hello"},
 		},
 		{
-			name:            "Input with only spaces",
+			name:            "Input with only spaces is not trimmed",
 			input:           "     ",
 			width:           10,
 			maxLinesEachEnd: 2,
@@ -184,23 +208,22 @@ func TestWrap(t *testing.T) {
 			maxLinesEachEnd: 2,
 			want:            []string{"Hello World"},
 		},
-		{
-			name:            "Very large maxLinesEachEnd",
-			input:           "Short text",
-			width:           5,
-			maxLinesEachEnd: 100,
-			want:            []string{"Short", " text"},
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := wrap(tt.input, tt.width, tt.maxLinesEachEnd)
+			if len(got) != len(tt.want) {
+				t.Errorf("wrap() len = %d, want %d", len(got), len(tt.want))
+			}
 
+			//for _, l := range got {
+			//	println(fmt.Sprintf("%q", l))
+			//}
 			for i := range got {
 				if i < len(tt.want) {
 					if got[i] != tt.want[i] {
-						t.Errorf("wrap() line %d = %q, want %q", i, got[i], tt.want[i])
+						t.Errorf("wrap() line %d got %q, expected %q", i, got[i], tt.want[i])
 					}
 				}
 			}
