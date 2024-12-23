@@ -33,15 +33,15 @@ func NewSingleLogPage(
 ) SingleLogPage {
 	filterableViewport := filterable_viewport.NewFilterableViewport[viewport.RenderableString](
 		filterable_viewport.FilterableViewportConfig[viewport.RenderableString]{
-			TopHeader:             "Single Log",
-			StartShowContext:      true,
-			CanToggleShowContext:  false,
-			StartSelectionEnabled: false,
-			StartWrapOn:           true,
-			KeyMap:                keyMap,
-			Width:                 width,
-			Height:                height,
-			AllRows:               []viewport.RenderableString{},
+			TopHeader:            "Single Log",
+			StartShowContext:     true,
+			CanToggleShowContext: false,
+			SelectionEnabled:     false,
+			StartWrapOn:          true,
+			KeyMap:               keyMap,
+			Width:                width,
+			Height:               height,
+			AllRows:              []viewport.RenderableString{},
 			MatchesFilter: func(s viewport.RenderableString, filter filter.Model) bool {
 				return filter.Matches(s)
 			},

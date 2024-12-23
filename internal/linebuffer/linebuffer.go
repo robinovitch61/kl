@@ -1,7 +1,9 @@
 package linebuffer
 
 import (
+	"fmt"
 	"github.com/robinovitch61/kl/internal/constants"
+	"github.com/robinovitch61/kl/internal/dev"
 	"strings"
 	"unicode/utf8"
 )
@@ -57,9 +59,6 @@ func (l LineBuffer) Truncate(xOffset, width int) string {
 	lenPlainText := len(l.plainTextRunes)
 
 	if lenPlainText == 0 || xOffset >= lenPlainText {
-		if len(l.ansiCodeIndexes) > 0 {
-			return l.reapplyANSI("", 0)
-		}
 		return ""
 	}
 
@@ -80,7 +79,7 @@ func (l LineBuffer) Truncate(xOffset, width int) string {
 	}
 	if end <= start {
 		if len(l.ansiCodeIndexes) > 0 {
-			return l.reapplyANSI("", 0)
+			return ""
 		}
 		return ""
 	}
@@ -114,24 +113,28 @@ func (l LineBuffer) Truncate(xOffset, width int) string {
 	}
 
 	if len(l.ansiCodeIndexes) > 0 {
-		return l.reapplyANSI(visible, l.byteOffsets[start])
+		return reapplyANSI(l.line, visible, l.byteOffsets[start], l.ansiCodeIndexes)
 	}
 	return visible
 }
 
-func (l LineBuffer) reapplyANSI(truncated string, startBytes int) string {
+func reapplyANSI(original, truncated string, truncByteOffset int, ansiCodeIndexes [][]int) string {
 	var result []byte
 	var lenAnsiAdded int
+	isReset := true
 	truncatedBytes := []byte(truncated)
 
-	ansiCodeIndexes := l.ansiCodeIndexes
 	for i := 0; i < len(truncatedBytes); {
+		// collect all ansi codes that should be applied immediately before the current runes
+		var ansisToAdd []string
 		for len(ansiCodeIndexes) > 0 {
 			candidateAnsi := ansiCodeIndexes[0]
 			codeStart, codeEnd := candidateAnsi[0], candidateAnsi[1]
-			originalIdx := startBytes + i + lenAnsiAdded
-			if codeStart <= originalIdx || codeEnd <= originalIdx {
-				result = append(result, l.line[codeStart:codeEnd]...)
+			originalIdx := truncByteOffset + i + lenAnsiAdded
+			if codeStart <= originalIdx {
+				code := original[codeStart:codeEnd]
+				isReset = code == "\x1b[m"
+				ansisToAdd = append(ansisToAdd, code)
 				lenAnsiAdded += codeEnd - codeStart
 				ansiCodeIndexes = ansiCodeIndexes[1:]
 			} else {
@@ -139,19 +142,37 @@ func (l LineBuffer) reapplyANSI(truncated string, startBytes int) string {
 			}
 		}
 
+		// if there's just a bunch of reset sequences, compress it to one
+		allReset := len(ansisToAdd) > 0
+		for _, ansi := range ansisToAdd {
+			if ansi != "\x1b[m" {
+				allReset = false
+				break
+			}
+		}
+		if allReset {
+			ansisToAdd = []string{"\x1b[m"}
+		}
+
+		// if the last sequence in a set of more than one is a reset, no point adding any of them
+		redundant := len(ansisToAdd) > 1 && ansisToAdd[len(ansisToAdd)-1] == "\x1b[m"
+		if !redundant {
+			for _, ansi := range ansisToAdd {
+				result = append(result, ansi...)
+			}
+		}
+
+		// add the bytes of the current rune
 		_, size := utf8.DecodeRune(truncatedBytes[i:])
 		result = append(result, truncatedBytes[i:i+size]...)
 		i += size
 	}
 
-	// add remaining ansi codes in order to end
-	for _, codeIndexes := range ansiCodeIndexes {
-		codeStart, codeEnd := codeIndexes[0], codeIndexes[1]
-		result = append(result, l.line[codeStart:codeEnd]...)
+	if !isReset {
+		result = append(result, "\x1b[m"...)
 	}
 
-	// removing empty sequences may hurt performance, but helps legibility
-	return constants.EmptySequenceRegex.ReplaceAllString(string(result), "")
+	return string(result)
 }
 
 func initByteOffsets(runes []rune) []int {
@@ -159,7 +180,13 @@ func initByteOffsets(runes []rune) []int {
 	currentOffset := 0
 	for i, r := range runes {
 		offsets[i] = currentOffset
-		currentOffset += utf8.RuneLen(r)
+		runeLen := utf8.RuneLen(r)
+		if runeLen == -1 {
+			// invalid utf-8 value, assume 1 byte
+			dev.Debug(fmt.Sprintf("invalid utf-8 value: %v", r))
+			runeLen = 1
+		}
+		currentOffset += runeLen
 	}
 	offsets[len(runes)] = currentOffset
 	return offsets

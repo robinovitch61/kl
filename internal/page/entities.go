@@ -43,18 +43,18 @@ func NewEntitiesPage(
 
 	filterableViewport := filterable_viewport.NewFilterableViewport[model.Entity](
 		filterable_viewport.FilterableViewportConfig[model.Entity]{
-			TopHeader:             "(S)election",
-			StartShowContext:      false,
-			CanToggleShowContext:  false,
-			StartSelectionEnabled: true,
-			StartWrapOn:           false,
-			KeyMap:                keyMap,
-			Width:                 width,
-			Height:                height,
-			AllRows:               entityTree.GetEntities(),
-			MatchesFilter:         entityTree.IsVisibleGivenFilter,
-			ViewWhenEmpty:         viewWhenEmpty,
-			Styles:                styles,
+			TopHeader:            "(S)election",
+			StartShowContext:     false,
+			CanToggleShowContext: false,
+			SelectionEnabled:     true,
+			StartWrapOn:          false,
+			KeyMap:               keyMap,
+			Width:                width,
+			Height:               height,
+			AllRows:              entityTree.GetEntities(),
+			MatchesFilter:        entityTree.IsVisibleGivenFilter,
+			ViewWhenEmpty:        viewWhenEmpty,
+			Styles:               styles,
 		},
 	)
 	return EntityPage{
