@@ -140,10 +140,18 @@ func reapplyANSI(original, truncated string, truncOffset int, ansiCodeIndexes []
 				break
 			}
 		}
-		//println("\n")
-		//for _, ansi := range ansisToAdd {
-		//	println(fmt.Sprintf("ansi: %q", ansi))
-		//}
+
+		allReset := len(ansisToAdd) > 0
+		for _, ansi := range ansisToAdd {
+			if ansi != "\x1b[m" {
+				allReset = false
+				break
+			}
+		}
+		if allReset {
+			ansisToAdd = []string{"\x1b[m"}
+		}
+
 		redundant := len(ansisToAdd) > 1 && ansisToAdd[len(ansisToAdd)-1] == "\x1b[m"
 		if !redundant {
 			for _, ansi := range ansisToAdd {
