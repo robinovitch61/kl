@@ -874,15 +874,19 @@ func (m Model[T]) getNumVisibleItems() int {
 func (m Model[T]) styleSelection(s string) string {
 	split := surroundingAnsiRegex.Split(s, -1)
 	matches := surroundingAnsiRegex.FindAllString(s, -1)
+	var builder strings.Builder
 
-	finalResult := ""
+	// Pre-allocate the builder's capacity based on the input string length
+	// This is optional but can improve performance for longer strings
+	builder.Grow(len(s))
+
 	for i, section := range split {
 		if section != "" {
-			finalResult += m.SelectedItemStyle.Render(section)
+			builder.WriteString(m.SelectedItemStyle.Render(section))
 		}
 		if i < len(split)-1 && i < len(matches) {
-			finalResult += matches[i]
+			builder.WriteString(matches[i])
 		}
 	}
-	return finalResult
+	return builder.String()
 }

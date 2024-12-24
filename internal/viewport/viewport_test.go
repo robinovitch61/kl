@@ -2107,7 +2107,6 @@ func TestViewport_SelectionOn_WrapOff_StringToHighlight(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 }
 
-// TODO LEO: this one is juicy
 func TestViewport_SelectionOn_WrapOff_StringToHighlightManyMatches(t *testing.T) {
 	runTest := func(t *testing.T) {
 		w, h := 10, 5
@@ -2126,7 +2125,7 @@ func TestViewport_SelectionOn_WrapOff_StringToHighlightManyMatches(t *testing.T)
 		})
 		util.CmpStr(t, expectedView, vp.View())
 	}
-	util.RunWithTimeout(t, runTest, 15000*time.Millisecond)
+	util.RunWithTimeout(t, runTest, 1200*time.Millisecond)
 }
 
 func TestViewport_SelectionOn_WrapOff_AnsiOnSelection(t *testing.T) {
