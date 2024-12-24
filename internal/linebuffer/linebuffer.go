@@ -142,24 +142,8 @@ func reapplyANSI(original, truncated string, truncByteOffset int, ansiCodeIndexe
 			}
 		}
 
-		// if there's just a bunch of reset sequences, compress it to one
-		allReset := len(ansisToAdd) > 0
-		for _, ansi := range ansisToAdd {
-			if ansi != "\x1b[m" {
-				allReset = false
-				break
-			}
-		}
-		if allReset {
-			ansisToAdd = []string{"\x1b[m"}
-		}
-
-		// if the last sequence in a set of more than one is a reset, no point adding any of them
-		redundant := len(ansisToAdd) > 1 && ansisToAdd[len(ansisToAdd)-1] == "\x1b[m"
-		if !redundant {
-			for _, ansi := range ansisToAdd {
-				result = append(result, ansi...)
-			}
+		for _, ansi := range simplifyAnsiCodes(ansisToAdd) {
+			result = append(result, ansi...)
 		}
 
 		// add the bytes of the current rune
@@ -173,6 +157,31 @@ func reapplyANSI(original, truncated string, truncByteOffset int, ansiCodeIndexe
 	}
 
 	return string(result)
+}
+
+func simplifyAnsiCodes(ansis []string) []string {
+	if len(ansis) == 0 {
+		return []string{}
+	}
+
+	// if there's just a bunch of reset sequences, compress it to one
+	allReset := true
+	for _, ansi := range ansis {
+		if ansi != "\x1b[m" {
+			allReset = false
+			break
+		}
+	}
+	if allReset {
+		return []string{"\x1b[m"}
+	}
+
+	// if the last sequence in a set of more than one is a reset, no point adding any of them
+	redundant := len(ansis) > 1 && ansis[len(ansis)-1] == "\x1b[m"
+	if redundant {
+		return []string{}
+	}
+	return ansis
 }
 
 func initByteOffsets(runes []rune) []int {

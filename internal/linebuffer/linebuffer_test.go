@@ -243,6 +243,13 @@ func TestReapplyAnsi(t *testing.T) {
 			expected:        "2345",
 		},
 		{
+			name:            "multi ansi, no offset",
+			original:        "\x1b[38;2;255;0;0m1\x1b[m\x1b[38;2;0;0;255m2\x1b[m\x1b[38;2;255;0;0m3\x1b[m45",
+			truncated:       "123",
+			truncByteOffset: 0,
+			expected:        "\x1b[38;2;255;0;0m1\x1b[m\x1b[38;2;0;0;255m2\x1b[m\x1b[38;2;255;0;0m3\x1b[m",
+		},
+		{
 			name:            "surrounding ansi, no offset",
 			original:        "\x1b[38;2;255;0;0m12345\x1b[m",
 			truncated:       "123",
