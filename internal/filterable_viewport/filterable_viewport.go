@@ -27,18 +27,18 @@ type FilterableViewport[T viewport.RenderableComparable] struct {
 }
 
 type FilterableViewportConfig[T viewport.RenderableComparable] struct {
-	TopHeader             string
-	StartShowContext      bool
-	CanToggleShowContext  bool
-	StartSelectionEnabled bool
-	StartWrapOn           bool
-	KeyMap                keymap.KeyMap
-	Width                 int
-	Height                int
-	AllRows               []T
-	MatchesFilter         func(T, filter.Model) bool
-	ViewWhenEmpty         string
-	Styles                style.Styles
+	TopHeader            string
+	StartShowContext     bool
+	CanToggleShowContext bool
+	SelectionEnabled     bool
+	StartWrapOn          bool
+	KeyMap               keymap.KeyMap
+	Width                int
+	Height               int
+	AllRows              []T
+	MatchesFilter        func(T, filter.Model) bool
+	ViewWhenEmpty        string
+	Styles               style.Styles
 }
 
 func NewFilterableViewport[T viewport.RenderableComparable](config FilterableViewportConfig[T]) FilterableViewport[T] {
@@ -46,7 +46,7 @@ func NewFilterableViewport[T viewport.RenderableComparable](config FilterableVie
 	f.SetShowContext(config.StartShowContext, config.CanToggleShowContext)
 
 	var vp = viewport.New[T](config.Width, config.Height)
-	vp.SetSelectionEnabled(config.StartSelectionEnabled)
+	vp.SetSelectionEnabled(config.SelectionEnabled)
 	vp.SetWrapText(config.StartWrapOn)
 
 	fv := FilterableViewport[T]{

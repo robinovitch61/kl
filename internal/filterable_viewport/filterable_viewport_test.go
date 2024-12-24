@@ -12,6 +12,8 @@ import (
 	"testing"
 )
 
+var longString = strings.Repeat("r", 10000)
+
 var (
 	focusFilterKeyMsg      = tea.KeyPressMsg{Code: '/', Text: "/"}
 	focusRegexFilterKeyMsg = tea.KeyPressMsg{Code: 'r', Text: "r"}
@@ -68,18 +70,18 @@ func newFilterableViewport() FilterableViewport[TestItem] {
 
 	return NewFilterableViewport[TestItem](
 		FilterableViewportConfig[TestItem]{
-			TopHeader:             "Test Header",
-			StartShowContext:      false,
-			CanToggleShowContext:  true,
-			StartSelectionEnabled: true,
-			StartWrapOn:           false,
-			KeyMap:                keymap.DefaultKeyMap(),
-			Width:                 80,
-			Height:                20,
-			AllRows:               []TestItem{},
-			MatchesFilter:         matchesFilter,
-			ViewWhenEmpty:         "No items",
-			Styles:                styles,
+			TopHeader:            "Test Header",
+			StartShowContext:     false,
+			CanToggleShowContext: true,
+			SelectionEnabled:     true,
+			StartWrapOn:          false,
+			KeyMap:               keymap.DefaultKeyMap(),
+			Width:                80,
+			Height:               20,
+			AllRows:              []TestItem{},
+			MatchesFilter:        matchesFilter,
+			ViewWhenEmpty:        "No items",
+			Styles:               styles,
 		},
 	)
 }
@@ -339,4 +341,24 @@ func TestFilterableViewport_FilterRegex(t *testing.T) {
 	if len(lines) != 3 { // 1 for header
 		t.Errorf("expected 2 visible item, got %d", len(lines)-1)
 	}
+}
+
+func TestFilterableViewport_LongLineManyMatches(t *testing.T) {
+	fv := newFilterableViewport()
+	fv, _ = fv.Update(wrapKeyMsg)
+	if !fv.viewport.GetWrapText() {
+		t.Error("wrap text should be enabled")
+	}
+	fv.SetAllRows([]TestItem{
+		{content: longString},
+	})
+	fv = applyTestFilter(fv, focusRegexFilterKeyMsg, "r")
+	lines := getTestLines(fv)
+	println(len(lines))
+	//if lines[0] != "Test Header \x1b[48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m\x1b[38;2;0;0;0;48;2;225;225;225mregex filter: \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225mi.*m\x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m(matches only) \x1b[m\x1b[m" {
+	//	t.Errorf("unexpected header with regex filter\n%q", fv.View())
+	//}
+	//if len(lines) != 3 { // 1 for header
+	//	t.Errorf("expected 2 visible item, got %d", len(lines)-1)
+	//}
 }

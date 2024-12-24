@@ -38,15 +38,15 @@ func NewLogsPage(
 	lc := model.NewPageLogContainer(!descending)
 	filterableViewport := filterable_viewport.NewFilterableViewport[model.PageLog](
 		filterable_viewport.FilterableViewportConfig[model.PageLog]{
-			TopHeader:             fmt.Sprintf("(L)ogs, %s", getOrder(!descending)),
-			StartShowContext:      true,
-			CanToggleShowContext:  true,
-			StartSelectionEnabled: true,
-			StartWrapOn:           true,
-			KeyMap:                keyMap,
-			Width:                 width,
-			Height:                height,
-			AllRows:               lc.GetOrderedLogs(),
+			TopHeader:            fmt.Sprintf("(L)ogs, %s", getOrder(!descending)),
+			StartShowContext:     true,
+			CanToggleShowContext: true,
+			SelectionEnabled:     true,
+			StartWrapOn:          true,
+			KeyMap:               keyMap,
+			Width:                width,
+			Height:               height,
+			AllRows:              lc.GetOrderedLogs(),
 			MatchesFilter: func(log model.PageLog, filter filter.Model) bool {
 				return filter.Matches(log)
 			},
