@@ -12,8 +12,6 @@ import (
 	"testing"
 )
 
-var longString = strings.Repeat("r", 10000)
-
 var (
 	focusFilterKeyMsg      = tea.KeyPressMsg{Code: '/', Text: "/"}
 	focusRegexFilterKeyMsg = tea.KeyPressMsg{Code: 'r', Text: "r"}
@@ -153,7 +151,7 @@ func TestFilterableViewport_FilterNoContext(t *testing.T) {
 	lines := getTestLines(fv)
 	util.CmpStr(
 		t,
-		"Test Header \x1b[48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m\x1b[38;2;0;0;0;48;2;225;225;225mfilter: \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225mone\x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m(matches only) \x1b[m\x1b[m",
+		"Test Header \x1b[48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m\x1b[38;2;0;0;0;48;2;225;225;225mfilter: \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225mone\x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m(matches only) \x1b[m",
 		lines[0],
 	)
 	if len(lines) != 2 { // 1 for header
@@ -213,7 +211,7 @@ func TestFilterableViewport_FilterShowContext(t *testing.T) {
 	}
 
 	lines := getTestLines(fv)
-	if lines[0] != "Test Header \x1b[48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m\x1b[38;2;0;0;0;48;2;225;225;225mfilter: \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225mone\x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m(1/1, n/N to cycle) \x1b[m\x1b[m" {
+	if lines[0] != "Test Header \x1b[48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m\x1b[38;2;0;0;0;48;2;225;225;225mfilter: \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225mone\x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m(1/1, n/N to cycle) \x1b[m" {
 		t.Errorf("unexpected header with show context filter\n%q", fv.View())
 	}
 
@@ -229,7 +227,7 @@ func TestFilterableViewport_FilterShowContext(t *testing.T) {
 		{content: "another item"},
 	})
 	lines = getTestLines(fv)
-	if lines[0] != "Test Header \x1b[48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m\x1b[38;2;0;0;0;48;2;225;225;225mfilter: \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225mone\x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m(1/2, n/N to cycle) \x1b[m\x1b[m" {
+	if lines[0] != "Test Header \x1b[48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m\x1b[38;2;0;0;0;48;2;225;225;225mfilter: \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225mone\x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m(1/2, n/N to cycle) \x1b[m" {
 		t.Errorf("unexpected header with show context filter\n%q", fv.View())
 	}
 	if len(lines) != 5 { // 1 for header
@@ -242,7 +240,7 @@ func TestFilterableViewport_FilterShowContext(t *testing.T) {
 		t.Error("contextual filtering should be disabled")
 	}
 	lines = getTestLines(fv)
-	if lines[0] != "Test Header \x1b[48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m\x1b[38;2;0;0;0;48;2;225;225;225mfilter: \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225mone\x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m(matches only) \x1b[m\x1b[m" {
+	if lines[0] != "Test Header \x1b[48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m\x1b[38;2;0;0;0;48;2;225;225;225mfilter: \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225mone\x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m(matches only) \x1b[m" {
 		t.Errorf("unexpected header with filter\n%q", fv.View())
 	}
 
@@ -335,7 +333,7 @@ func TestFilterableViewport_FilterRegex(t *testing.T) {
 
 	fv = applyTestFilter(fv, focusRegexFilterKeyMsg, "i.*m")
 	lines := getTestLines(fv)
-	if lines[0] != "Test Header \x1b[48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m\x1b[38;2;0;0;0;48;2;225;225;225mregex filter: \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225mi.*m\x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m(matches only) \x1b[m\x1b[m" {
+	if lines[0] != "Test Header \x1b[48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m\x1b[38;2;0;0;0;48;2;225;225;225mregex filter: \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225mi.*m\x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m(matches only) \x1b[m" {
 		t.Errorf("unexpected header with regex filter\n%q", fv.View())
 	}
 	if len(lines) != 3 { // 1 for header
@@ -350,12 +348,12 @@ func TestFilterableViewport_LongLineManyMatches(t *testing.T) {
 		t.Error("wrap text should be enabled")
 	}
 	fv.SetAllRows([]TestItem{
-		{content: longString},
+		{content: strings.Repeat("r", 10000)},
 	})
 	fv = applyTestFilter(fv, focusRegexFilterKeyMsg, "r")
 	lines := getTestLines(fv)
 	println(len(lines))
-	//if lines[0] != "Test Header \x1b[48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m\x1b[38;2;0;0;0;48;2;225;225;225mregex filter: \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225mi.*m\x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m(matches only) \x1b[m\x1b[m" {
+	//if lines[0] != "Test Header \x1b[48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m\x1b[38;2;0;0;0;48;2;225;225;225mregex filter: \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225mi.*m\x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m(matches only) \x1b[m" {
 	//	t.Errorf("unexpected header with regex filter\n%q", fv.View())
 	//}
 	//if len(lines) != 3 { // 1 for header
