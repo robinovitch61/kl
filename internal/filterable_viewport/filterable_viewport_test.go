@@ -343,11 +343,7 @@ func TestFilterableViewport_FilterRegex(t *testing.T) {
 }
 
 func TestFilterableViewport_LongLineManyMatches(t *testing.T) {
-	// TODO LEO: improve this
-	timeout := 4 * time.Second
-	done := make(chan bool)
-	start := time.Now()
-	go func() {
+	runTest := func(t *testing.T) {
 		fv := newFilterableViewport()
 		fv, _ = fv.Update(wrapKeyMsg)
 		if !fv.viewport.GetWrapText() {
@@ -361,14 +357,7 @@ func TestFilterableViewport_LongLineManyMatches(t *testing.T) {
 		if len(lines) != 20 {
 			t.Errorf("expected 20 lines, got %d", len(lines))
 		}
-		done <- true
-	}()
-
-	select {
-	case <-done:
-		break
-	case <-time.After(timeout):
-		elapsed := time.Since(start)
-		t.Fatalf("Test took too long: %v", elapsed)
 	}
+
+	util.RunWithTimeout(t, runTest, 3500*time.Millisecond)
 }
