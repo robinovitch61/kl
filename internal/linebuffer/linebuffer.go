@@ -118,7 +118,7 @@ func (l LineBuffer) Truncate(xOffset, width int) string {
 	return visible
 }
 
-func reapplyANSI(original, truncated string, truncOffset int, ansiCodeIndexes [][]int) string {
+func reapplyANSI(original, truncated string, truncByteOffset int, ansiCodeIndexes [][]int) string {
 	var result []byte
 	var lenAnsiAdded int
 	isReset := true
@@ -129,7 +129,7 @@ func reapplyANSI(original, truncated string, truncOffset int, ansiCodeIndexes []
 		for len(ansiCodeIndexes) > 0 {
 			candidateAnsi := ansiCodeIndexes[0]
 			codeStart, codeEnd := candidateAnsi[0], candidateAnsi[1]
-			originalIdx := truncOffset + i + lenAnsiAdded
+			originalIdx := truncByteOffset + i + lenAnsiAdded
 			if codeStart <= originalIdx {
 				code := original[codeStart:codeEnd]
 				isReset = code == "\x1b[m"
