@@ -678,6 +678,7 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 		if m.selectionEnabled && idx == m.selectedItemIdx {
 			highlightStyle = m.HighlightStyleIfSelected
 		}
+		//println(fmt.Sprintf("highlightLine(%q, %s, %s) = %q", item.Render(), m.stringToHighlight, highlightStyle, highlighted))
 		return highlightLine(item.Render(), m.stringToHighlight, highlightStyle)
 	}
 

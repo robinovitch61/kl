@@ -113,6 +113,7 @@ func (l LineBuffer) Truncate(xOffset, width int) string {
 	}
 
 	if len(l.ansiCodeIndexes) > 0 {
+		//println(fmt.Sprintf("reapplyAnsi(%q, %q, %d, %v) = %q", l.line, visible, l.byteOffsets[start], l.ansiCodeIndexes, reapplied))
 		return reapplyANSI(l.line, visible, l.byteOffsets[start], l.ansiCodeIndexes)
 	}
 	return visible
@@ -160,6 +161,10 @@ func reapplyANSI(original, truncated string, truncByteOffset int, ansiCodeIndexe
 }
 
 func simplifyAnsiCodes(ansis []string) []string {
+	//println()
+	//for _, a := range ansis {
+	//	println(fmt.Sprintf("%q", a))
+	//}
 	if len(ansis) == 0 {
 		return []string{}
 	}
@@ -176,10 +181,16 @@ func simplifyAnsiCodes(ansis []string) []string {
 		return []string{"\x1b[m"}
 	}
 
-	// if the last sequence in a set of more than one is a reset, no point adding any of them
-	redundant := len(ansis) > 1 && ansis[len(ansis)-1] == "\x1b[m"
-	if redundant {
-		return []string{}
+	// return all ansis to the right of the rightmost reset seq
+	for i := len(ansis) - 1; i >= 0; i-- {
+		if ansis[i] == "\x1b[m" {
+			result := ansis[i+1:]
+			// keep reset at the start if present
+			if ansis[0] == "\x1b[m" {
+				return append([]string{"\x1b[m"}, result...)
+			}
+			return result
+		}
 	}
 	return ansis
 }

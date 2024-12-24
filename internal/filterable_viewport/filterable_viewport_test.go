@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 var (
@@ -342,21 +343,32 @@ func TestFilterableViewport_FilterRegex(t *testing.T) {
 }
 
 func TestFilterableViewport_LongLineManyMatches(t *testing.T) {
-	fv := newFilterableViewport()
-	fv, _ = fv.Update(wrapKeyMsg)
-	if !fv.viewport.GetWrapText() {
-		t.Error("wrap text should be enabled")
+	// TODO LEO: improve this
+	timeout := 4 * time.Second
+	done := make(chan bool)
+	start := time.Now()
+	go func() {
+		fv := newFilterableViewport()
+		fv, _ = fv.Update(wrapKeyMsg)
+		if !fv.viewport.GetWrapText() {
+			t.Error("wrap text should be enabled")
+		}
+		fv.SetAllRows([]TestItem{
+			{content: strings.Repeat("rick ross really rad rebel arrr", 10000)},
+		})
+		fv = applyTestFilter(fv, focusRegexFilterKeyMsg, "r")
+		lines := getTestLines(fv)
+		if len(lines) != 20 {
+			t.Errorf("expected 20 lines, got %d", len(lines))
+		}
+		done <- true
+	}()
+
+	select {
+	case <-done:
+		break
+	case <-time.After(timeout):
+		elapsed := time.Since(start)
+		t.Fatalf("Test took too long: %v", elapsed)
 	}
-	fv.SetAllRows([]TestItem{
-		{content: strings.Repeat("rick ross really rad rebel arrr", 10000)},
-	})
-	fv = applyTestFilter(fv, focusRegexFilterKeyMsg, "r")
-	lines := getTestLines(fv)
-	println(len(lines))
-	//if lines[0] != "Test Header \x1b[48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m\x1b[38;2;0;0;0;48;2;225;225;225mregex filter: \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225mi.*m\x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m \x1b[m\x1b[38;2;0;0;0;48;2;225;225;225m(matches only) \x1b[m\x1b[m" {
-	//	t.Errorf("unexpected header with regex filter\n%q", fv.View())
-	//}
-	//if len(lines) != 3 { // 1 for header
-	//	t.Errorf("expected 2 visible item, got %d", len(lines)-1)
-	//}
 }

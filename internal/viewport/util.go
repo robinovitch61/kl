@@ -2,6 +2,7 @@ package viewport
 
 import (
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/robinovitch61/kl/internal/constants"
 	"github.com/robinovitch61/kl/internal/linebuffer"
 	"strings"
 	"unicode"
@@ -106,7 +107,8 @@ func highlightLine(line, highlight string, highlightStyle lipgloss.Style) string
 		i++
 	}
 
-	return result.String()
+	// TODO LEO: figure out how to remove this
+	return constants.EmptySequenceRegex.ReplaceAllString(result.String(), "")
 }
 
 // pad is a test helper function that pads the given lines to the given width and height.

@@ -424,6 +424,20 @@ func TestReapplyAnsi(t *testing.T) {
 			truncByteOffset: 3, // 你 is 3 bytes
 			expected:        "\x1b[31m\x1b[32m好\x1b[33m世\x1b[m界",
 		},
+		{
+			name:            "lots of leading ansi",
+			original:        "\x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;255;0;0mr\x1b[m",
+			truncated:       "r",
+			truncByteOffset: 10,
+			expected:        "\x1b[38;2;255;0;0mr\x1b[m",
+		},
+		{
+			name:            "complex ansi, no offset",
+			original:        "\x1b[38;2;0;0;255msome \x1b[m\x1b[38;2;255;0;0mred\x1b[m\x1b[38;2;0;0;255m t\x1b[m",
+			truncated:       "some red t",
+			truncByteOffset: 0,
+			expected:        "\x1b[38;2;0;0;255msome \x1b[m\x1b[38;2;255;0;0mred\x1b[m\x1b[38;2;0;0;255m t\x1b[m",
+		},
 	}
 
 	for _, tt := range tests {
