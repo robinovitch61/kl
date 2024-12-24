@@ -125,6 +125,7 @@ func reapplyANSI(original, truncated string, truncByteOffset int, ansiCodeIndexe
 	truncatedBytes := []byte(truncated)
 
 	for i := 0; i < len(truncatedBytes); {
+		// collect all ansi codes that should be applied immediately before the current runes
 		var ansisToAdd []string
 		for len(ansiCodeIndexes) > 0 {
 			candidateAnsi := ansiCodeIndexes[0]
@@ -141,6 +142,7 @@ func reapplyANSI(original, truncated string, truncByteOffset int, ansiCodeIndexe
 			}
 		}
 
+		// if there's just a bunch of reset sequences, compress it to one
 		allReset := len(ansisToAdd) > 0
 		for _, ansi := range ansisToAdd {
 			if ansi != "\x1b[m" {
@@ -152,6 +154,7 @@ func reapplyANSI(original, truncated string, truncByteOffset int, ansiCodeIndexe
 			ansisToAdd = []string{"\x1b[m"}
 		}
 
+		// if the last sequence in a set of more than one is a reset, no point adding any of them
 		redundant := len(ansisToAdd) > 1 && ansisToAdd[len(ansisToAdd)-1] == "\x1b[m"
 		if !redundant {
 			for _, ansi := range ansisToAdd {
@@ -159,6 +162,7 @@ func reapplyANSI(original, truncated string, truncByteOffset int, ansiCodeIndexe
 			}
 		}
 
+		// add the bytes of the current rune
 		_, size := utf8.DecodeRune(truncatedBytes[i:])
 		result = append(result, truncatedBytes[i:i+size]...)
 		i += size
