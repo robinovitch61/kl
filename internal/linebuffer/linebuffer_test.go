@@ -16,7 +16,7 @@ func TestTruncateLine(t *testing.T) {
 		expected                  string
 	}{
 		{
-			name:                      "zero width zero truncByteOffset",
+			name:                      "zero width zero offset",
 			s:                         "1234567890123456789012345",
 			xOffset:                   0,
 			width:                     0,
@@ -24,7 +24,7 @@ func TestTruncateLine(t *testing.T) {
 			expected:                  "",
 		},
 		{
-			name:                      "zero width positive truncByteOffset",
+			name:                      "zero width positive offset",
 			s:                         "1234567890123456789012345",
 			xOffset:                   5,
 			width:                     0,
@@ -32,7 +32,7 @@ func TestTruncateLine(t *testing.T) {
 			expected:                  "",
 		},
 		{
-			name:                      "zero width negative truncByteOffset",
+			name:                      "zero width negative offset",
 			s:                         "1234567890123456789012345",
 			xOffset:                   -5,
 			width:                     0,
@@ -72,7 +72,7 @@ func TestTruncateLine(t *testing.T) {
 			expected:                  ".....",
 		},
 		{
-			name:                      "zero truncByteOffset, sufficient width",
+			name:                      "zero offset, sufficient width",
 			s:                         "1234567890123456789012345",
 			xOffset:                   0,
 			width:                     30,
@@ -80,7 +80,7 @@ func TestTruncateLine(t *testing.T) {
 			expected:                  "1234567890123456789012345",
 		},
 		{
-			name:                      "zero truncByteOffset, sufficient width, space at end",
+			name:                      "zero offset, sufficient width, space at end",
 			s:                         "1234567890123456789012345     ",
 			xOffset:                   0,
 			width:                     30,
@@ -88,7 +88,7 @@ func TestTruncateLine(t *testing.T) {
 			expected:                  "1234567890123456789012345     ",
 		},
 		{
-			name:                      "zero truncByteOffset, insufficient width",
+			name:                      "zero offset, insufficient width",
 			s:                         "1234567890123456789012345",
 			xOffset:                   0,
 			width:                     15,
@@ -96,7 +96,7 @@ func TestTruncateLine(t *testing.T) {
 			expected:                  "123456789012...",
 		},
 		{
-			name:                      "positive truncByteOffset, insufficient width",
+			name:                      "positive offset, insufficient width",
 			s:                         "1234567890123456789012345",
 			xOffset:                   5,
 			width:                     15,
@@ -104,7 +104,7 @@ func TestTruncateLine(t *testing.T) {
 			expected:                  "...901234567...",
 		},
 		{
-			name:                      "positive truncByteOffset, exactly at end",
+			name:                      "positive offset, exactly at end",
 			s:                         "1234567890123456789012345",
 			xOffset:                   15,
 			width:                     10,
@@ -112,7 +112,7 @@ func TestTruncateLine(t *testing.T) {
 			expected:                  "...9012345",
 		},
 		{
-			name:                      "positive truncByteOffset, over the end",
+			name:                      "positive offset, over the end",
 			s:                         "1234567890123456789012345",
 			xOffset:                   20,
 			width:                     10,
@@ -120,7 +120,7 @@ func TestTruncateLine(t *testing.T) {
 			expected:                  "...45",
 		},
 		{
-			name:                      "positive truncByteOffset, ansi",
+			name:                      "positive offset, ansi",
 			s:                         "\x1b[38;2;255;0;0ma really really long line\x1b[m",
 			xOffset:                   15,
 			width:                     15,
@@ -128,7 +128,7 @@ func TestTruncateLine(t *testing.T) {
 			expected:                  "\x1b[38;2;255;0;0m long line\x1b[m",
 		},
 		{
-			name:                      "zero truncByteOffset, insufficient width, ansi",
+			name:                      "zero offset, insufficient width, ansi",
 			s:                         "\x1b[38;2;255;0;0m1234567890123456789012345\x1b[m",
 			xOffset:                   0,
 			width:                     15,
@@ -136,7 +136,7 @@ func TestTruncateLine(t *testing.T) {
 			expected:                  "\x1b[38;2;255;0;0m123456789012...\x1b[m",
 		},
 		{
-			name:                      "positive truncByteOffset, insufficient width, ansi",
+			name:                      "positive offset, insufficient width, ansi",
 			s:                         "\x1b[38;2;255;0;0m1234567890123456789012345\x1b[m",
 			xOffset:                   5,
 			width:                     15,
@@ -144,7 +144,7 @@ func TestTruncateLine(t *testing.T) {
 			expected:                  "\x1b[38;2;255;0;0m...901234567...\x1b[m",
 		},
 		{
-			name:                      "no truncByteOffset, insufficient width, inline ansi",
+			name:                      "no offset, insufficient width, inline ansi",
 			s:                         "|\x1b[38;2;169;15;15mfl..-1\x1b[m| {\"timestamp\": \"2024-09-29T22:30:28.730520\"}",
 			xOffset:                   0,
 			width:                     15,
@@ -152,7 +152,7 @@ func TestTruncateLine(t *testing.T) {
 			expected:                  "|\x1b[38;2;169;15;15mfl..-1\x1b[m| {\"t...",
 		},
 		{
-			name:                      "truncByteOffset overflow, ansi",
+			name:                      "offset overflow, ansi",
 			s:                         "\x1b[38;2;0;0;255mthird line that is fairly long\x1b[m",
 			xOffset:                   41,
 			width:                     10,
@@ -160,7 +160,7 @@ func TestTruncateLine(t *testing.T) {
 			expected:                  "",
 		},
 		{
-			name:                      "truncByteOffset overflow, ansi 2",
+			name:                      "offset overflow, ansi 2",
 			s:                         "\x1b[38;2;0;0;255mfourth\x1b[m",
 			xOffset:                   41,
 			width:                     10,
@@ -168,7 +168,7 @@ func TestTruncateLine(t *testing.T) {
 			expected:                  "",
 		},
 		{
-			name: "truncByteOffset start space ansi",
+			name: "offset start space ansi",
 			// 							   0123456789012345   67890
 			//       									  0       123456789012345678901234
 			s:                         "\x1b[38;2;255;0;0ma\x1b[m really really long line",
@@ -229,91 +229,91 @@ func TestReapplyAnsi(t *testing.T) {
 		expected        string
 	}{
 		{
-			name:            "no ansi, no truncByteOffset",
+			name:            "no ansi, no offset",
 			original:        "1234567890123456789012345",
 			truncated:       "12345",
 			truncByteOffset: 0,
 			expected:        "12345",
 		},
 		{
-			name:            "no ansi, truncByteOffset",
+			name:            "no ansi, offset",
 			original:        "1234567890123456789012345",
 			truncated:       "2345",
 			truncByteOffset: 1,
 			expected:        "2345",
 		},
 		{
-			name:            "surrounding ansi, no truncByteOffset",
+			name:            "surrounding ansi, no offset",
 			original:        "\x1b[38;2;255;0;0m12345\x1b[m",
 			truncated:       "123",
 			truncByteOffset: 0,
 			expected:        "\x1b[38;2;255;0;0m123\x1b[m",
 		},
 		{
-			name:            "surrounding ansi, truncByteOffset",
+			name:            "surrounding ansi, offset",
 			original:        "\x1b[38;2;255;0;0m12345\x1b[m",
 			truncated:       "234",
 			truncByteOffset: 1,
 			expected:        "\x1b[38;2;255;0;0m234\x1b[m",
 		},
 		{
-			name:            "left ansi, no truncByteOffset",
+			name:            "left ansi, no offset",
 			original:        "\x1b[38;2;255;0;0m1\x1b[m" + "2345",
 			truncated:       "123",
 			truncByteOffset: 0,
 			expected:        "\x1b[38;2;255;0;0m1\x1b[m" + "23",
 		},
 		{
-			name:            "left ansi, truncByteOffset",
+			name:            "left ansi, offset",
 			original:        "\x1b[38;2;255;0;0m12\x1b[m" + "345",
 			truncated:       "234",
 			truncByteOffset: 1,
 			expected:        "\x1b[38;2;255;0;0m2\x1b[m" + "34",
 		},
 		{
-			name:            "right ansi, no truncByteOffset",
+			name:            "right ansi, no offset",
 			original:        "1" + "\x1b[38;2;255;0;0m2345\x1b[m",
 			truncated:       "123",
 			truncByteOffset: 0,
 			expected:        "1" + "\x1b[38;2;255;0;0m23\x1b[m",
 		},
 		{
-			name:            "right ansi, truncByteOffset",
+			name:            "right ansi, offset",
 			original:        "12" + "\x1b[38;2;255;0;0m345\x1b[m",
 			truncated:       "234",
 			truncByteOffset: 1,
 			expected:        "2" + "\x1b[38;2;255;0;0m34\x1b[m",
 		},
 		{
-			name:            "left and right ansi, no truncByteOffset",
+			name:            "left and right ansi, no offset",
 			original:        "\x1b[38;2;255;0;0m1\x1b[m" + "2" + "\x1b[38;2;255;0;0m345\x1b[m",
 			truncated:       "123",
 			truncByteOffset: 0,
 			expected:        "\x1b[38;2;255;0;0m1\x1b[m" + "2" + "\x1b[38;2;255;0;0m3\x1b[m",
 		},
 		{
-			name:            "left and right ansi, truncByteOffset",
+			name:            "left and right ansi, offset",
 			original:        "\x1b[38;2;255;0;0m12\x1b[m" + "3" + "\x1b[38;2;255;0;0m45\x1b[m",
 			truncated:       "234",
 			truncByteOffset: 1,
 			expected:        "\x1b[38;2;255;0;0m2\x1b[m" + "3" + "\x1b[38;2;255;0;0m4\x1b[m",
 		},
 		{
-			name:            "truncated right ansi, no truncByteOffset",
+			name:            "truncated right ansi, no offset",
 			original:        "\x1b[38;2;255;0;0m1\x1b[m" + "234" + "\x1b[38;2;255;0;0m5\x1b[m",
 			truncated:       "123",
 			truncByteOffset: 0,
 			expected:        "\x1b[38;2;255;0;0m1\x1b[m" + "23",
 		},
 		{
-			name:            "truncated right ansi, truncByteOffset",
+			name:            "truncated right ansi, offset",
 			original:        "\x1b[38;2;255;0;0m12\x1b[m" + "34" + "\x1b[38;2;255;0;0m5\x1b[m",
 			truncated:       "234",
 			truncByteOffset: 1,
 			expected:        "\x1b[38;2;255;0;0m2\x1b[m" + "34",
 		},
 		{
-			name:            "truncated left ansi, truncByteOffset",
+			name:            "truncated left ansi, offset",
 			original:        "\x1b[38;2;255;0;0m1\x1b[m" + "23" + "\x1b[38;2;255;0;0m45\x1b[m",
 			truncated:       "234",
 			truncByteOffset: 1,
@@ -327,7 +327,7 @@ func TestReapplyAnsi(t *testing.T) {
 			expected:        "\x1b[31m1\x1b[32m2\x1b[33m3\x1b[m",
 		},
 		{
-			name:            "nested color sequences with truncByteOffset",
+			name:            "nested color sequences with offset",
 			original:        "\x1b[31m1\x1b[32m2\x1b[33m3\x1b[m\x1b[m\x1b[m45",
 			truncated:       "234",
 			truncByteOffset: 1,
