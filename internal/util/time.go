@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"testing"
 	"time"
 )
 
@@ -80,4 +81,21 @@ func DurationTilNext(start time.Time, now time.Time, between time.Duration) time
 	intervals := elapsed / between
 	nextUpdate := start.Add(between * (intervals + 1))
 	return nextUpdate.Sub(now)
+}
+
+func RunWithTimeout(t *testing.T, runTest func(t *testing.T), timeout time.Duration) {
+	done := make(chan bool)
+	start := time.Now()
+	go func() {
+		runTest(t)
+		done <- true
+	}()
+
+	select {
+	case <-done:
+		break
+	case <-time.After(timeout):
+		elapsed := time.Since(start)
+		t.Fatalf("Test took too long: %v", elapsed)
+	}
 }

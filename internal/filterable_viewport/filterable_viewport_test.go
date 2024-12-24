@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 var (
@@ -341,17 +342,22 @@ func TestFilterableViewport_FilterRegex(t *testing.T) {
 	}
 }
 
-// TODO LEO: improve this
-//func TestFilterableViewport_LongLineManyMatches(t *testing.T) {
-//	fv := newFilterableViewport()
-//	fv, _ = fv.Update(wrapKeyMsg)
-//	if !fv.viewport.GetWrapText() {
-//		t.Error("wrap text should be enabled")
-//	}
-//	fv.SetAllRows([]TestItem{
-//		{content: strings.Repeat("r", 10000)},
-//	})
-//	fv = applyTestFilter(fv, focusRegexFilterKeyMsg, "r")
-//	lines := getTestLines(fv)
-//	println(len(lines))
-//}
+func TestFilterableViewport_LongLineManyMatches(t *testing.T) {
+	runTest := func(t *testing.T) {
+		fv := newFilterableViewport()
+		fv, _ = fv.Update(wrapKeyMsg)
+		if !fv.viewport.GetWrapText() {
+			t.Error("wrap text should be enabled")
+		}
+		fv.SetAllRows([]TestItem{
+			{content: strings.Repeat("rick ross really rad rebel arrr", 10000)},
+		})
+		fv = applyTestFilter(fv, focusRegexFilterKeyMsg, "r")
+		lines := getTestLines(fv)
+		if len(lines) != 20 {
+			t.Errorf("expected 20 lines, got %d", len(lines))
+		}
+	}
+
+	util.RunWithTimeout(t, runTest, 3500*time.Millisecond)
+}

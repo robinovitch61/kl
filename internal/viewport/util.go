@@ -55,32 +55,22 @@ func percent(a, b int) int {
 	return int(float32(a) / float32(b) * 100)
 }
 
-// highlightLine highlights a line that potentially has ansi codes in it without disrupting them
+// highlightLine highlights a string in a line that potentially has ansi codes in it without disrupting them
 func highlightLine(line, highlight string, highlightStyle lipgloss.Style) string {
 	if line == "" || highlight == "" {
 		return line
 	}
 
-	// Helper function to check if we're inside an ANSI escape sequence
-	isInAnsiCode := func(s string, pos int) bool {
-		// Look back for ESC character
-		for i := pos; i >= 0; i-- {
-			if s[i] == '\x1b' {
-				return true
-			} else if s[i] == 'm' {
-				return false
-			}
-		}
-		return false
-	}
-
+	renderedHighlight := highlightStyle.Render(highlight)
 	result := &strings.Builder{}
 	i := 0
 	activeStyle := ""
+	inAnsiCode := false
 
 	for i < len(line) {
 		if strings.HasPrefix(line[i:], "\x1b[") {
 			// Found start of ANSI sequence
+			inAnsiCode = true
 			escEnd := strings.Index(line[i:], "m")
 			if escEnd != -1 {
 				escEnd += i + 1
@@ -92,35 +82,32 @@ func highlightLine(line, highlight string, highlightStyle lipgloss.Style) string
 				}
 				result.WriteString(currentSequence)
 				i = escEnd
+				inAnsiCode = false
 				continue
 			}
 		}
 
 		// Check if current position starts a highlight match
-		if len(highlight) > 0 && strings.HasPrefix(line[i:], highlight) && !isInAnsiCode(line, i) {
+		if len(highlight) > 0 && strings.HasPrefix(line[i:], highlight) && !inAnsiCode {
 			// Reset current style if any
 			if activeStyle != "" {
 				result.WriteString("\x1b[m")
 			}
-
 			// Apply highlight
-			result.WriteString(highlightStyle.Render(highlight))
-
+			result.WriteString(renderedHighlight)
 			// Restore previous style if there was one
 			if activeStyle != "" {
 				result.WriteString(activeStyle)
 			}
-
 			i += len(highlight)
 			continue
 		}
-
 		// Regular character
 		result.WriteByte(line[i])
 		i++
 	}
 
-	// removing empty sequences may hurt performance, but helps legibility
+	// TODO LEO: figure out how to remove this
 	return constants.EmptySequenceRegex.ReplaceAllString(result.String(), "")
 }
 

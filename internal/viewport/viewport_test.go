@@ -6,6 +6,7 @@ import (
 	"github.com/robinovitch61/kl/internal/util"
 	"strings"
 	"testing"
+	"time"
 )
 
 var (
@@ -755,6 +756,26 @@ func TestViewport_SelectionOff_WrapOff_StringToHighlight(t *testing.T) {
 		"75% (3/4)",
 	})
 	util.CmpStr(t, expectedView, vp.View())
+}
+
+func TestViewport_SelectionOff_WrapOff_StringToHighlightManyMatches(t *testing.T) {
+	runTest := func(t *testing.T) {
+		w, h := 10, 5
+		vp := newViewport(w, h)
+		vp.SetHeader([]string{"header"})
+		vp.SetContent([]RenderableString{
+			{Content: strings.Repeat("r", 100000)},
+		})
+		vp.SetStringToHighlight("r")
+		vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
+		vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
+		expectedView := pad(vp.width, vp.height, []string{
+			"header",
+			strings.Repeat("\x1b[38;2;0;255;0mr\x1b[m", 7) + strings.Repeat("\x1b[38;2;0;255;0m.\x1b[m", 3),
+		})
+		util.CmpStr(t, expectedView, vp.View())
+	}
+	util.RunWithTimeout(t, runTest, 600*time.Millisecond)
 }
 
 func TestViewport_SelectionOff_WrapOff_StringToHighlightAnsi(t *testing.T) {
@@ -2086,6 +2107,27 @@ func TestViewport_SelectionOn_WrapOff_StringToHighlight(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 }
 
+func TestViewport_SelectionOn_WrapOff_StringToHighlightManyMatches(t *testing.T) {
+	runTest := func(t *testing.T) {
+		w, h := 10, 5
+		vp := newViewport(w, h)
+		vp.SetHeader([]string{"header"})
+		vp.SetSelectionEnabled(true)
+		vp.SetContent([]RenderableString{
+			{Content: strings.Repeat("r", 100000)},
+		})
+		vp.SetStringToHighlight("r")
+		vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
+		vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
+		expectedView := pad(vp.width, vp.height, []string{
+			"header",
+			strings.Repeat("\x1b[38;2;255;0;0mr\x1b[m", 7) + strings.Repeat("\x1b[38;2;255;0;0m.\x1b[m", 3),
+		})
+		util.CmpStr(t, expectedView, vp.View())
+	}
+	util.RunWithTimeout(t, runTest, 1200*time.Millisecond)
+}
+
 func TestViewport_SelectionOn_WrapOff_AnsiOnSelection(t *testing.T) {
 	w, h := 20, 5
 	vp := newViewport(w, h)
@@ -2889,6 +2931,30 @@ func TestViewport_SelectionOff_WrapOn_StringToHighlight(t *testing.T) {
 		"100% (1/1)",
 	})
 	util.CmpStr(t, expectedView, vp.View())
+}
+
+func TestViewport_SelectionOff_WrapOn_StringToHighlightManyMatches(t *testing.T) {
+	runTest := func(t *testing.T) {
+		w, h := 10, 5
+		vp := newViewport(w, h)
+		vp.SetHeader([]string{"header"})
+		vp.SetWrapText(true)
+		vp.SetContent([]RenderableString{
+			{Content: strings.Repeat("r", 100000)},
+		})
+		vp.SetStringToHighlight("r")
+		vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
+		vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
+		expectedView := pad(vp.width, vp.height, []string{
+			"header",
+			strings.Repeat("\x1b[38;2;0;255;0mr\x1b[m", 10),
+			strings.Repeat("\x1b[38;2;0;255;0mr\x1b[m", 10),
+			strings.Repeat("\x1b[38;2;0;255;0mr\x1b[m", 10),
+			"99% (1/1)",
+		})
+		util.CmpStr(t, expectedView, vp.View())
+	}
+	util.RunWithTimeout(t, runTest, 1600*time.Millisecond)
 }
 
 func TestViewport_SelectionOff_WrapOn_StringToHighlightAnsi(t *testing.T) {
@@ -4295,6 +4361,31 @@ func TestViewport_SelectionOn_WrapOn_StringToHighlight(t *testing.T) {
 		"100% (1/1)",
 	})
 	util.CmpStr(t, expectedView, vp.View())
+}
+
+func TestViewport_SelectionOn_WrapOn_StringToHighlightManyMatches(t *testing.T) {
+	runTest := func(t *testing.T) {
+		w, h := 10, 5
+		vp := newViewport(w, h)
+		vp.SetHeader([]string{"header"})
+		vp.SetSelectionEnabled(true)
+		vp.SetWrapText(true)
+		vp.SetContent([]RenderableString{
+			{Content: strings.Repeat("r", 100000)},
+		})
+		vp.SetStringToHighlight("r")
+		vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
+		vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
+		expectedView := pad(vp.width, vp.height, []string{
+			"header",
+			strings.Repeat("\x1b[38;2;255;0;0mr\x1b[m", 10),
+			strings.Repeat("\x1b[38;2;255;0;0mr\x1b[m", 10),
+			strings.Repeat("\x1b[38;2;255;0;0mr\x1b[m", 10),
+			"100% (1/1)",
+		})
+		util.CmpStr(t, expectedView, vp.View())
+	}
+	util.RunWithTimeout(t, runTest, 1200*time.Millisecond)
 }
 
 func TestViewport_SelectionOn_WrapOn_AnsiOnSelection(t *testing.T) {
