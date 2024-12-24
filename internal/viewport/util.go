@@ -61,6 +61,7 @@ func highlightLine(line, highlight string, highlightStyle lipgloss.Style) string
 		return line
 	}
 
+	renderedHighlight := highlightStyle.Render(highlight)
 	result := &strings.Builder{}
 	i := 0
 	activeStyle := ""
@@ -93,7 +94,7 @@ func highlightLine(line, highlight string, highlightStyle lipgloss.Style) string
 				result.WriteString("\x1b[m")
 			}
 			// Apply highlight
-			result.WriteString(highlightStyle.Render(highlight))
+			result.WriteString(renderedHighlight)
 			// Restore previous style if there was one
 			if activeStyle != "" {
 				result.WriteString(activeStyle)
