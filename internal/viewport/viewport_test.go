@@ -4297,6 +4297,27 @@ func TestViewport_SelectionOn_WrapOn_StringToHighlight(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 }
 
+// TODO LEO: add this test above cases
+func TestViewport_SelectionOn_WrapOn_StringToHighlightManyMatches(t *testing.T) {
+	w, h := 10, 5
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetSelectionEnabled(true)
+	vp.SetWrapText(true)
+	vp.SetContent([]RenderableString{
+		{Content: strings.Repeat("r", 100000)},
+	})
+	vp.SetStringToHighlight("r")
+	expectedView := pad(vp.width, vp.height, []string{
+		"header",
+		"\x1b[38;2;0;0;255m" + strings.Repeat("r", w) + "\x1b[m",
+		"\x1b[38;2;0;0;255m" + strings.Repeat("r", w) + "\x1b[m",
+		"\x1b[38;2;0;0;255m" + strings.Repeat("r", w) + "\x1b[m",
+		"100% (1/1)",
+	})
+	util.CmpStr(t, expectedView, vp.View())
+}
+
 func TestViewport_SelectionOn_WrapOn_AnsiOnSelection(t *testing.T) {
 	w, h := 10, 5
 	vp := newViewport(w, h)
