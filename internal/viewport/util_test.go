@@ -41,14 +41,14 @@ func TestHighlightLine(t *testing.T) {
 			line:           "\x1b[38;2;255;0;0mfirst line\x1b[m",
 			highlight:      "first",
 			highlightStyle: lipgloss.NewStyle().Foreground(blue),
-			expected:       "\x1b[38;2;0;0;255mfirst\x1b[m\x1b[38;2;255;0;0m line\x1b[m",
+			expected:       "\x1b[38;2;255;0;0m\x1b[m\x1b[38;2;0;0;255mfirst\x1b[m\x1b[38;2;255;0;0m line\x1b[m",
 		},
 		{
 			name:           "highlight already partially styled line",
 			line:           "hi a \x1b[38;2;255;0;0mstyled line\x1b[m cool \x1b[38;2;255;0;0mand styled\x1b[m more",
 			highlight:      "style",
 			highlightStyle: lipgloss.NewStyle().Foreground(blue),
-			expected:       "hi a \x1b[38;2;0;0;255mstyle\x1b[m\x1b[38;2;255;0;0md line\x1b[m cool \x1b[38;2;255;0;0mand \x1b[m\x1b[38;2;0;0;255mstyle\x1b[m\x1b[38;2;255;0;0md\x1b[m more",
+			expected:       "hi a \x1b[38;2;255;0;0m\x1b[m\x1b[38;2;0;0;255mstyle\x1b[m\x1b[38;2;255;0;0md line\x1b[m cool \x1b[38;2;255;0;0mand \x1b[m\x1b[38;2;0;0;255mstyle\x1b[m\x1b[38;2;255;0;0md\x1b[m more",
 		},
 		{
 			name:           "dont highlight ansi escape codes themselves",
