@@ -9,6 +9,7 @@ import (
 	"github.com/robinovitch61/kl/internal/linebuffer"
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 // Terminology:
@@ -55,8 +56,8 @@ type Model[T RenderableComparable] struct {
 	// allItems is the complete list of items to be rendered in the viewport
 	allItems []T
 
-	// lineContinuationIndicator is the string to use to indicate that a line has been truncated from the left or right
-	lineContinuationIndicator string
+	// continuationIndicator is the string to use to indicate that a line has been truncated from the left or right
+	continuationIndicator string
 
 	// selectionEnabled is true if the viewport allows individual line selection
 	selectionEnabled bool
@@ -106,7 +107,7 @@ func New[T RenderableComparable](width, height int) (m Model[T]) {
 	m.wrapText = false
 
 	m.KeyMap = DefaultKeyMap()
-	m.lineContinuationIndicator = "..."
+	m.continuationIndicator = "..."
 	m.footerVisible = true
 	return m
 }
@@ -442,6 +443,59 @@ func (m *Model[T]) ScrollSoItemIdxInView(itemIdx int) {
 	}
 }
 
+func (m Model[T]) wrap(line string, width int, maxLinesEachEnd int) []string {
+	if width <= 0 {
+		return []string{}
+	}
+
+	if maxLinesEachEnd <= 0 {
+		maxLinesEachEnd = -1
+	}
+
+	// if line has non-whitespace, trim trailing spaces
+	if strings.TrimSpace(line) != "" {
+		line = strings.TrimRightFunc(line, unicode.IsSpace)
+	}
+
+	// preserve empty lines
+	if line == "" {
+		return []string{line}
+	}
+
+	var res []string
+	// TODO LEO: highlight style changes if selected
+	lineBuffer := linebuffer.New(line, m.width, m.continuationIndicator, m.stringToHighlight, m.HighlightStyle)
+	//lineWidth := lineBuffer.fullLineWidth()
+	totalLines := lineBuffer.TotalLines()
+
+	if maxLinesEachEnd > 0 && totalLines > maxLinesEachEnd*2 {
+		//for xOffset := 0; xOffset < width*maxLinesEachEnd; xOffset += width {
+		//	res = append(res, lineBuffer.Truncate(xOffset, width))
+		//}
+		for nLines := 0; nLines < maxLinesEachEnd; nLines++ {
+			res = append(res, lineBuffer.PopLeft())
+		}
+
+		//startOffset := lineWidth - (maxLinesEachEnd * width)
+		//for xOffset := startOffset; xOffset < lineWidth; xOffset += width {
+		//	res = append(res, lineBuffer.Truncate(xOffset, width))
+		//}
+		lineBuffer.SeekToLine(totalLines - maxLinesEachEnd)
+		for nLines := 0; nLines < maxLinesEachEnd; nLines++ {
+			res = append(res, lineBuffer.PopLeft())
+		}
+	} else {
+		//for xOffset := 0; xOffset < lineWidth; xOffset += width {
+		//	res = append(res, lineBuffer.Truncate(xOffset, width))
+		//}
+		for nLines := 0; nLines < totalLines; nLines++ {
+			res = append(res, lineBuffer.PopLeft())
+		}
+	}
+
+	return res
+}
+
 func (m Model[T]) maxLineWidth() int {
 	maxLineWidth := 0
 	headerLines := m.getVisibleHeaderLines()
@@ -462,7 +516,7 @@ func (m Model[T]) numLinesForItem(itemIdx int) int {
 	if len(m.allItems) == 0 || itemIdx < 0 || itemIdx >= len(m.allItems) {
 		return 0
 	}
-	return len(wrap(m.allItems[itemIdx].Render(), m.width, m.height))
+	return len(m.wrap(m.allItems[itemIdx].Render(), m.width, m.height))
 }
 
 func (m *Model[T]) safelySetXOffset(n int) {
@@ -621,7 +675,7 @@ func (m Model[T]) getVisibleHeaderLines() []string {
 		// wrapped
 		var wrappedHeaderLines []string
 		for _, s := range m.header {
-			wrappedHeaderLines = append(wrappedHeaderLines, wrap(s, m.width, m.height)...)
+			wrappedHeaderLines = append(wrappedHeaderLines, m.wrap(s, m.width, m.height)...)
 		}
 		return safeSliceUpToIdx(wrappedHeaderLines, m.height)
 	}
@@ -683,7 +737,7 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 	}
 
 	if m.wrapText {
-		itemLines := wrap(renderAndHighlight(currItem, currItemIdx), m.width, m.height)
+		itemLines := m.wrap(renderAndHighlight(currItem, currItemIdx), m.width, m.height)
 		offsetLines := safeSliceFromIdx(itemLines, m.topItemLineOffset)
 		done = addLines(offsetLines, currItemIdx)
 
@@ -693,7 +747,7 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 				done = true
 			} else {
 				currItem = m.allItems[currItemIdx]
-				itemLines = wrap(renderAndHighlight(currItem, currItemIdx), m.width, m.height)
+				itemLines = m.wrap(renderAndHighlight(currItem, currItemIdx), m.width, m.height)
 				done = addLines(itemLines, currItemIdx)
 			}
 		}
@@ -756,17 +810,17 @@ func (m Model[T]) getTruncatedFooterLine(visibleContentLines visibleContentLines
 
 	percentScrolled := percent(numerator, denominator)
 	footerString := fmt.Sprintf("%d%% (%d/%d)", percentScrolled, numerator, denominator)
-	// use m.lineContinuationIndicator regardless of wrapText
+	// use m.continuationIndicator regardless of wrapText
 
-	footerBuffer := linebuffer.New(footerString, m.lineContinuationIndicator)
-	return m.FooterStyle.Render(footerBuffer.Truncate(0, m.width))
+	footerBuffer := linebuffer.New(footerString, m.width, m.continuationIndicator, "", lipgloss.NewStyle())
+	return m.FooterStyle.Render(footerBuffer.PopLeft())
 }
 
 func (m Model[T]) getLineContinuationIndicator() string {
 	if m.wrapText {
 		return ""
 	}
-	return m.lineContinuationIndicator
+	return m.continuationIndicator
 }
 
 func (m Model[T]) isScrolledToBottom() bool {
@@ -848,13 +902,20 @@ func (m Model[T]) maxItemIdxAndMaxTopLineOffset() (int, int) {
 
 // truncate truncates a line to fit within the viewport's width, accounting for the current xOffset (left/right) position
 func (m Model[T]) truncate(line string) string {
-	lineBuffer := linebuffer.New(line, m.lineContinuationIndicator)
-	return lineBuffer.Truncate(m.xOffset, m.width)
+	//lineBuffer := linebuffer.New(line, m.continuationIndicator)
+	//return lineBuffer.Truncate(m.xOffset, m.width)
+	// TODO LEO: highlight style fix if selected
+	lineBuffer := linebuffer.New(line, m.width, m.continuationIndicator, m.stringToHighlight, m.HighlightStyle)
+	lineBuffer.SeekToWidth(m.xOffset)
+	return lineBuffer.PopLeft()
 }
 
 func (m Model[T]) truncateNoXOffset(line string) string {
-	lineBuffer := linebuffer.New(line, m.lineContinuationIndicator)
-	return lineBuffer.Truncate(0, m.width)
+	//lineBuffer := linebuffer.New(line, m.continuationIndicator)
+	//return lineBuffer.Truncate(0, m.width)
+	// TODO LEO: highlight style fix if selected
+	lineBuffer := linebuffer.New(line, m.width, m.continuationIndicator, m.stringToHighlight, m.HighlightStyle)
+	return lineBuffer.PopLeft()
 }
 
 func (m Model[T]) getNumVisibleItems() int {

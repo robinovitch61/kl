@@ -14,19 +14,19 @@ import (
 // for the ansi escape codes styling the line.
 type LineBuffer struct {
 	line                string         // line with ansi codes. utf-8 bytes
-	width               int            // width in terminal columns (not bytes or runes)
+	width               int            // width in terminal cells (not bytes or runes)
 	continuation        string         // indicator for line continuation, e.g. "..."
 	toHighlight         string         // string to highlight using highlightStyle
 	highlightStyle      lipgloss.Style // style for toHighlight
 	leftRuneIdx         int            // left plaintext rune idx to start next PopLeft result from
 	lineRunes           []rune         // runes of line
 	runeIdxToByteOffset []int          // idx of lineRunes to byte offset. len(runeIdxToByteOffset) == len(lineRunes)
-	plainText           string         // line without ansi codes. utf-8 bytes
-	plainTextRunes      []rune         // runes of plainText. len(plainTextRunes) == len(plainTextWidths)
-	plainTextWidths     []int          // terminal column widths of plainText. len(plainTextWidths) == len(plainTextRunes)
+	lineNoAnsi          string         // line without ansi codes. utf-8 bytes
+	lineNoAnsiRunes     []rune         // runes of lineNoAnsi. len(lineNoAnsiRunes) == len(lineNoAnsiWidths)
+	lineNoAnsiWidths    []int          // terminal cell widths of lineNoAnsi. len(lineNoAnsiWidths) == len(lineNoAnsiRunes)
 	plainTextCumWidth   []int
 	continuationRunes   []rune  // runes of continuation
-	continuationWidths  []int   // terminal column widths of continuation
+	continuationWidths  []int   // terminal cell widths of continuation
 	ansiCodeIndexes     [][]int // slice of startByte, endByte indexes of ansi codes in the line
 }
 
@@ -45,18 +45,18 @@ func New(line string, width int, continuation string, toHighlight string, highli
 	}
 
 	lb.ansiCodeIndexes = constants.AnsiRegex.FindAllStringIndex(line, -1)
-	lb.plainText = stripAnsi(line)
+	lb.lineNoAnsi = stripAnsi(line)
 
 	lb.lineRunes = []rune(lb.line)
 	lb.runeIdxToByteOffset = initByteOffsets(lb.lineRunes)
 
-	lb.plainTextRunes = []rune(lb.plainText)
+	lb.lineNoAnsiRunes = []rune(lb.lineNoAnsi)
 
-	lb.plainTextWidths = make([]int, len(lb.plainTextRunes))
-	lb.plainTextCumWidth = make([]int, len(lb.plainTextRunes))
-	for i := range lb.plainTextRunes {
-		runeWidth := runewidth.RuneWidth(lb.plainTextRunes[i])
-		lb.plainTextWidths[i] = runeWidth
+	lb.lineNoAnsiWidths = make([]int, len(lb.lineNoAnsiRunes))
+	lb.plainTextCumWidth = make([]int, len(lb.lineNoAnsiRunes))
+	for i := range lb.lineNoAnsiRunes {
+		runeWidth := runewidth.RuneWidth(lb.lineNoAnsiRunes[i])
+		lb.lineNoAnsiWidths[i] = runeWidth
 		if i == 0 {
 			lb.plainTextCumWidth[i] = runeWidth
 		} else {
@@ -76,9 +76,56 @@ func New(line string, width int, continuation string, toHighlight string, highli
 	return lb
 }
 
+func (l LineBuffer) fullWidth() int {
+	return l.lineNoAnsiWidths[len(l.lineNoAnsiWidths)-1]
+}
+
+// TODO LEO: test
+func (l LineBuffer) TotalLines() int {
+	return (l.fullWidth() + l.width - 1) / l.width
+}
+
+// TODO LEO: test
+func (l *LineBuffer) SeekToLine(n int) {
+	// use binary search of l.lineNoAnsiWidths to seek l.leftRuneIdx to the first index where
+	// l.lineNoAnsiWidths is greater than n * l.width
+	if n <= 0 {
+		l.leftRuneIdx = 0
+		return
+	}
+
+	targetWidth := n * l.width
+	left, right := 0, len(l.plainTextCumWidth)-1
+
+	// handle case where target is beyond the end
+	if targetWidth >= l.plainTextCumWidth[right] {
+		l.leftRuneIdx = len(l.plainTextCumWidth)
+		return
+	}
+
+	// binary search for the first index where cumulative width exceeds target
+	for left < right {
+		mid := left + (right-left)/2
+		if l.plainTextCumWidth[mid] > targetWidth {
+			right = mid
+		} else {
+			left = mid + 1
+		}
+	}
+
+	l.leftRuneIdx = left
+}
+
+// TODO LEO: test
+func (l *LineBuffer) SeekToWidth(w int) {
+	if w >= 0 && w < l.fullWidth() {
+		l.leftRuneIdx = w
+	}
+}
+
 // PopLeft returns a string of the buffer's width from its current left offset, scrolling the left offset to the right
 func (l *LineBuffer) PopLeft() string {
-	if l.leftRuneIdx >= len(l.plainTextRunes) || l.width == 0 {
+	if l.leftRuneIdx >= len(l.lineNoAnsiRunes) || l.width == 0 {
 		return ""
 	}
 
@@ -88,10 +135,10 @@ func (l *LineBuffer) PopLeft() string {
 	startByteOffset := l.runeIdxToByteOffset[startRuneIdx]
 
 	runesWritten := 0
-	for ; remainingWidth > 0 && l.leftRuneIdx < len(l.plainTextRunes); l.leftRuneIdx++ {
+	for ; remainingWidth > 0 && l.leftRuneIdx < len(l.lineNoAnsiRunes); l.leftRuneIdx++ {
 		// get either a rune from the continuation or the line
-		r := l.plainTextRunes[l.leftRuneIdx]
-		runeWidth := l.plainTextWidths[l.leftRuneIdx]
+		r := l.lineNoAnsiRunes[l.leftRuneIdx]
+		runeWidth := l.lineNoAnsiWidths[l.leftRuneIdx]
 		if runeWidth > remainingWidth {
 			break
 		}
@@ -106,7 +153,7 @@ func (l *LineBuffer) PopLeft() string {
 		result = l.replaceStartRunesWithContinuation(result)
 	}
 	// if more runes to the right, replace final runes in result with continuation indicator, respecting width
-	if l.leftRuneIdx < len(l.plainTextRunes) {
+	if l.leftRuneIdx < len(l.lineNoAnsiRunes) {
 		result = l.replaceEndRunesWithContinuation(result)
 	}
 
@@ -117,13 +164,13 @@ func (l *LineBuffer) PopLeft() string {
 
 	res = highlightLine(res, l.toHighlight, l.highlightStyle, 0, len(res))
 
-	if left, endIdx := overflowsLeft(l.plainText, startByteOffset, l.toHighlight); left {
-		highlightLeft := l.plainText[startByteOffset:endIdx]
+	if left, endIdx := overflowsLeft(l.lineNoAnsi, startByteOffset, l.toHighlight); left {
+		highlightLeft := l.lineNoAnsi[startByteOffset:endIdx]
 		res = highlightLine(res, highlightLeft, l.highlightStyle, 0, len(highlightLeft))
 	}
 	endByteOffset := l.runeIdxToByteOffset[l.leftRuneIdx]
-	if right, startIdx := overflowsRight(l.plainText, endByteOffset, l.toHighlight); right {
-		highlightRight := l.plainText[startIdx:endByteOffset]
+	if right, startIdx := overflowsRight(l.lineNoAnsi, endByteOffset, l.toHighlight); right {
+		highlightRight := l.lineNoAnsi[startIdx:endByteOffset]
 		lenPlainTextRes := len(stripAnsi(res))
 		res = highlightLine(res, highlightRight, l.highlightStyle, lenPlainTextRes-len(highlightRight), lenPlainTextRes)
 	}
