@@ -1,17 +1,20 @@
 package linebuffer
 
 import (
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/constants"
 	"github.com/robinovitch61/kl/internal/util"
 	"testing"
 )
 
 func TestPopLeft(t *testing.T) {
+	highlightStyle := lipgloss.NewStyle().Background(lipgloss.Color("#FF0000"))
 	tests := []struct {
 		name         string
 		s            string
 		width        int
 		continuation string
+		toHighlight  string
 		numPopLefts  int
 		expected     []string
 	}{
@@ -435,6 +438,28 @@ func TestPopLeft(t *testing.T) {
 				"  │   └─[ ] local-path-provisioner (running for 11d)",
 			},
 		},
+		{
+			name:         "toHighlight, no continuation, no overlap, no ansi",
+			s:            "a very normal log",
+			width:        15,
+			continuation: "",
+			toHighlight:  "very",
+			numPopLefts:  1,
+			expected: []string{
+				"a " + highlightStyle.Render("very") + " normal l",
+			},
+		},
+		{
+			name:         "toHighlight, no continuation, no overlap, no ansi",
+			s:            "a very normal log",
+			width:        15,
+			continuation: "",
+			toHighlight:  "very",
+			numPopLefts:  1,
+			expected: []string{
+				"a " + highlightStyle.Render("very") + " normal l",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -442,7 +467,7 @@ func TestPopLeft(t *testing.T) {
 			if len(tt.expected) != tt.numPopLefts {
 				t.Fatalf("num expected != num popLefts")
 			}
-			lb := New(tt.s, tt.width, tt.continuation)
+			lb := New(tt.s, tt.width, tt.continuation, tt.toHighlight, highlightStyle)
 			for i := 0; i < tt.numPopLefts; i++ {
 				actual := lb.PopLeft()
 				util.CmpStr(t, tt.expected[i], actual)

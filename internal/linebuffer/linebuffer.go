@@ -2,6 +2,7 @@ package linebuffer
 
 import (
 	"fmt"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/mattn/go-runewidth"
 	"github.com/robinovitch61/kl/internal/constants"
 	"github.com/robinovitch61/kl/internal/dev"
@@ -12,27 +13,31 @@ import (
 // LineBuffer provides functionality to get sequential strings of a specified terminal width, accounting
 // for the ansi escape codes styling the line.
 type LineBuffer struct {
-	line                string // line with ansi codes. utf-8 bytes
-	width               int    // width in terminal columns (not bytes or runes)
-	continuation        string // indicator for line continuation, e.g. "..."
-	leftRuneIdx         int    // left plaintext rune idx to start next PopLeft result from
-	lineRunes           []rune // runes of line
-	runeIdxToByteOffset []int  // idx of lineRunes to byte offset. len(runeIdxToByteOffset) == len(lineRunes)
-	plainText           string // line without ansi codes. utf-8 bytes
-	plainTextRunes      []rune // runes of plainText. len(plainTextRunes) == len(plainTextWidths)
-	plainTextWidths     []int  // terminal column widths of plainText. len(plainTextWidths) == len(plainTextRunes)
+	line                string         // line with ansi codes. utf-8 bytes
+	width               int            // width in terminal columns (not bytes or runes)
+	continuation        string         // indicator for line continuation, e.g. "..."
+	toHighlight         string         // string to highlight using highlightStyle
+	highlightStyle      lipgloss.Style // style for toHighlight
+	leftRuneIdx         int            // left plaintext rune idx to start next PopLeft result from
+	lineRunes           []rune         // runes of line
+	runeIdxToByteOffset []int          // idx of lineRunes to byte offset. len(runeIdxToByteOffset) == len(lineRunes)
+	plainText           string         // line without ansi codes. utf-8 bytes
+	plainTextRunes      []rune         // runes of plainText. len(plainTextRunes) == len(plainTextWidths)
+	plainTextWidths     []int          // terminal column widths of plainText. len(plainTextWidths) == len(plainTextRunes)
 	plainTextCumWidth   []int
 	continuationRunes   []rune  // runes of continuation
 	continuationWidths  []int   // terminal column widths of continuation
 	ansiCodeIndexes     [][]int // slice of startByte, endByte indexes of ansi codes in the line
 }
 
-func New(line string, width int, continuation string) LineBuffer {
+func New(line string, width int, continuation string, toHighlight string, highlightStyle lipgloss.Style) LineBuffer {
 	lb := LineBuffer{
-		line:         line,
-		width:        width,
-		continuation: continuation,
-		leftRuneIdx:  0,
+		line:           line,
+		width:          width,
+		continuation:   continuation,
+		toHighlight:    stripAnsi(toHighlight),
+		highlightStyle: highlightStyle,
+		leftRuneIdx:    0,
 	}
 
 	if len(constants.AnsiRegex.FindAllStringIndex(continuation, -1)) > 0 {
@@ -40,7 +45,7 @@ func New(line string, width int, continuation string) LineBuffer {
 	}
 
 	lb.ansiCodeIndexes = constants.AnsiRegex.FindAllStringIndex(line, -1)
-	lb.plainText = constants.AnsiRegex.ReplaceAllString(line, "")
+	lb.plainText = stripAnsi(line)
 
 	lb.lineRunes = []rune(lb.line)
 	lb.runeIdxToByteOffset = initByteOffsets(lb.lineRunes)
@@ -104,11 +109,14 @@ func (l *LineBuffer) PopLeft() string {
 		result = l.replaceEndRunesWithContinuation(result)
 	}
 
+	res := result.String()
 	if len(l.ansiCodeIndexes) > 0 {
-		return reapplyANSI(l.line, result.String(), l.runeIdxToByteOffset[startRuneIdx], l.ansiCodeIndexes)
+		res = reapplyANSI(l.line, res, l.runeIdxToByteOffset[startRuneIdx], l.ansiCodeIndexes)
 	}
 
-	return result.String()
+	res = applyToHighlight(l.line, res, l.runeIdxToByteOffset[startRuneIdx], l.ansiCodeIndexes, l.toHighlight, l.highlightStyle)
+
+	return res
 }
 
 func (l LineBuffer) replaceStartRunesWithContinuation(result strings.Builder) strings.Builder {
@@ -253,6 +261,131 @@ func reapplyANSI(original, truncated string, truncByteOffset int, ansiCodeIndexe
 	}
 
 	return string(result)
+}
+
+// applyToHighlight styles the toHighlight string in the truncated input in the highlightStyle without disrupting
+// other styled portions of the truncated string and including toHighlight matches that overflow the truncated
+// string from the left or the right
+func applyToHighlight(
+	original string, // original string from which truncated was created
+	truncated string, // truncated string with ansi sequences from the original already reapplied
+	truncByteOffset int, // the byte offset in the original string from which truncated begins
+	ansiCodeIndexes [][]int, // slice of startByte, endByte indexes of ansi codes in the line
+	toHighlight string, // string toHighlight in truncated - does not contain any ansi sequences
+	highlightStyle lipgloss.Style, // style with which to highlight toHighlight
+) string {
+	// If nothing to highlight or truncated string is empty, return as is
+	if toHighlight == "" || truncated == "" {
+		return truncated
+	}
+
+	// First, find all matches of toHighlight in the original string
+	// This helps us handle cases where matches might be partially visible in truncated
+	type match struct {
+		start, end int
+	}
+	var matches []match
+
+	// Get matches from original string to handle partial matches at truncation boundaries
+	lastIndex := 0
+	for {
+		index := strings.Index(original[lastIndex:], toHighlight)
+		if index == -1 {
+			break
+		}
+		start := lastIndex + index
+		end := start + len(toHighlight)
+		matches = append(matches, match{start, end})
+		lastIndex = start + 1
+	}
+
+	// If no matches found, return original truncated string
+	if len(matches) == 0 {
+		return truncated
+	}
+
+	// Calculate the end offset of truncated in original
+	truncEndOffset := truncByteOffset + len([]byte(stripAnsi(truncated)))
+
+	// Filter matches to only those that overlap with truncated section
+	var relevantMatches []match
+	for _, m := range matches {
+		// Check if match overlaps with truncated section
+		if m.start < truncEndOffset && m.end > truncByteOffset {
+			relevantMatches = append(relevantMatches, m)
+		}
+	}
+
+	// If no relevant matches, return original truncated string
+	if len(relevantMatches) == 0 {
+		return truncated
+	}
+
+	// Build result by applying highlight style while preserving existing ANSI codes
+	var result strings.Builder
+	currentPos := 0
+	truncatedStripped := stripAnsi(truncated)
+
+	for _, m := range relevantMatches {
+		// Convert match positions from original to truncated string coordinates
+		relativeStart := m.start - truncByteOffset
+		relativeEnd := m.end - truncByteOffset
+
+		// Adjust positions to fit within truncated bounds
+		if relativeStart < 0 {
+			relativeStart = 0
+		}
+		if relativeEnd > len(truncatedStripped) {
+			relativeEnd = len(truncatedStripped)
+		}
+
+		// Add text before match with original styling
+		beforeMatch := getTextWithAnsi(truncated, currentPos, relativeStart, ansiCodeIndexes)
+		result.WriteString(beforeMatch)
+
+		// Add highlighted match text while preserving internal ANSI codes
+		matchText := getTextWithAnsi(truncated, relativeStart, relativeEnd, ansiCodeIndexes)
+		result.WriteString(highlightStyle.Render(matchText))
+
+		currentPos = relativeEnd
+	}
+
+	// Add remaining text after last match
+	if currentPos < len(truncatedStripped) {
+		remaining := getTextWithAnsi(truncated, currentPos, len(truncatedStripped), ansiCodeIndexes)
+		result.WriteString(remaining)
+	}
+
+	return result.String()
+}
+
+// stripAnsi removes all ANSI escape sequences from the input string
+func stripAnsi(input string) string {
+	return constants.AnsiRegex.ReplaceAllString(input, "")
+}
+
+// getTextWithAnsi extracts text between start and end positions while preserving ANSI codes
+func getTextWithAnsi(input string, start, end int, ansiCodeIndexes [][]int) string {
+	var result strings.Builder
+
+	// Add any ANSI codes that are active at the start position
+	for _, codeRange := range ansiCodeIndexes {
+		if codeRange[0] <= start && codeRange[1] > start {
+			result.WriteString(input[codeRange[0]:codeRange[1]])
+		}
+	}
+
+	// Add the actual text content
+	stripped := stripAnsi(input)
+	if start < len(stripped) {
+		endPos := end
+		if endPos > len(stripped) {
+			endPos = len(stripped)
+		}
+		result.WriteString(stripped[start:endPos])
+	}
+
+	return result.String()
 }
 
 func simplifyAnsiCodes(ansis []string) []string {
