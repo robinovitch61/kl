@@ -188,6 +188,56 @@ func TestPopLeft(t *testing.T) {
 				"",
 			},
 		},
+		{
+			name:         "double width unicode, no continuation, width 3",
+			s:            "世界🌟", // each of these takes up 2 terminal cells
+			width:        3,
+			continuation: "",
+			numPopLefts:  4,
+			expected: []string{
+				"世",
+				"界",
+				"🌟",
+				"",
+			},
+		},
+		{
+			name:         "double width unicode, continuation, width 3",
+			s:            "世界🌟", // each of these takes up 2 terminal cells
+			width:        3,
+			continuation: "...",
+			numPopLefts:  4,
+			expected: []string{
+				"..",
+				"..",
+				"..",
+				"",
+			},
+		},
+		{
+			name:         "double width unicode, no continuation, width 4",
+			s:            "世界🌟", // each of these takes up 2 terminal cells
+			width:        4,
+			continuation: "",
+			numPopLefts:  3,
+			expected: []string{
+				"世界",
+				"🌟",
+				"",
+			},
+		},
+		{
+			name:         "double width unicode, continuation, width 3",
+			s:            "世界🌟", // each of these takes up 2 terminal cells
+			width:        4,
+			continuation: "...",
+			numPopLefts:  3,
+			expected: []string{
+				"世..",
+				"..",
+				"",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -195,6 +245,9 @@ func TestPopLeft(t *testing.T) {
 			lb := New(tt.s, tt.width, tt.continuation)
 			for i := 0; i < tt.numPopLefts; i++ {
 				actual := lb.PopLeft()
+				if i >= len(tt.expected) {
+					t.Fatalf("more popLeft results than expectated results")
+				}
 				util.CmpStr(t, tt.expected[i], actual)
 			}
 		})
