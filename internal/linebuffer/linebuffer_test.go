@@ -842,6 +842,24 @@ func TestHighlightLine(t *testing.T) {
 			end:            2,
 			expected:       "my line",
 		},
+		{
+			name:           "start and end ansi, in range",
+			line:           "\x1b[38;2;0;0;255mmy line\x1b[m",
+			highlight:      "my",
+			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			start:          0,
+			end:            2,
+			expected:       "\x1b[38;2;0;0;255m\x1b[m\x1b[38;2;255;0;0mmy\x1b[m\x1b[38;2;0;0;255m line\x1b[m",
+		},
+		{
+			name:           "start and end ansi, out of range",
+			line:           "\x1b[38;2;0;0;255mmy line\x1b[m",
+			highlight:      "my",
+			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			start:          2,
+			end:            4,
+			expected:       "\x1b[38;2;0;0;255mmy line\x1b[m",
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.start == 0 && tt.end == 0 {

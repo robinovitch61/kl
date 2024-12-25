@@ -3,53 +3,8 @@ package viewport
 import (
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/constants"
-	"github.com/robinovitch61/kl/internal/linebuffer"
 	"strings"
-	"unicode"
 )
-
-func wrap(line string, width int, maxLinesEachEnd int) []string {
-	if width <= 0 {
-		return []string{}
-	}
-
-	if maxLinesEachEnd <= 0 {
-		maxLinesEachEnd = -1
-	}
-
-	// if line has non-whitespace, trim trailing spaces
-	if strings.TrimSpace(line) != "" {
-		line = strings.TrimRightFunc(line, unicode.IsSpace)
-	}
-
-	// preserve empty lines
-	if line == "" {
-		return []string{line}
-	}
-
-	var res []string
-	lineWidth := lipgloss.Width(line)
-	totalLines := (lineWidth + width - 1) / width
-
-	lineBuffer := linebuffer.New(line, "")
-
-	if maxLinesEachEnd > 0 && totalLines > maxLinesEachEnd*2 {
-		for xOffset := 0; xOffset < width*maxLinesEachEnd; xOffset += width {
-			res = append(res, lineBuffer.Truncate(xOffset, width))
-		}
-
-		startOffset := lineWidth - (maxLinesEachEnd * width)
-		for xOffset := startOffset; xOffset < lineWidth; xOffset += width {
-			res = append(res, lineBuffer.Truncate(xOffset, width))
-		}
-	} else {
-		for xOffset := 0; xOffset < lineWidth; xOffset += width {
-			res = append(res, lineBuffer.Truncate(xOffset, width))
-		}
-	}
-
-	return res
-}
 
 func percent(a, b int) int {
 	return int(float32(a) / float32(b) * 100)
