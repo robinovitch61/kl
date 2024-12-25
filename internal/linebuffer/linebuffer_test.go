@@ -4,6 +4,7 @@ import (
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/constants"
 	"github.com/robinovitch61/kl/internal/util"
+	"strings"
 	"testing"
 )
 
@@ -458,6 +459,40 @@ func TestPopLeft(t *testing.T) {
 			numPopLefts:  1,
 			expected: []string{
 				"a " + highlightStyle.Render("very") + " normal l",
+			},
+		},
+		{
+			name:         "toHighlight, continuation, no overlap, no ansi",
+			s:            "a very normal log",
+			width:        15,
+			continuation: "...",
+			toHighlight:  "l l",
+			numPopLefts:  1,
+			expected: []string{
+				"a very norma...", // does not highlight continuation, could in future
+			},
+		},
+		{
+			name:         "toHighlight, no continuation, no overlap, no ansi, many matches",
+			s:            strings.Repeat("r", 10),
+			width:        6,
+			continuation: "",
+			toHighlight:  "r",
+			numPopLefts:  2,
+			expected: []string{
+				strings.Repeat("\x1b[48;2;255;0;0mr\x1b[m", 6),
+				strings.Repeat("\x1b[48;2;255;0;0mr\x1b[m", 4),
+			},
+		},
+		{
+			name:         "toHighlight, no continuation, no overlap, ansi",
+			s:            "\x1b[38;2;0;0;255mhi \x1b[48;2;0;255;0mthere\x1b[m er",
+			width:        15,
+			continuation: "",
+			toHighlight:  "er",
+			numPopLefts:  1,
+			expected: []string{
+				"\x1b[38;2;0;0;255mhi \x1b[48;2;0;255;0mth\x1b[m\x1b[48;2;255;0;0mer\x1b[m\x1b[38;2;0;0;255m\x1b[48;2;0;255;0me\x1b[m \x1b[48;2;255;0;0mer\x1b[m",
 			},
 		},
 	}

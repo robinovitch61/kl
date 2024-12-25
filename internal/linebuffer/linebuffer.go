@@ -114,7 +114,8 @@ func (l *LineBuffer) PopLeft() string {
 		res = reapplyANSI(l.line, res, l.runeIdxToByteOffset[startRuneIdx], l.ansiCodeIndexes)
 	}
 
-	res = applyToHighlight(l.line, res, l.runeIdxToByteOffset[startRuneIdx], l.ansiCodeIndexes, l.toHighlight, l.highlightStyle)
+	//res = applyHighlightString(l.line, res, l.runeIdxToByteOffset[startRuneIdx], l.ansiCodeIndexes, l.toHighlight, l.highlightStyle)
+	res = highlightLine(res, l.toHighlight, l.highlightStyle)
 
 	return res
 }
@@ -263,129 +264,99 @@ func reapplyANSI(original, truncated string, truncByteOffset int, ansiCodeIndexe
 	return string(result)
 }
 
-// applyToHighlight styles the toHighlight string in the truncated input in the highlightStyle without disrupting
-// other styled portions of the truncated string and including toHighlight matches that overflow the truncated
-// string from the left or the right
-func applyToHighlight(
-	original string, // original string from which truncated was created
-	truncated string, // truncated string with ansi sequences from the original already reapplied
-	truncByteOffset int, // the byte offset in the original string from which truncated begins
-	ansiCodeIndexes [][]int, // slice of startByte, endByte indexes of ansi codes in the line
-	toHighlight string, // string toHighlight in truncated - does not contain any ansi sequences
-	highlightStyle lipgloss.Style, // style with which to highlight toHighlight
-) string {
-	// If nothing to highlight or truncated string is empty, return as is
-	if toHighlight == "" || truncated == "" {
-		return truncated
+// highlightLine highlights a string in a line that potentially has ansi codes in it without disrupting them
+func highlightLine(line, highlight string, highlightStyle lipgloss.Style) string {
+	if line == "" || highlight == "" {
+		return line
 	}
 
-	// First, find all matches of toHighlight in the original string
-	// This helps us handle cases where matches might be partially visible in truncated
-	type match struct {
-		start, end int
-	}
-	var matches []match
+	renderedHighlight := highlightStyle.Render(highlight)
+	result := &strings.Builder{}
+	i := 0
+	activeStyle := ""
+	inAnsiCode := false
 
-	// Get matches from original string to handle partial matches at truncation boundaries
-	lastIndex := 0
-	for {
-		index := strings.Index(original[lastIndex:], toHighlight)
-		if index == -1 {
-			break
-		}
-		start := lastIndex + index
-		end := start + len(toHighlight)
-		matches = append(matches, match{start, end})
-		lastIndex = start + 1
-	}
-
-	// If no matches found, return original truncated string
-	if len(matches) == 0 {
-		return truncated
-	}
-
-	// Calculate the end offset of truncated in original
-	truncEndOffset := truncByteOffset + len([]byte(stripAnsi(truncated)))
-
-	// Filter matches to only those that overlap with truncated section
-	var relevantMatches []match
-	for _, m := range matches {
-		// Check if match overlaps with truncated section
-		if m.start < truncEndOffset && m.end > truncByteOffset {
-			relevantMatches = append(relevantMatches, m)
-		}
-	}
-
-	// If no relevant matches, return original truncated string
-	if len(relevantMatches) == 0 {
-		return truncated
-	}
-
-	// Build result by applying highlight style while preserving existing ANSI codes
-	var result strings.Builder
-	currentPos := 0
-	truncatedStripped := stripAnsi(truncated)
-
-	for _, m := range relevantMatches {
-		// Convert match positions from original to truncated string coordinates
-		relativeStart := m.start - truncByteOffset
-		relativeEnd := m.end - truncByteOffset
-
-		// Adjust positions to fit within truncated bounds
-		if relativeStart < 0 {
-			relativeStart = 0
-		}
-		if relativeEnd > len(truncatedStripped) {
-			relativeEnd = len(truncatedStripped)
+	for i < len(line) {
+		if strings.HasPrefix(line[i:], "\x1b[") {
+			// Found start of ANSI sequence
+			inAnsiCode = true
+			escEnd := strings.Index(line[i:], "m")
+			if escEnd != -1 {
+				escEnd += i + 1
+				currentSequence := line[i:escEnd]
+				if currentSequence == "\x1b[m" {
+					activeStyle = "" // Reset style
+				} else {
+					activeStyle = currentSequence // Set new active style
+				}
+				result.WriteString(currentSequence)
+				i = escEnd
+				inAnsiCode = false
+				continue
+			}
 		}
 
-		// Add text before match with original styling
-		beforeMatch := getTextWithAnsi(truncated, currentPos, relativeStart, ansiCodeIndexes)
-		result.WriteString(beforeMatch)
-
-		// Add highlighted match text while preserving internal ANSI codes
-		matchText := getTextWithAnsi(truncated, relativeStart, relativeEnd, ansiCodeIndexes)
-		result.WriteString(highlightStyle.Render(matchText))
-
-		currentPos = relativeEnd
-	}
-
-	// Add remaining text after last match
-	if currentPos < len(truncatedStripped) {
-		remaining := getTextWithAnsi(truncated, currentPos, len(truncatedStripped), ansiCodeIndexes)
-		result.WriteString(remaining)
+		// Check if current position starts a highlight match
+		if len(highlight) > 0 && strings.HasPrefix(line[i:], highlight) && !inAnsiCode {
+			// Reset current style if any
+			if activeStyle != "" {
+				result.WriteString("\x1b[m")
+			}
+			// Apply highlight
+			result.WriteString(renderedHighlight)
+			// Restore previous style if there was one
+			if activeStyle != "" {
+				result.WriteString(activeStyle)
+			}
+			i += len(highlight)
+			continue
+		}
+		// Regular character
+		result.WriteByte(line[i])
+		i++
 	}
 
 	return result.String()
 }
 
-// stripAnsi removes all ANSI escape sequences from the input string
+//// applyHighlightString styles the toHighlight string in the truncated input in the highlightStyle without disrupting
+//// other styled portions of the truncated string and including toHighlight matches that overflow the truncated
+//// string from the left or the right
+//func applyHighlightString(
+//	original string, // original string from which truncated was created
+//	truncated string, // truncated string with ansi sequences from the original already reapplied
+//	truncByteOffset int, // the byte offset in the original string from which truncated begins
+//	ansiCodeIndexes [][]int, // slice of startByte, endByte indexes of ansi codes in the line
+//	toHighlight string, // string toHighlight in truncated - does not contain any ansi sequences
+//	highlightStyle lipgloss.Style, // style with which to highlight toHighlight
+//) string {
+//	codeIndexes := constants.AnsiRegex.FindAllStringIndex(truncated, -1)
+//	activateAnsi := ""
+//	i := 0
+//	for {
+//		if i >= len(truncated) {
+//			break
+//		}
+//		b := truncated[i]
+//		for {
+//			numAnsiBeforeCurrByte := 0
+//			for _, ansi := range codeIndexes {
+//				start, end := ansi[0], ansi[1]
+//				if start <= i {
+//					numAnsiBeforeCurrByte += 1
+//				} else {
+//					break
+//				}
+//			}
+//			codeIndexes = codeIndexes[numAnsiBeforeCurrByte:]
+//			if
+//		}
+//		i++
+//	}
+//}
+
 func stripAnsi(input string) string {
 	return constants.AnsiRegex.ReplaceAllString(input, "")
-}
-
-// getTextWithAnsi extracts text between start and end positions while preserving ANSI codes
-func getTextWithAnsi(input string, start, end int, ansiCodeIndexes [][]int) string {
-	var result strings.Builder
-
-	// Add any ANSI codes that are active at the start position
-	for _, codeRange := range ansiCodeIndexes {
-		if codeRange[0] <= start && codeRange[1] > start {
-			result.WriteString(input[codeRange[0]:codeRange[1]])
-		}
-	}
-
-	// Add the actual text content
-	stripped := stripAnsi(input)
-	if start < len(stripped) {
-		endPos := end
-		if endPos > len(stripped) {
-			endPos = len(stripped)
-		}
-		result.WriteString(stripped[start:endPos])
-	}
-
-	return result.String()
 }
 
 func simplifyAnsiCodes(ansis []string) []string {
