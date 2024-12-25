@@ -10,16 +10,16 @@ import (
 // LineBuffer provides functionality to get sequential strings of a specified terminal width, accounting
 // for the ansi escape codes styling the line.
 type LineBuffer struct {
-	line           string // line with ansi codes. utf-8 bytes
-	width          int    // width in terminal columns (not bytes or runes)
-	continuation   string // indicator for line continuation, e.g. "..."
-	leftRuneIdx    int    // left plaintext rune idx
-	rightRuneIdx   int    // right plaintext rune idx
-	lineRunes      []rune // runes of line
-	plainText      string // line without ansi codes. utf-8 bytes
-	plainTextRunes []rune // runes of plainText. len(plainTextRunes) == len(plainTextWidths)
-	// TODO LEO: differentiate between CumWidths and Widths
-	plainTextWidths    []int   // terminal column widths of plainText. len(plainTextWidths) == len(plainTextRunes)
+	line               string // line with ansi codes. utf-8 bytes
+	width              int    // width in terminal columns (not bytes or runes)
+	continuation       string // indicator for line continuation, e.g. "..."
+	leftRuneIdx        int    // left plaintext rune idx
+	rightRuneIdx       int    // right plaintext rune idx
+	lineRunes          []rune // runes of line
+	plainText          string // line without ansi codes. utf-8 bytes
+	plainTextRunes     []rune // runes of plainText. len(plainTextRunes) == len(plainTextWidths)
+	plainTextWidths    []int  // terminal column widths of plainText. len(plainTextWidths) == len(plainTextRunes)
+	plainTextCumWidth  []int
 	continuationRunes  []rune  // runes of continuation
 	continuationWidths []int   // terminal column widths of continuation
 	ansiCodeIndexes    [][]int // slice of startByte, endByte indexes of ansi codes in the line
@@ -46,8 +46,15 @@ func New(line string, width int, continuation string) LineBuffer {
 	lb.rightRuneIdx = len(lb.plainTextRunes)
 
 	lb.plainTextWidths = make([]int, len(lb.plainTextRunes))
+	lb.plainTextCumWidth = make([]int, len(lb.plainTextRunes))
 	for i := range lb.plainTextRunes {
-		lb.plainTextWidths[i] = runewidth.RuneWidth(lb.plainTextRunes[i])
+		runeWidth := runewidth.RuneWidth(lb.plainTextRunes[i])
+		lb.plainTextWidths[i] = runeWidth
+		if i == 0 {
+			lb.plainTextCumWidth[i] = runeWidth
+		} else {
+			lb.plainTextCumWidth[i] = lb.plainTextCumWidth[i-1] + runeWidth
+		}
 	}
 
 	lb.continuationRunes = []rune(lb.continuation)
@@ -70,7 +77,7 @@ func (l *LineBuffer) PopLeft() string {
 
 	var result strings.Builder
 	remainingWidth := l.width
-	runesToLeft := l.leftRuneIdx > 0
+	runesToLeftOfStart := l.leftRuneIdx > 0
 
 	runesWritten := 0
 	for ; remainingWidth > 0 && l.leftRuneIdx < len(l.plainTextRunes); l.leftRuneIdx++ {
@@ -81,22 +88,18 @@ func (l *LineBuffer) PopLeft() string {
 			break
 		}
 
-		// TODO LEO : this should take runes from continuation up to the rune width its replacing
-		// consider putting this at the end when resultRunes are known
-		if runesToLeft && len(l.continuationRunes) > 0 && runesWritten < len(l.continuationRunes) {
-			r = l.continuationRunes[runesWritten]
-			runeWidth = l.continuationWidths[runesWritten]
-		}
-
 		result.WriteRune(r)
 		runesWritten++
 		remainingWidth -= runeWidth
 	}
 
+	// if more runes to the left of the result, replace start runes with continuation indicator, respecting width
+	if runesToLeftOfStart {
+		result = l.replaceStartRunesWithContinuation(result)
+	}
 	// if more runes to the right, replace final runes in result with continuation indicator, respecting width
-	// assumes all continuation runes are of width 1
-	if result.Len() > 0 && l.leftRuneIdx < len(l.plainTextRunes) {
-		result = l.replaceRightRunesWithContinuation(result)
+	if l.leftRuneIdx < len(l.plainTextRunes) {
+		result = l.replaceEndRunesWithContinuation(result)
 	}
 
 	return result.String()
@@ -107,7 +110,64 @@ func (l *LineBuffer) PopRight() string {
 	return "TODO"
 }
 
-func (l LineBuffer) replaceRightRunesWithContinuation(result strings.Builder) strings.Builder {
+func (l LineBuffer) replaceStartRunesWithContinuation(result strings.Builder) strings.Builder {
+	if result.Len() == 0 {
+		return result
+	}
+
+	var res strings.Builder
+	resultRunes := []rune(result.String())
+	totalContinuationRunes := len(l.continuationRunes)
+	continuationRunesPlaced := 0
+	resultRunesReplaced := 0
+
+	for {
+		if continuationRunesPlaced >= totalContinuationRunes {
+			res.WriteString(string(resultRunes))
+			return res
+		}
+
+		resultRuneToReplaceIdx := resultRunesReplaced
+		if resultRuneToReplaceIdx >= len(resultRunes) {
+			res.WriteString(string(resultRunes))
+			return res
+		}
+
+		widthToReplace := runewidth.RuneWidth(resultRunes[resultRuneToReplaceIdx])
+
+		// get a slice of continuation runes that will replace the result rune, e.g. ".." for double-width unicode char
+		var continuationRunes []rune
+		for {
+			if widthToReplace <= 0 {
+				break
+			}
+
+			nextContinuationRuneIdx := continuationRunesPlaced
+			if nextContinuationRuneIdx >= len(l.continuationRunes) {
+				break
+			}
+
+			nextContinuationRune := l.continuationRunes[nextContinuationRuneIdx]
+			continuationRunes = append(continuationRunes, nextContinuationRune)
+			widthToReplace -= 1 // assumes continuation runes are of width 1
+			continuationRunesPlaced += 1
+		}
+
+		var leftResult []rune
+		if resultRuneToReplaceIdx > 0 {
+			leftResult = resultRunes[:resultRuneToReplaceIdx]
+		}
+		rightResult := resultRunes[resultRuneToReplaceIdx+1:]
+		resultRunes = append(append(leftResult, continuationRunes...), rightResult...)
+		resultRunesReplaced += 1
+	}
+}
+
+func (l LineBuffer) replaceEndRunesWithContinuation(result strings.Builder) strings.Builder {
+	if result.Len() == 0 {
+		return result
+	}
+
 	var res strings.Builder
 
 	resultRunes := []rune(result.String())
@@ -125,7 +185,7 @@ func (l LineBuffer) replaceRightRunesWithContinuation(result strings.Builder) st
 			res.WriteString(string(resultRunes))
 			return res
 		}
-		widthToReplace := l.plainTextWidths[resultRuneToReplaceIdx]
+		widthToReplace := runewidth.RuneWidth(resultRunes[resultRuneToReplaceIdx])
 
 		// get a slice of continuation runes that will replace the result rune, e.g. ".." for double-width unicode char
 		var continuationRunes []rune

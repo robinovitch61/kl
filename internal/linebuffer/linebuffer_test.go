@@ -180,12 +180,12 @@ func TestPopLeft(t *testing.T) {
 			s:            "世界🌟", // each of these takes up 2 terminal cells
 			width:        2,
 			continuation: "...",
-			numPopLefts:  3,
+			numPopLefts:  4,
 			expected: []string{
 				"..",
 				"..",
 				"..",
-				//"",
+				"",
 			},
 		},
 	}
