@@ -5,24 +5,26 @@ import (
 	"github.com/mattn/go-runewidth"
 	"github.com/robinovitch61/kl/internal/constants"
 	"strings"
+	"unicode/utf8"
 )
 
 // LineBuffer provides functionality to get sequential strings of a specified terminal width, accounting
 // for the ansi escape codes styling the line.
 type LineBuffer struct {
-	line               string // line with ansi codes. utf-8 bytes
-	width              int    // width in terminal columns (not bytes or runes)
-	continuation       string // indicator for line continuation, e.g. "..."
-	leftRuneIdx        int    // left plaintext rune idx
-	rightRuneIdx       int    // right plaintext rune idx
-	lineRunes          []rune // runes of line
-	plainText          string // line without ansi codes. utf-8 bytes
-	plainTextRunes     []rune // runes of plainText. len(plainTextRunes) == len(plainTextWidths)
-	plainTextWidths    []int  // terminal column widths of plainText. len(plainTextWidths) == len(plainTextRunes)
-	plainTextCumWidth  []int
-	continuationRunes  []rune  // runes of continuation
-	continuationWidths []int   // terminal column widths of continuation
-	ansiCodeIndexes    [][]int // slice of startByte, endByte indexes of ansi codes in the line
+	line                string // line with ansi codes. utf-8 bytes
+	width               int    // width in terminal columns (not bytes or runes)
+	continuation        string // indicator for line continuation, e.g. "..."
+	leftRuneIdx         int    // left plaintext rune idx
+	rightRuneIdx        int    // right plaintext rune idx
+	lineRunes           []rune // runes of line
+	runeIdxToByteOffset []int  // idx of lineRunes to byte offset. len(runeIdxToByteOffset) == len(lineRunes)
+	plainText           string // line without ansi codes. utf-8 bytes
+	plainTextRunes      []rune // runes of plainText. len(plainTextRunes) == len(plainTextWidths)
+	plainTextWidths     []int  // terminal column widths of plainText. len(plainTextWidths) == len(plainTextRunes)
+	plainTextCumWidth   []int
+	continuationRunes   []rune  // runes of continuation
+	continuationWidths  []int   // terminal column widths of continuation
+	ansiCodeIndexes     [][]int // slice of startByte, endByte indexes of ansi codes in the line
 }
 
 func New(line string, width int, continuation string) LineBuffer {
@@ -41,8 +43,17 @@ func New(line string, width int, continuation string) LineBuffer {
 	lb.plainText = constants.AnsiRegex.ReplaceAllString(line, "")
 
 	lb.lineRunes = []rune(lb.line)
-	lb.plainTextRunes = []rune(lb.plainText)
+	lb.runeIdxToByteOffset = make([]int, len(lb.lineRunes))
+	for i := range lb.line {
+		byteCount := len([]byte{lb.line[i]})
+		if i == 0 {
+			lb.runeIdxToByteOffset[i] = byteCount
+		} else {
+			lb.runeIdxToByteOffset[i] = lb.runeIdxToByteOffset[i-1] + byteCount
+		}
+	}
 
+	lb.plainTextRunes = []rune(lb.plainText)
 	lb.rightRuneIdx = len(lb.plainTextRunes)
 
 	lb.plainTextWidths = make([]int, len(lb.plainTextRunes))
@@ -77,7 +88,7 @@ func (l *LineBuffer) PopLeft() string {
 
 	var result strings.Builder
 	remainingWidth := l.width
-	runesToLeftOfStart := l.leftRuneIdx > 0
+	startRuneIdx := l.leftRuneIdx
 
 	runesWritten := 0
 	for ; remainingWidth > 0 && l.leftRuneIdx < len(l.plainTextRunes); l.leftRuneIdx++ {
@@ -94,12 +105,16 @@ func (l *LineBuffer) PopLeft() string {
 	}
 
 	// if more runes to the left of the result, replace start runes with continuation indicator, respecting width
-	if runesToLeftOfStart {
+	if startRuneIdx > 0 {
 		result = l.replaceStartRunesWithContinuation(result)
 	}
 	// if more runes to the right, replace final runes in result with continuation indicator, respecting width
 	if l.leftRuneIdx < len(l.plainTextRunes) {
 		result = l.replaceEndRunesWithContinuation(result)
+	}
+
+	if len(l.ansiCodeIndexes) > 0 {
+		return reapplyANSI(l.line, result.String(), l.runeIdxToByteOffset[startRuneIdx], l.ansiCodeIndexes)
 	}
 
 	return result.String()
@@ -213,6 +228,47 @@ func (l LineBuffer) replaceEndRunesWithContinuation(result strings.Builder) stri
 	}
 }
 
+func reapplyANSI(original, truncated string, truncByteOffset int, ansiCodeIndexes [][]int) string {
+	var result []byte
+	var lenAnsiAdded int
+	isReset := true
+	truncatedBytes := []byte(truncated)
+
+	for i := 0; i < len(truncatedBytes); {
+		// collect all ansi codes that should be applied immediately before the current runes
+		var ansisToAdd []string
+		for len(ansiCodeIndexes) > 0 {
+			candidateAnsi := ansiCodeIndexes[0]
+			codeStart, codeEnd := candidateAnsi[0], candidateAnsi[1]
+			originalIdx := truncByteOffset + i + lenAnsiAdded
+			if codeStart <= originalIdx {
+				code := original[codeStart:codeEnd]
+				isReset = code == "\x1b[m"
+				ansisToAdd = append(ansisToAdd, code)
+				lenAnsiAdded += codeEnd - codeStart
+				ansiCodeIndexes = ansiCodeIndexes[1:]
+			} else {
+				break
+			}
+		}
+
+		for _, ansi := range simplifyAnsiCodes(ansisToAdd) {
+			result = append(result, ansi...)
+		}
+
+		// add the bytes of the current rune
+		_, size := utf8.DecodeRune(truncatedBytes[i:])
+		result = append(result, truncatedBytes[i:i+size]...)
+		i += size
+	}
+
+	if !isReset {
+		result = append(result, "\x1b[m"...)
+	}
+
+	return string(result)
+}
+
 func simplifyAnsiCodes(ansis []string) []string {
 	//println()
 	//for _, a := range ansis {
@@ -320,47 +376,6 @@ func simplifyAnsiCodes(ansis []string) []string {
 //		return reapplyANSI(l.line, visible, l.byteOffsets[start], l.ansiCodeIndexes)
 //	}
 //	return visible
-//}
-//
-//func reapplyANSI(original, truncated string, truncByteOffset int, ansiCodeIndexes [][]int) string {
-//	var result []byte
-//	var lenAnsiAdded int
-//	isReset := true
-//	truncatedBytes := []byte(truncated)
-//
-//	for i := 0; i < len(truncatedBytes); {
-//		// collect all ansi codes that should be applied immediately before the current runes
-//		var ansisToAdd []string
-//		for len(ansiCodeIndexes) > 0 {
-//			candidateAnsi := ansiCodeIndexes[0]
-//			codeStart, codeEnd := candidateAnsi[0], candidateAnsi[1]
-//			originalIdx := truncByteOffset + i + lenAnsiAdded
-//			if codeStart <= originalIdx {
-//				code := original[codeStart:codeEnd]
-//				isReset = code == "\x1b[m"
-//				ansisToAdd = append(ansisToAdd, code)
-//				lenAnsiAdded += codeEnd - codeStart
-//				ansiCodeIndexes = ansiCodeIndexes[1:]
-//			} else {
-//				break
-//			}
-//		}
-//
-//		for _, ansi := range simplifyAnsiCodes(ansisToAdd) {
-//			result = append(result, ansi...)
-//		}
-//
-//		// add the bytes of the current rune
-//		_, size := utf8.DecodeRune(truncatedBytes[i:])
-//		result = append(result, truncatedBytes[i:i+size]...)
-//		i += size
-//	}
-//
-//	if !isReset {
-//		result = append(result, "\x1b[m"...)
-//	}
-//
-//	return string(result)
 //}
 
 //func initByteOffsets(runes []rune) []int {
