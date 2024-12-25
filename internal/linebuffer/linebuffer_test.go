@@ -440,7 +440,7 @@ func TestPopLeft(t *testing.T) {
 			},
 		},
 		{
-			name:         "toHighlight, no continuation, no overlap, no ansi",
+			name:         "toHighlight, no continuation, no overflow, no ansi",
 			s:            "a very normal log",
 			width:        15,
 			continuation: "",
@@ -451,7 +451,7 @@ func TestPopLeft(t *testing.T) {
 			},
 		},
 		{
-			name:         "toHighlight, no continuation, no overlap, no ansi",
+			name:         "toHighlight, no continuation, no overflow, no ansi",
 			s:            "a very normal log",
 			width:        15,
 			continuation: "",
@@ -462,7 +462,7 @@ func TestPopLeft(t *testing.T) {
 			},
 		},
 		{
-			name:         "toHighlight, continuation, no overlap, no ansi",
+			name:         "toHighlight, continuation, no overflow, no ansi",
 			s:            "a very normal log",
 			width:        15,
 			continuation: "...",
@@ -473,7 +473,7 @@ func TestPopLeft(t *testing.T) {
 			},
 		},
 		{
-			name:         "toHighlight, no continuation, no overlap, no ansi, many matches",
+			name:         "toHighlight, no continuation, no overflow, no ansi, many matches",
 			s:            strings.Repeat("r", 10),
 			width:        6,
 			continuation: "",
@@ -485,7 +485,7 @@ func TestPopLeft(t *testing.T) {
 			},
 		},
 		{
-			name:         "toHighlight, no continuation, no overlap, ansi",
+			name:         "toHighlight, no continuation, no overflow, ansi",
 			s:            "\x1b[38;2;0;0;255mhi \x1b[48;2;0;255;0mthere\x1b[m er",
 			width:        15,
 			continuation: "",
@@ -493,6 +493,18 @@ func TestPopLeft(t *testing.T) {
 			numPopLefts:  1,
 			expected: []string{
 				"\x1b[38;2;0;0;255mhi \x1b[48;2;0;255;0mth\x1b[m\x1b[48;2;255;0;0mer\x1b[m\x1b[38;2;0;0;255m\x1b[48;2;0;255;0me\x1b[m \x1b[48;2;255;0;0mer\x1b[m",
+			},
+		},
+		{
+			name:         "toHighlight, no continuation, overflows left and right, no ansi",
+			s:            "hi there doc",
+			width:        6,
+			continuation: "",
+			toHighlight:  "hi there",
+			numPopLefts:  2,
+			expected: []string{
+				"hi th" + highlightStyle.Render("e"),
+				highlightStyle.Render("re") + " doc",
 			},
 		},
 	}
