@@ -77,14 +77,17 @@ func (l *LineBuffer) PopLeft() string {
 		// get either a rune from the continuation or the line
 		r := l.plainTextRunes[l.leftRuneIdx]
 		runeWidth := l.plainTextWidths[l.leftRuneIdx]
+		if runeWidth > remainingWidth {
+			break
+		}
+
+		// TODO LEO : this should take runes from continuation up to the rune width its replacing
+		// consider putting this at the end when resultRunes are known
 		if runesToLeft && len(l.continuationRunes) > 0 && runesWritten < len(l.continuationRunes) {
 			r = l.continuationRunes[runesWritten]
 			runeWidth = l.continuationWidths[runesWritten]
 		}
 
-		if runeWidth > remainingWidth {
-			break
-		}
 		result.WriteRune(r)
 		runesWritten++
 		remainingWidth -= runeWidth
@@ -93,44 +96,7 @@ func (l *LineBuffer) PopLeft() string {
 	// if more runes to the right, replace final runes in result with continuation indicator, respecting width
 	// assumes all continuation runes are of width 1
 	if result.Len() > 0 && l.leftRuneIdx < len(l.plainTextRunes) {
-		resultRunes := []rune(result.String())
-		totalContinuationRunes := len(l.continuationRunes)
-		continuationRunesPlaced := 0
-		resultRunesReplaced := 0
-		for {
-			if continuationRunesPlaced >= totalContinuationRunes {
-				return string(resultRunes)
-			}
-
-			resultRuneToReplaceIdx := len(resultRunes) - resultRunesReplaced - 1
-			if resultRuneToReplaceIdx < 0 {
-				return string(resultRunes)
-			}
-			widthToReplace := l.plainTextWidths[resultRuneToReplaceIdx]
-
-			// get a slice of continuation runes that will replace the result rune, e.g. ".." for double-width
-			var continuationRunes []rune
-			for {
-				if widthToReplace <= 0 {
-					break
-				}
-				nextContinuationRuneIdx := len(l.continuationRunes) - 1 - continuationRunesPlaced
-				if nextContinuationRuneIdx < 0 {
-					break
-				}
-				nextContinuationRune := l.continuationRunes[nextContinuationRuneIdx]
-				continuationRunes = append([]rune{nextContinuationRune}, continuationRunes...)
-				widthToReplace -= 1 // assumes continuation runes are of width 1
-				continuationRunesPlaced += 1
-			}
-			leftResult := append(resultRunes[:resultRuneToReplaceIdx], continuationRunes...)
-			var rightResult []rune
-			if resultRuneToReplaceIdx+1 < len(resultRunes) {
-				rightResult = resultRunes[resultRuneToReplaceIdx+1:]
-			}
-			resultRunes = append(leftResult, rightResult...)
-			resultRunesReplaced += 1
-		}
+		result = l.replaceRightRunesWithContinuation(result)
 	}
 
 	return result.String()
@@ -139,6 +105,52 @@ func (l *LineBuffer) PopLeft() string {
 // PopRight returns a string of the buffer's width from its current right offset, scrolling the right offset to the left
 func (l *LineBuffer) PopRight() string {
 	return "TODO"
+}
+
+func (l LineBuffer) replaceRightRunesWithContinuation(result strings.Builder) strings.Builder {
+	var res strings.Builder
+
+	resultRunes := []rune(result.String())
+	totalContinuationRunes := len(l.continuationRunes)
+	continuationRunesPlaced := 0
+	resultRunesReplaced := 0
+	for {
+		if continuationRunesPlaced >= totalContinuationRunes {
+			res.WriteString(string(resultRunes))
+			return res
+		}
+
+		resultRuneToReplaceIdx := len(resultRunes) - 1 - resultRunesReplaced
+		if resultRuneToReplaceIdx < 0 {
+			res.WriteString(string(resultRunes))
+			return res
+		}
+		widthToReplace := l.plainTextWidths[resultRuneToReplaceIdx]
+
+		// get a slice of continuation runes that will replace the result rune, e.g. ".." for double-width unicode char
+		var continuationRunes []rune
+		for {
+			if widthToReplace <= 0 {
+				break
+			}
+			nextContinuationRuneIdx := len(l.continuationRunes) - 1 - continuationRunesPlaced
+			if nextContinuationRuneIdx < 0 {
+				break
+			}
+			nextContinuationRune := l.continuationRunes[nextContinuationRuneIdx]
+			continuationRunes = append([]rune{nextContinuationRune}, continuationRunes...)
+			widthToReplace -= 1 // assumes continuation runes are of width 1
+			continuationRunesPlaced += 1
+		}
+
+		leftResult := append(resultRunes[:resultRuneToReplaceIdx], continuationRunes...)
+		var rightResult []rune
+		if resultRuneToReplaceIdx+1 < len(resultRunes) {
+			rightResult = resultRunes[resultRuneToReplaceIdx+1:]
+		}
+		resultRunes = append(leftResult, rightResult...)
+		resultRunesReplaced += 1
+	}
 }
 
 func simplifyAnsiCodes(ansis []string) []string {
