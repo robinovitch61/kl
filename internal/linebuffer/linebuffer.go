@@ -114,7 +114,6 @@ func (l *LineBuffer) PopLeft() string {
 		res = reapplyANSI(l.line, res, l.runeIdxToByteOffset[startRuneIdx], l.ansiCodeIndexes)
 	}
 
-	//res = applyHighlightString(l.line, res, l.runeIdxToByteOffset[startRuneIdx], l.ansiCodeIndexes, l.toHighlight, l.highlightStyle)
 	res = highlightLine(res, l.toHighlight, l.highlightStyle)
 
 	return res
@@ -271,89 +270,57 @@ func highlightLine(line, highlight string, highlightStyle lipgloss.Style) string
 	}
 
 	renderedHighlight := highlightStyle.Render(highlight)
-	result := &strings.Builder{}
-	i := 0
-	activeStyle := ""
-	inAnsiCode := false
+	var result strings.Builder
+	var activeStyles []string
+	inAnsi := false
 
+	i := 0
 	for i < len(line) {
 		if strings.HasPrefix(line[i:], "\x1b[") {
-			// Found start of ANSI sequence
-			inAnsiCode = true
-			escEnd := strings.Index(line[i:], "m")
-			if escEnd != -1 {
-				escEnd += i + 1
-				currentSequence := line[i:escEnd]
-				if currentSequence == "\x1b[m" {
-					activeStyle = "" // Reset style
+			// found start of ansi
+			inAnsi = true
+			ansiLen := strings.Index(line[i:], "m")
+			if ansiLen != -1 {
+				escEnd := i + ansiLen + 1
+				ansi := line[i:escEnd]
+				if ansi == "\x1b[m" {
+					activeStyles = []string{} // reset
 				} else {
-					activeStyle = currentSequence // Set new active style
+					activeStyles = append(activeStyles, ansi) // add new active style
 				}
-				result.WriteString(currentSequence)
+				result.WriteString(ansi)
 				i = escEnd
-				inAnsiCode = false
+				inAnsi = false
 				continue
 			}
 		}
 
-		// Check if current position starts a highlight match
-		if len(highlight) > 0 && strings.HasPrefix(line[i:], highlight) && !inAnsiCode {
-			// Reset current style if any
-			if activeStyle != "" {
+		// check if current position starts a highlight match
+		if len(highlight) > 0 && !inAnsi && strings.HasPrefix(line[i:], highlight) {
+			// reset current styles, if any
+			if len(activeStyles) > 0 {
 				result.WriteString("\x1b[m")
 			}
-			// Apply highlight
+
+			// apply highlight
 			result.WriteString(renderedHighlight)
-			// Restore previous style if there was one
-			if activeStyle != "" {
-				result.WriteString(activeStyle)
+
+			// restore previous styles, if any
+			if len(activeStyles) > 0 {
+				for j := range activeStyles {
+					result.WriteString(activeStyles[j])
+				}
 			}
 			i += len(highlight)
 			continue
 		}
-		// Regular character
+
 		result.WriteByte(line[i])
 		i++
 	}
 
 	return result.String()
 }
-
-//// applyHighlightString styles the toHighlight string in the truncated input in the highlightStyle without disrupting
-//// other styled portions of the truncated string and including toHighlight matches that overflow the truncated
-//// string from the left or the right
-//func applyHighlightString(
-//	original string, // original string from which truncated was created
-//	truncated string, // truncated string with ansi sequences from the original already reapplied
-//	truncByteOffset int, // the byte offset in the original string from which truncated begins
-//	ansiCodeIndexes [][]int, // slice of startByte, endByte indexes of ansi codes in the line
-//	toHighlight string, // string toHighlight in truncated - does not contain any ansi sequences
-//	highlightStyle lipgloss.Style, // style with which to highlight toHighlight
-//) string {
-//	codeIndexes := constants.AnsiRegex.FindAllStringIndex(truncated, -1)
-//	activateAnsi := ""
-//	i := 0
-//	for {
-//		if i >= len(truncated) {
-//			break
-//		}
-//		b := truncated[i]
-//		for {
-//			numAnsiBeforeCurrByte := 0
-//			for _, ansi := range codeIndexes {
-//				start, end := ansi[0], ansi[1]
-//				if start <= i {
-//					numAnsiBeforeCurrByte += 1
-//				} else {
-//					break
-//				}
-//			}
-//			codeIndexes = codeIndexes[numAnsiBeforeCurrByte:]
-//			if
-//		}
-//		i++
-//	}
-//}
 
 func stripAnsi(input string) string {
 	return constants.AnsiRegex.ReplaceAllString(input, "")
@@ -409,4 +376,59 @@ func initByteOffsets(runes []rune) []int {
 	}
 	offsets[len(runes)] = currentOffset
 	return offsets
+}
+
+// overflowsLeft checks if a substring overflows a string on the left if the string were to start at a given index.
+// It performs a case-sensitive comparison and returns two values:
+//   - A boolean indicating whether there is overflow
+//   - An integer indicating the ending string index of the overflow (0 if none)
+//
+// Examples:
+//
+//	                   01234567890
+//		overflowsLeft("my str here", 3, "my str") returns (true, 6)
+//		overflowsLeft("my str here", 3, "your str") returns (false, 0)
+//		overflowsLeft("my str here", 6, "my str") returns (false, 0)
+func overflowsLeft(s string, index int, substr string) (bool, int) {
+	if len(s) == 0 || len(substr) == 0 || len(substr) > len(s) {
+		return false, 0
+	}
+	end := len(substr) + index
+	for offset := 1; offset < len(substr); offset++ {
+		if index-offset < 0 || end-offset > len(s) {
+			continue
+		}
+		if s[index-offset:end-offset] == substr {
+			return true, end - offset
+		}
+	}
+	return false, 0
+}
+
+// overflowsRight checks if a substring overflows a string on the right if the string were to end at a given index.
+// It performs a case-sensitive comparison and returns two values:
+//   - A boolean indicating whether there is overflow
+//   - An integer indicating the starting string index of the overflow (0 if none)
+//
+// Examples:
+//
+//	                    01234567890
+//		overflowsRight("my str here", 3, "y str") returns (true, 1)
+//		overflowsRight("my str here", 3, "y strong") returns (false, 0)
+//		overflowsRight("my str here", 6, "tr here") returns (true, 4)
+func overflowsRight(s string, index int, substr string) (bool, int) {
+	if len(s) == 0 || len(substr) == 0 || len(substr) > len(s) {
+		return false, 0
+	}
+
+	start := index - len(substr) + 1
+	for offset := 1; offset < len(substr); offset++ {
+		if start+offset < 0 || start+offset+len(substr) > len(s) {
+			continue
+		}
+		if s[start+offset:start+offset+len(substr)] == substr {
+			return true, start + offset
+		}
+	}
+	return false, 0
 }

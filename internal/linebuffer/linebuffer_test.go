@@ -739,3 +739,312 @@ func TestReapplyAnsi(t *testing.T) {
 		})
 	}
 }
+
+func TestHighlightLine(t *testing.T) {
+	red := lipgloss.Color("#ff0000")
+	blue := lipgloss.Color("#0000ff")
+
+	for _, tc := range []struct {
+		name           string
+		line           string
+		highlight      string
+		highlightStyle lipgloss.Style
+		expected       string
+	}{
+		{
+			name:           "empty",
+			line:           "",
+			highlight:      "",
+			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			expected:       "",
+		},
+		{
+			name:           "no highlight",
+			line:           "hello",
+			highlight:      "",
+			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			expected:       "hello",
+		},
+		{
+			name:           "highlight",
+			line:           "hello",
+			highlight:      "ell",
+			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			expected:       "h\x1b[38;2;255;0;0mell\x1b[mo",
+		},
+		{
+			name:           "highlight already styled line",
+			line:           "\x1b[38;2;255;0;0mfirst line\x1b[m",
+			highlight:      "first",
+			highlightStyle: lipgloss.NewStyle().Foreground(blue),
+			expected:       "\x1b[38;2;255;0;0m\x1b[m\x1b[38;2;0;0;255mfirst\x1b[m\x1b[38;2;255;0;0m line\x1b[m",
+		},
+		{
+			name:           "highlight already partially styled line",
+			line:           "hi a \x1b[38;2;255;0;0mstyled line\x1b[m cool \x1b[38;2;255;0;0mand styled\x1b[m more",
+			highlight:      "style",
+			highlightStyle: lipgloss.NewStyle().Foreground(blue),
+			expected:       "hi a \x1b[38;2;255;0;0m\x1b[m\x1b[38;2;0;0;255mstyle\x1b[m\x1b[38;2;255;0;0md line\x1b[m cool \x1b[38;2;255;0;0mand \x1b[m\x1b[38;2;0;0;255mstyle\x1b[m\x1b[38;2;255;0;0md\x1b[m more",
+		},
+		{
+			name:           "dont highlight ansi escape codes themselves",
+			line:           "\x1b[38;2;255;0;0mhi\x1b[m",
+			highlight:      "38",
+			highlightStyle: lipgloss.NewStyle().Foreground(blue),
+			expected:       "\x1b[38;2;255;0;0mhi\x1b[m",
+		},
+		{
+			name:           "single letter in partially styled line",
+			line:           "line \x1b[38;2;255;0;0mred\x1b[m e again",
+			highlight:      "e",
+			highlightStyle: lipgloss.NewStyle().Foreground(blue),
+			expected:       "lin\x1b[38;2;0;0;255me\x1b[m \x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;0;0;255me\x1b[m\x1b[38;2;255;0;0md\x1b[m \x1b[38;2;0;0;255me\x1b[m again",
+		},
+		{
+			name:           "super long line",
+			line:           strings.Repeat("python generator code world world world code text test code words random words generator hello python generator", 10000),
+			highlight:      "e",
+			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			expected:       strings.Repeat("python g\x1b[38;2;255;0;0me\x1b[mn\x1b[38;2;255;0;0me\x1b[mrator cod\x1b[38;2;255;0;0me\x1b[m world world world cod\x1b[38;2;255;0;0me\x1b[m t\x1b[38;2;255;0;0me\x1b[mxt t\x1b[38;2;255;0;0me\x1b[mst cod\x1b[38;2;255;0;0me\x1b[m words random words g\x1b[38;2;255;0;0me\x1b[mn\x1b[38;2;255;0;0me\x1b[mrator h\x1b[38;2;255;0;0me\x1b[mllo python g\x1b[38;2;255;0;0me\x1b[mn\x1b[38;2;255;0;0me\x1b[mrator", 10000),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			util.CmpStr(t, tc.expected, highlightLine(tc.line, tc.highlight, tc.highlightStyle))
+		})
+	}
+}
+
+func TestOverflowsLeft(t *testing.T) {
+	tests := []struct {
+		name     string
+		str      string
+		index    int
+		substr   string
+		wantBool bool
+		wantInt  int
+	}{
+		{
+			name:     "basic overflow case",
+			str:      "my str here",
+			index:    3,
+			substr:   "my str",
+			wantBool: true,
+			wantInt:  6,
+		},
+		{
+			name:     "no overflow case",
+			str:      "my str here",
+			index:    6,
+			substr:   "my str",
+			wantBool: false,
+			wantInt:  0,
+		},
+		{
+			name:     "empty string",
+			str:      "",
+			index:    0,
+			substr:   "test",
+			wantBool: false,
+			wantInt:  0,
+		},
+		{
+			name:     "empty substring",
+			str:      "test string",
+			index:    0,
+			substr:   "",
+			wantBool: false,
+			wantInt:  0,
+		},
+		{
+			name:     "index out of bounds",
+			str:      "test",
+			index:    10,
+			substr:   "test",
+			wantBool: false,
+			wantInt:  0,
+		},
+		{
+			name:     "exact full match",
+			str:      "hello world",
+			index:    0,
+			substr:   "hello world",
+			wantBool: false,
+			wantInt:  0,
+		},
+		{
+			name:     "partial overflow at end",
+			str:      "hello world",
+			index:    9,
+			substr:   "dd",
+			wantBool: false,
+			wantInt:  0,
+		},
+		{
+			name:     "case sensitivity test - no match",
+			str:      "Hello World",
+			index:    0,
+			substr:   "hello",
+			wantBool: false,
+			wantInt:  0,
+		},
+		{
+			name:     "multiple character same overflow",
+			str:      "aaaa",
+			index:    1,
+			substr:   "aaa",
+			wantBool: true,
+			wantInt:  3,
+		},
+		{
+			name:     "multiple character same overflow but difference",
+			str:      "aaaa",
+			index:    1,
+			substr:   "baaa",
+			wantBool: false,
+			wantInt:  0,
+		},
+		{
+			name:     "special characters",
+			str:      "test!@#$",
+			index:    4,
+			substr:   "st!@#",
+			wantBool: true,
+			wantInt:  7,
+		},
+		{
+			name:     "false if does not overflow",
+			str:      "some string",
+			index:    1,
+			substr:   "ome",
+			wantBool: false,
+			wantInt:  0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotBool, gotInt := overflowsLeft(tt.str, tt.index, tt.substr)
+			if gotBool != tt.wantBool || gotInt != tt.wantInt {
+				t.Errorf("overflowsLeft(%q, %d, %q) = (%v, %d), want (%v, %d)",
+					tt.str, tt.index, tt.substr, gotBool, gotInt, tt.wantBool, tt.wantInt)
+			}
+		})
+	}
+}
+
+func TestOverflowsRight(t *testing.T) {
+	tests := []struct {
+		name     string
+		str      string
+		index    int
+		substr   string
+		wantBool bool
+		wantInt  int
+	}{
+		{
+			name:     "example 1",
+			str:      "my str here",
+			index:    3,
+			substr:   "y str",
+			wantBool: true,
+			wantInt:  1,
+		},
+		{
+			name:     "example 2",
+			str:      "my str here",
+			index:    3,
+			substr:   "y strong",
+			wantBool: false,
+			wantInt:  0,
+		},
+		{
+			name:     "example 3",
+			str:      "my str here",
+			index:    6,
+			substr:   "tr here",
+			wantBool: true,
+			wantInt:  4,
+		},
+		{
+			name:     "empty string",
+			str:      "",
+			index:    0,
+			substr:   "test",
+			wantBool: false,
+			wantInt:  0,
+		},
+		{
+			name:     "empty substring",
+			str:      "test string",
+			index:    0,
+			substr:   "",
+			wantBool: false,
+			wantInt:  0,
+		},
+		{
+			name:     "index out of bounds",
+			str:      "test",
+			index:    10,
+			substr:   "test",
+			wantBool: false,
+			wantInt:  0,
+		},
+		{
+			name:     "exact full match",
+			str:      "hello world",
+			index:    10,
+			substr:   "hello world",
+			wantBool: false,
+			wantInt:  0,
+		},
+		{
+			name:     "case sensitivity test - no match",
+			str:      "Hello World",
+			index:    4,
+			substr:   "hello",
+			wantBool: false,
+			wantInt:  0,
+		},
+		{
+			name:     "multiple character same overflow",
+			str:      "aaaa",
+			index:    2,
+			substr:   "aaa",
+			wantBool: true,
+			wantInt:  1,
+		},
+		{
+			name:     "multiple character same overflow but difference",
+			str:      "aaaa",
+			index:    2,
+			substr:   "aaab",
+			wantBool: false,
+			wantInt:  0,
+		},
+		{
+			name:     "special characters",
+			str:      "test!@#$",
+			index:    6,
+			substr:   "@#$",
+			wantBool: true,
+			wantInt:  5,
+		},
+		{
+			name:     "false if does not overflow",
+			str:      "some string",
+			index:    4,
+			substr:   "ome ",
+			wantBool: false,
+			wantInt:  0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotBool, gotInt := overflowsRight(tt.str, tt.index, tt.substr)
+			if gotBool != tt.wantBool || gotInt != tt.wantInt {
+				t.Errorf("overflowsRight(%q, %d, %q) = (%v, %d), want (%v, %d)",
+					tt.str, tt.index, tt.substr, gotBool, gotInt, tt.wantBool, tt.wantInt)
+			}
+		})
+	}
+}
