@@ -497,14 +497,26 @@ func TestPopLeft(t *testing.T) {
 		},
 		{
 			name:         "toHighlight, no continuation, overflows left and right, no ansi",
-			s:            "hi there doc",
+			s:            "hi there re",
 			width:        6,
 			continuation: "",
 			toHighlight:  "hi there",
 			numPopLefts:  2,
 			expected: []string{
-				"hi th" + highlightStyle.Render("e"),
-				highlightStyle.Render("re") + " doc",
+				highlightStyle.Render("hi the"),
+				highlightStyle.Render("re") + " re",
+			},
+		},
+		{
+			name:         "toHighlight, no continuation, overflows left and right, ansi",
+			s:            "\x1b[38;2;0;0;255mhi there re\x1b[m",
+			width:        6,
+			continuation: "",
+			toHighlight:  "hi there",
+			numPopLefts:  2,
+			expected: []string{
+				"\x1b[38;2;0;0;255m\x1b[m\x1b[48;2;255;0;0mhi the\x1b[m\x1b[38;2;0;0;255m\x1b[m",
+				"\x1b[38;2;0;0;255m\x1b[m\x1b[48;2;255;0;0mre\x1b[m\x1b[38;2;0;0;255m re\x1b[m",
 			},
 		},
 	}
@@ -756,11 +768,13 @@ func TestHighlightLine(t *testing.T) {
 	red := lipgloss.Color("#ff0000")
 	blue := lipgloss.Color("#0000ff")
 
-	for _, tc := range []struct {
+	for _, tt := range []struct {
 		name           string
 		line           string
 		highlight      string
 		highlightStyle lipgloss.Style
+		start          int
+		end            int
 		expected       string
 	}{
 		{
@@ -819,9 +833,21 @@ func TestHighlightLine(t *testing.T) {
 			highlightStyle: lipgloss.NewStyle().Foreground(red),
 			expected:       strings.Repeat("python g\x1b[38;2;255;0;0me\x1b[mn\x1b[38;2;255;0;0me\x1b[mrator cod\x1b[38;2;255;0;0me\x1b[m world world world cod\x1b[38;2;255;0;0me\x1b[m t\x1b[38;2;255;0;0me\x1b[mxt t\x1b[38;2;255;0;0me\x1b[mst cod\x1b[38;2;255;0;0me\x1b[m words random words g\x1b[38;2;255;0;0me\x1b[mn\x1b[38;2;255;0;0me\x1b[mrator h\x1b[38;2;255;0;0me\x1b[mllo python g\x1b[38;2;255;0;0me\x1b[mn\x1b[38;2;255;0;0me\x1b[mrator", 10000),
 		},
+		{
+			name:           "start and end",
+			line:           "my line",
+			highlight:      "line",
+			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			start:          0,
+			end:            2,
+			expected:       "my line",
+		},
 	} {
-		t.Run(tc.name, func(t *testing.T) {
-			util.CmpStr(t, tc.expected, highlightLine(tc.line, tc.highlight, tc.highlightStyle))
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.start == 0 && tt.end == 0 {
+				tt.end = len(tt.line)
+			}
+			util.CmpStr(t, tt.expected, highlightLine(tt.line, tt.highlight, tt.highlightStyle, tt.start, tt.end))
 		})
 	}
 }
