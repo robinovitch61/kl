@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/mattn/go-runewidth"
 	"github.com/robinovitch61/kl/internal/constants"
+	"github.com/robinovitch61/kl/internal/dev"
 	"strings"
 	"unicode/utf8"
 )
@@ -14,8 +15,7 @@ type LineBuffer struct {
 	line                string // line with ansi codes. utf-8 bytes
 	width               int    // width in terminal columns (not bytes or runes)
 	continuation        string // indicator for line continuation, e.g. "..."
-	leftRuneIdx         int    // left plaintext rune idx
-	rightRuneIdx        int    // right plaintext rune idx
+	leftRuneIdx         int    // left plaintext rune idx to start next PopLeft result from
 	lineRunes           []rune // runes of line
 	runeIdxToByteOffset []int  // idx of lineRunes to byte offset. len(runeIdxToByteOffset) == len(lineRunes)
 	plainText           string // line without ansi codes. utf-8 bytes
@@ -43,18 +43,9 @@ func New(line string, width int, continuation string) LineBuffer {
 	lb.plainText = constants.AnsiRegex.ReplaceAllString(line, "")
 
 	lb.lineRunes = []rune(lb.line)
-	lb.runeIdxToByteOffset = make([]int, len(lb.lineRunes))
-	for i := range lb.line {
-		byteCount := len([]byte{lb.line[i]})
-		if i == 0 {
-			lb.runeIdxToByteOffset[i] = byteCount
-		} else {
-			lb.runeIdxToByteOffset[i] = lb.runeIdxToByteOffset[i-1] + byteCount
-		}
-	}
+	lb.runeIdxToByteOffset = initByteOffsets(lb.lineRunes)
 
 	lb.plainTextRunes = []rune(lb.plainText)
-	lb.rightRuneIdx = len(lb.plainTextRunes)
 
 	lb.plainTextWidths = make([]int, len(lb.plainTextRunes))
 	lb.plainTextCumWidth = make([]int, len(lb.plainTextRunes))
@@ -118,11 +109,6 @@ func (l *LineBuffer) PopLeft() string {
 	}
 
 	return result.String()
-}
-
-// PopRight returns a string of the buffer's width from its current right offset, scrolling the right offset to the left
-func (l *LineBuffer) PopRight() string {
-	return "TODO"
 }
 
 func (l LineBuffer) replaceStartRunesWithContinuation(result strings.Builder) strings.Builder {
@@ -304,93 +290,19 @@ func simplifyAnsiCodes(ansis []string) []string {
 	return ansis
 }
 
-//func (l LineBuffer) Truncate(xOffset, width int) string {
-//	if width <= 0 {
-//		return ""
-//	}
-//	if xOffset == 0 && len(l.lineContinuationIndicator) == 0 && !strings.Contains(l.line, "\x1b") {
-//		if len(l.lineRunes) <= width {
-//			return l.line
-//		}
-//		return string(l.lineRunes[:width])
-//	}
-//
-//	lenPlainText := len(l.plainTextRunes)
-//
-//	if lenPlainText == 0 || xOffset >= lenPlainText {
-//		return ""
-//	}
-//
-//	indicatorLen := utf8.RuneCountInString(l.lineContinuationIndicator)
-//	if width <= indicatorLen && lenPlainText > width {
-//		return l.lineContinuationIndicator[:width]
-//	}
-//
-//	var b strings.Builder
-//
-//	start := xOffset
-//	if start < 0 {
-//		start = 0
-//	}
-//	end := xOffset + width
-//	if end > lenPlainText {
-//		end = lenPlainText
-//	}
-//	if end <= start {
-//		if len(l.ansiCodeIndexes) > 0 {
-//			return ""
-//		}
-//		return ""
-//	}
-//
-//	if start == 0 && end == lenPlainText && len(l.ansiCodeIndexes) == 0 {
-//		return l.line
-//	}
-//
-//	visible := string(l.plainTextRunes[start:end])
-//
-//	if indicatorLen > 0 {
-//		if end-start <= indicatorLen && lenPlainText > indicatorLen {
-//			return l.lineContinuationIndicator[:min(indicatorLen, end-start)]
-//		}
-//		visLen := utf8.RuneCountInString(visible)
-//		if xOffset > 0 && visLen > indicatorLen {
-//			b.WriteString(l.lineContinuationIndicator)
-//			b.WriteString(string([]rune(visible)[indicatorLen:]))
-//			visible = b.String()
-//		} else if xOffset > 0 {
-//			visible = l.lineContinuationIndicator
-//		}
-//		if end < lenPlainText && visLen > indicatorLen {
-//			b.Reset()
-//			b.WriteString(string([]rune(visible)[:visLen-indicatorLen]))
-//			b.WriteString(l.lineContinuationIndicator)
-//			visible = b.String()
-//		} else if end < lenPlainText {
-//			visible = l.lineContinuationIndicator
-//		}
-//	}
-//
-//	if len(l.ansiCodeIndexes) > 0 {
-//		//println(fmt.Sprintf("reapplyAnsi(%q, %q, %d, %v) = %q", l.line, visible, l.byteOffsets[start], l.ansiCodeIndexes, reapplied))
-//		return reapplyANSI(l.line, visible, l.byteOffsets[start], l.ansiCodeIndexes)
-//	}
-//	return visible
-//}
-
-//func initByteOffsets(runes []rune) []int {
-//	offsets := make([]int, len(runes)+1)
-//	currentOffset := 0
-//	for i, r := range runes {
-//		offsets[i] = currentOffset
-//		runeLen := utf8.RuneLen(r)
-//		if runeLen == -1 {
-//			// invalid utf-8 value, assume 1 byte
-//			dev.Debug(fmt.Sprintf("invalid utf-8 value: %v", r))
-//			runeLen = 1
-//		}
-//		currentOffset += runeLen
-//	}
-//	offsets[len(runes)] = currentOffset
-//	return offsets
-//}
+func initByteOffsets(runes []rune) []int {
+	offsets := make([]int, len(runes)+1)
+	currentOffset := 0
+	for i, r := range runes {
+		offsets[i] = currentOffset
+		runeLen := utf8.RuneLen(r)
+		if runeLen == -1 {
+			// invalid utf-8 value, assume 1 byte
+			dev.Debug(fmt.Sprintf("invalid utf-8 value: %v", r))
+			runeLen = 1
+		}
+		currentOffset += runeLen
+	}
+	offsets[len(runes)] = currentOffset
+	return offsets
+}
