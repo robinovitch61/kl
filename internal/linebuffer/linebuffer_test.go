@@ -114,7 +114,80 @@ func TestPopLeft(t *testing.T) {
 				"",
 			},
 		},
-		//Hello 世界! This is a test with unicode characters 🌟
+		{
+			name:         "double width unicode, no continuation, no width",
+			s:            "世界🌟", // each of these takes up 2 terminal cells
+			width:        0,
+			continuation: "",
+			numPopLefts:  3,
+			expected: []string{
+				"",
+				"",
+				"",
+			},
+		},
+		{
+			name:         "double width unicode, continuation, no width",
+			s:            "世界🌟", // each of these takes up 2 terminal cells
+			width:        0,
+			continuation: "...",
+			numPopLefts:  3,
+			expected: []string{
+				"",
+				"",
+				"",
+			},
+		},
+		{
+			name:         "double width unicode, no continuation, width 1",
+			s:            "世界🌟", // each of these takes up 2 terminal cells
+			width:        1,
+			continuation: "",
+			numPopLefts:  3,
+			expected: []string{
+				"",
+				"",
+				"",
+			},
+		},
+		{
+			name:         "double width unicode, continuation, width 1",
+			s:            "世界🌟", // each of these takes up 2 terminal cells
+			width:        1,
+			continuation: "...",
+			numPopLefts:  3,
+			expected: []string{
+				"",
+				"",
+				"",
+			},
+		},
+		{
+			name:         "double width unicode, no continuation, width 2",
+			s:            "世界🌟", // each of these takes up 2 terminal cells
+			width:        2,
+			continuation: "",
+			numPopLefts:  4,
+			expected: []string{
+				"世",
+				"界",
+				"🌟",
+				"",
+			},
+		},
+		{
+			name:         "double width unicode, continuation, width 2",
+			s:            "世界🌟", // each of these takes up 2 terminal cells
+			width:        2,
+			continuation: "...",
+			numPopLefts:  3,
+			expected: []string{
+				"..",
+				"..",
+				"..",
+				//"",
+			},
+		},
 	}
 
 	for _, tt := range tests {

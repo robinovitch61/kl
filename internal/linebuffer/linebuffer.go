@@ -92,7 +92,7 @@ func (l *LineBuffer) PopLeft() string {
 
 	// if more runes to the right, replace final runes in result with continuation indicator, respecting width
 	// assumes all continuation runes are of width 1
-	if l.leftRuneIdx < len(l.plainTextRunes) {
+	if result.Len() > 0 && l.leftRuneIdx < len(l.plainTextRunes) {
 		resultRunes := []rune(result.String())
 		totalContinuationRunes := len(l.continuationRunes)
 		continuationRunesPlaced := 0
@@ -102,7 +102,7 @@ func (l *LineBuffer) PopLeft() string {
 				return string(resultRunes)
 			}
 
-			resultRuneToReplaceIdx := l.width - resultRunesReplaced - 1
+			resultRuneToReplaceIdx := len(resultRunes) - resultRunesReplaced - 1
 			if resultRuneToReplaceIdx < 0 {
 				return string(resultRunes)
 			}
@@ -123,7 +123,12 @@ func (l *LineBuffer) PopLeft() string {
 				widthToReplace -= 1 // assumes continuation runes are of width 1
 				continuationRunesPlaced += 1
 			}
-			resultRunes = append(append(resultRunes[:resultRuneToReplaceIdx], continuationRunes...), resultRunes[resultRuneToReplaceIdx+1:]...)
+			leftResult := append(resultRunes[:resultRuneToReplaceIdx], continuationRunes...)
+			var rightResult []rune
+			if resultRuneToReplaceIdx+1 < len(resultRunes) {
+				rightResult = resultRunes[resultRuneToReplaceIdx+1:]
+			}
+			resultRunes = append(leftResult, rightResult...)
 			resultRunesReplaced += 1
 		}
 	}
