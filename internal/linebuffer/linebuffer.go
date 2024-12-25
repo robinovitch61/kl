@@ -85,6 +85,7 @@ func (l *LineBuffer) PopLeft() string {
 	var result strings.Builder
 	remainingWidth := l.width
 	startRuneIdx := l.leftRuneIdx
+	startByteOffset := l.runeIdxToByteOffset[startRuneIdx]
 
 	runesWritten := 0
 	for ; remainingWidth > 0 && l.leftRuneIdx < len(l.plainTextRunes); l.leftRuneIdx++ {
@@ -111,17 +112,20 @@ func (l *LineBuffer) PopLeft() string {
 
 	res := result.String()
 	if len(l.ansiCodeIndexes) > 0 {
-		res = reapplyANSI(l.line, res, l.runeIdxToByteOffset[startRuneIdx], l.ansiCodeIndexes)
+		res = reapplyANSI(l.line, res, startByteOffset, l.ansiCodeIndexes)
 	}
 
-	res = highlightLine(res, l.toHighlight, l.highlightStyle)
+	res = highlightLine(res, l.toHighlight, l.highlightStyle, 0, len(res))
 
-	if left, endIdx := overflowsLeft(l.line, l.runeIdxToByteOffset[startRuneIdx], l.toHighlight); left {
-		res = highlightLine(res, l.line[l.runeIdxToByteOffset[startRuneIdx]:endIdx], l.highlightStyle)
+	if left, endIdx := overflowsLeft(l.plainText, startByteOffset, l.toHighlight); left {
+		highlightLeft := l.plainText[startByteOffset:endIdx]
+		res = highlightLine(res, highlightLeft, l.highlightStyle, 0, len(highlightLeft))
 	}
-	// TODO LEO: fix this, and consider if highlightLine can take in index bounds as args
-	if right, startIdx := overflowsRight(l.line, l.runeIdxToByteOffset[l.leftRuneIdx], l.toHighlight); right {
-		res = highlightLine(res, l.line[startIdx:l.runeIdxToByteOffset[l.leftRuneIdx]], l.highlightStyle)
+	endByteOffset := l.runeIdxToByteOffset[l.leftRuneIdx]
+	if right, startIdx := overflowsRight(l.plainText, endByteOffset, l.toHighlight); right {
+		highlightRight := l.plainText[startIdx:endByteOffset]
+		lenPlainTextRes := len(stripAnsi(res))
+		res = highlightLine(res, highlightRight, l.highlightStyle, lenPlainTextRes-len(highlightRight), lenPlainTextRes)
 	}
 
 	return res
@@ -272,15 +276,18 @@ func reapplyANSI(original, truncated string, truncByteOffset int, ansiCodeIndexe
 }
 
 // highlightLine highlights a string in a line that potentially has ansi codes in it without disrupting them
-func highlightLine(line, highlight string, highlightStyle lipgloss.Style) string {
+// start and end are the byte offsets for which highlighting is considered in the line, not counting ansi codes
+func highlightLine(line, highlight string, highlightStyle lipgloss.Style, start, end int) string {
 	if line == "" || highlight == "" {
 		return line
 	}
 
 	renderedHighlight := highlightStyle.Render(highlight)
+	lenHighlight := len(highlight)
 	var result strings.Builder
 	var activeStyles []string
 	inAnsi := false
+	nonAnsiBytes := 0
 
 	i := 0
 	for i < len(line) {
@@ -304,7 +311,7 @@ func highlightLine(line, highlight string, highlightStyle lipgloss.Style) string
 		}
 
 		// check if current position starts a highlight match
-		if len(highlight) > 0 && !inAnsi && strings.HasPrefix(line[i:], highlight) {
+		if len(highlight) > 0 && !inAnsi && nonAnsiBytes >= start && nonAnsiBytes < end && strings.HasPrefix(line[i:], highlight) {
 			// reset current styles, if any
 			if len(activeStyles) > 0 {
 				result.WriteString("\x1b[m")
@@ -312,6 +319,7 @@ func highlightLine(line, highlight string, highlightStyle lipgloss.Style) string
 
 			// apply highlight
 			result.WriteString(renderedHighlight)
+			nonAnsiBytes += lenHighlight
 
 			// restore previous styles, if any
 			if len(activeStyles) > 0 {
@@ -324,6 +332,7 @@ func highlightLine(line, highlight string, highlightStyle lipgloss.Style) string
 		}
 
 		result.WriteByte(line[i])
+		nonAnsiBytes++
 		i++
 	}
 
