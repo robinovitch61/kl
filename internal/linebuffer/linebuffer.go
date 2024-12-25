@@ -116,6 +116,14 @@ func (l *LineBuffer) PopLeft() string {
 
 	res = highlightLine(res, l.toHighlight, l.highlightStyle)
 
+	if left, endIdx := overflowsLeft(l.line, l.runeIdxToByteOffset[startRuneIdx], l.toHighlight); left {
+		res = highlightLine(res, l.line[l.runeIdxToByteOffset[startRuneIdx]:endIdx], l.highlightStyle)
+	}
+	// TODO LEO: fix this, and consider if highlightLine can take in index bounds as args
+	if right, startIdx := overflowsRight(l.line, l.runeIdxToByteOffset[l.leftRuneIdx], l.toHighlight); right {
+		res = highlightLine(res, l.line[startIdx:l.runeIdxToByteOffset[l.leftRuneIdx]], l.highlightStyle)
+	}
+
 	return res
 }
 
