@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestTotalLines(t *testing.T) {
+func TestLineBuffer_TotalLines(t *testing.T) {
 	tests := []struct {
 		name         string
 		s            string
@@ -44,13 +44,108 @@ func TestTotalLines(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			lb := New(tt.s, tt.width, tt.continuation)
 			if lb.TotalLines() != tt.expected {
-				t.Fatalf("expected %d, got %d", tt.expected, lb.TotalLines())
+				t.Fatalf("expectedPopLeft %d, got %d", tt.expected, lb.TotalLines())
 			}
 		})
 	}
 }
 
-func TestPopLeft(t *testing.T) {
+func TestLineBuffer_SeekToWidth(t *testing.T) {
+	tests := []struct {
+		name            string
+		s               string
+		width           int
+		seekWidth       int
+		continuation    string
+		expectedPopLeft string
+	}{
+		{
+			name:            "simple",
+			s:               "1234567890",
+			width:           10,
+			seekWidth:       0,
+			continuation:    "",
+			expectedPopLeft: "1234567890",
+		},
+		{
+			name:            "seek",
+			s:               "1234567890",
+			width:           10,
+			seekWidth:       3,
+			continuation:    "",
+			expectedPopLeft: "4567890",
+		},
+		{
+			name:            "seek to end",
+			s:               "1234567890",
+			width:           10,
+			seekWidth:       10,
+			continuation:    "",
+			expectedPopLeft: "",
+		},
+		{
+			name:            "seek past end",
+			s:               "1234567890",
+			width:           10,
+			seekWidth:       11,
+			continuation:    "",
+			expectedPopLeft: "",
+		},
+		{
+			name:            "continuation",
+			s:               "1234567890",
+			width:           7,
+			seekWidth:       2,
+			continuation:    "...",
+			expectedPopLeft: "...6...",
+		},
+		{
+			name:            "continuation past end",
+			s:               "1234567890",
+			width:           10,
+			seekWidth:       11,
+			continuation:    "...",
+			expectedPopLeft: "",
+		},
+		{
+			name:            "unicode",
+			s:               "世界🌟世界🌟",
+			width:           10,
+			seekWidth:       0,
+			continuation:    "",
+			expectedPopLeft: "世界🌟世界",
+		},
+		{
+			name:            "unicode seek past first rune",
+			s:               "世界🌟世界🌟",
+			width:           10,
+			seekWidth:       2,
+			continuation:    "",
+			expectedPopLeft: "界🌟世界🌟",
+		},
+		{
+			name:            "unicode seek past first rune",
+			s:               "世界🌟世界🌟",
+			width:           10,
+			seekWidth:       3,
+			continuation:    "",
+			expectedPopLeft: "🌟世界🌟",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lb := New(tt.s, tt.width, tt.continuation)
+			lb.SeekToWidth(tt.seekWidth)
+			// highlighting is tested elsewhere
+			if actual := lb.PopLeft("", lipgloss.NewStyle()); actual != tt.expectedPopLeft {
+				t.Fatalf("expected %s, got %s", tt.expectedPopLeft, actual)
+			}
+		})
+	}
+}
+
+func TestLineBuffer_PopLeft(t *testing.T) {
 	highlightStyle := lipgloss.NewStyle().Background(lipgloss.Color("#FF0000"))
 	tests := []struct {
 		name         string
@@ -577,7 +672,7 @@ func TestPopLeft(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if len(tt.expected) != tt.numPopLefts {
-				t.Fatalf("num expected != num popLefts")
+				t.Fatalf("num expectedPopLeft != num popLefts")
 			}
 			lb := New(tt.s, tt.width, tt.continuation)
 			for i := 0; i < tt.numPopLefts; i++ {
@@ -588,7 +683,7 @@ func TestPopLeft(t *testing.T) {
 	}
 }
 
-func TestReapplyAnsi(t *testing.T) {
+func TestLineBuffer_ReapplyAnsi(t *testing.T) {
 	tests := []struct {
 		name            string
 		original        string
@@ -817,7 +912,7 @@ func TestReapplyAnsi(t *testing.T) {
 	}
 }
 
-func TestHighlightLine(t *testing.T) {
+func TestLineBuffer_HighlightLine(t *testing.T) {
 	red := lipgloss.Color("#ff0000")
 	blue := lipgloss.Color("#0000ff")
 
@@ -923,7 +1018,7 @@ func TestHighlightLine(t *testing.T) {
 	}
 }
 
-func TestOverflowsLeft(t *testing.T) {
+func TestLineBuffer_OverflowsLeft(t *testing.T) {
 	tests := []struct {
 		name     string
 		str      string
@@ -1049,7 +1144,7 @@ func TestOverflowsLeft(t *testing.T) {
 	}
 }
 
-func TestOverflowsRight(t *testing.T) {
+func TestLineBuffer_OverflowsRight(t *testing.T) {
 	tests := []struct {
 		name     string
 		str      string

@@ -84,18 +84,30 @@ func (l LineBuffer) TotalLines() int {
 
 // TODO LEO: test
 func (l *LineBuffer) SeekToLine(n int) {
-	// use binary search of l.lineNoAnsiWidths to seek l.leftRuneIdx to the first index where
-	// l.lineNoAnsiWidths is greater than n * l.width
 	if n <= 0 {
 		l.leftRuneIdx = 0
 		return
 	}
+	l.seekLeftRuneIdxToWidth(n * l.width)
+}
 
-	targetWidth := n * l.width
+// TODO LEO: test
+func (l *LineBuffer) SeekToWidth(w int) {
+	// width can go past end, in which case PopLeft() returns "". Required when e.g. panning past line's end.
+	if w <= 0 {
+		l.leftRuneIdx = 0
+		return
+	}
+	l.seekLeftRuneIdxToWidth(w)
+}
+
+func (l *LineBuffer) seekLeftRuneIdxToWidth(w int) {
+	// use binary search of l.lineNoAnsiWidths to seek l.leftRuneIdx to r+1
+	// TODO LEO: trickyness here
 	left, right := 0, len(l.lineNoAnsiCumWidths)-1
 
 	// handle case where target is beyond the end
-	if targetWidth >= l.lineNoAnsiCumWidths[right] {
+	if w >= l.lineNoAnsiCumWidths[right] {
 		l.leftRuneIdx = len(l.lineNoAnsiCumWidths)
 		return
 	}
@@ -103,7 +115,7 @@ func (l *LineBuffer) SeekToLine(n int) {
 	// binary search for the first index where cumulative width exceeds target
 	for left < right {
 		mid := left + (right-left)/2
-		if l.lineNoAnsiCumWidths[mid] > targetWidth {
+		if l.lineNoAnsiCumWidths[mid] > w {
 			right = mid
 		} else {
 			left = mid + 1
@@ -111,13 +123,6 @@ func (l *LineBuffer) SeekToLine(n int) {
 	}
 
 	l.leftRuneIdx = left
-}
-
-// TODO LEO: test
-func (l *LineBuffer) SeekToWidth(w int) {
-	if w >= 0 {
-		l.leftRuneIdx = w
-	}
 }
 
 // PopLeft returns a string of the buffer's width from its current left offset, scrolling the left offset to the right
