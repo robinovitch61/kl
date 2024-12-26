@@ -319,16 +319,14 @@ func (fv *FilterableViewport[T]) SetStyles(styles style.Styles) {
 }
 
 func (fv *FilterableViewport[T]) updateViewportStyles() {
-	fv.viewport.HighlightStyle = fv.styles.Inverse
-
 	if fv.focused {
 		fv.viewport.SelectedItemStyle = fv.styles.Inverse
 		fv.viewport.FooterStyle = lipgloss.NewStyle()
-		fv.viewport.HighlightStyleIfSelected = fv.styles.Unset
+		fv.viewport.SetHighlightStyles(fv.styles.Inverse, fv.styles.Unset)
 	} else {
 		fv.viewport.SelectedItemStyle = lipgloss.NewStyle()
 		fv.viewport.FooterStyle = fv.styles.Alt
-		fv.viewport.HighlightStyleIfSelected = fv.styles.Inverse
+		fv.viewport.SetHighlightStyles(fv.styles.Inverse, fv.styles.Inverse)
 	}
 
 	if fv.Filter.Focused() {

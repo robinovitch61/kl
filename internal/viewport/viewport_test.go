@@ -741,7 +741,7 @@ func TestViewport_SelectionOff_WrapOff_StringToHighlight(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetStringToHighlight("second")
-	vp.HighlightStyle = lipgloss.NewStyle().Foreground(red)
+	vp.SetHighlightStyles(lipgloss.NewStyle().Foreground(red), lipgloss.NewStyle())
 	vp.SetContent([]RenderableString{
 		{Content: "first"},
 		{Content: "second"},
@@ -767,8 +767,7 @@ func TestViewport_SelectionOff_WrapOff_StringToHighlightManyMatches(t *testing.T
 			{Content: strings.Repeat("r", 100000)},
 		})
 		vp.SetStringToHighlight("r")
-		vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
-		vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
+		vp.SetHighlightStyles(lipgloss.NewStyle().Foreground(green), lipgloss.NewStyle().Foreground(red))
 		expectedView := pad(vp.width, vp.height, []string{
 			"header",
 			strings.Repeat("\x1b[38;2;0;255;0mr\x1b[m", 7) + strings.Repeat(".", 3),
@@ -786,7 +785,7 @@ func TestViewport_SelectionOff_WrapOff_StringToHighlightAnsi(t *testing.T) {
 		{Content: "line \x1b[38;2;255;0;0mred\x1b[m e again"},
 	})
 	vp.SetStringToHighlight("e")
-	vp.HighlightStyle = selectionStyle
+	vp.SetHighlightStyles(selectionStyle, lipgloss.NewStyle())
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
 		"lin\x1b[38;2;0;0;255me\x1b[m \x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;0;0;255me\x1b[m\x1b[38;2;255;0;0md\x1b[m \x1b[38;2;0;0;255me\x1b[m again",
@@ -2064,8 +2063,7 @@ func TestViewport_SelectionOn_WrapOff_StringToHighlight(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
 	vp.SetStringToHighlight("second")
-	vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
-	vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
+	vp.SetHighlightStyles(lipgloss.NewStyle().Foreground(green), lipgloss.NewStyle().Foreground(red))
 	vp.SetContent([]RenderableString{
 		{Content: "the first line"},
 		{Content: "the second line"},
@@ -2117,8 +2115,7 @@ func TestViewport_SelectionOn_WrapOff_StringToHighlightManyMatches(t *testing.T)
 			{Content: strings.Repeat("r", 100000)},
 		})
 		vp.SetStringToHighlight("r")
-		vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
-		vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
+		vp.SetHighlightStyles(lipgloss.NewStyle().Foreground(green), lipgloss.NewStyle().Foreground(red))
 		expectedView := pad(vp.width, vp.height, []string{
 			"header",
 			strings.Repeat("\x1b[38;2;255;0;0mr\x1b[m", 7) + "\x1b[38;2;0;0;255m" + strings.Repeat(".", 3) + "\x1b[m",
@@ -2903,7 +2900,7 @@ func TestViewport_SelectionOff_WrapOn_StringToHighlight(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
 	vp.SetStringToHighlight("second")
-	vp.HighlightStyle = lipgloss.NewStyle().Foreground(red)
+	vp.SetHighlightStyles(lipgloss.NewStyle().Foreground(red), lipgloss.NewStyle())
 	vp.SetContent([]RenderableString{
 		{Content: "first"},
 		{Content: "second"},
@@ -2943,8 +2940,7 @@ func TestViewport_SelectionOff_WrapOn_StringToHighlightManyMatches(t *testing.T)
 			{Content: strings.Repeat("r", 100000)},
 		})
 		vp.SetStringToHighlight("r")
-		vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
-		vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
+		vp.SetHighlightStyles(lipgloss.NewStyle().Foreground(green), lipgloss.NewStyle().Foreground(red))
 		expectedView := pad(vp.width, vp.height, []string{
 			"header",
 			strings.Repeat("\x1b[38;2;0;255;0mr\x1b[m", 10),
@@ -2966,7 +2962,7 @@ func TestViewport_SelectionOff_WrapOn_StringToHighlightAnsi(t *testing.T) {
 		{Content: "line \x1b[38;2;255;0;0mred\x1b[m e again"},
 	})
 	vp.SetStringToHighlight("e")
-	vp.HighlightStyle = selectionStyle
+	vp.SetHighlightStyles(selectionStyle, lipgloss.NewStyle())
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
 		"lin\x1b[38;2;0;0;255me\x1b[m \x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;0;0;255me\x1b[m\x1b[38;2;255;0;0md\x1b[m \x1b[38;2;0;0;255me\x1b[m",
@@ -4309,8 +4305,7 @@ func TestViewport_SelectionOn_WrapOn_StringToHighlight(t *testing.T) {
 	vp.SetSelectionEnabled(true)
 	vp.SetWrapText(true)
 	vp.SetStringToHighlight("second")
-	vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
-	vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
+	vp.SetHighlightStyles(lipgloss.NewStyle().Foreground(green), lipgloss.NewStyle().Foreground(red))
 	vp.SetContent([]RenderableString{
 		{Content: "first"},
 		{Content: "second"},
@@ -4374,8 +4369,7 @@ func TestViewport_SelectionOn_WrapOn_StringToHighlightManyMatches(t *testing.T) 
 			{Content: strings.Repeat("r", 100000)},
 		})
 		vp.SetStringToHighlight("r")
-		vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
-		vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
+		vp.SetHighlightStyles(lipgloss.NewStyle().Foreground(green), lipgloss.NewStyle().Foreground(red))
 		expectedView := pad(vp.width, vp.height, []string{
 			"header",
 			strings.Repeat("\x1b[38;2;255;0;0mr\x1b[m", 10),
