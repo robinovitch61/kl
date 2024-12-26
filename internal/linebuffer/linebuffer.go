@@ -173,6 +173,8 @@ func (l *LineBuffer) PopLeft(toHighlight string, highlightStyle lipgloss.Style) 
 		res = highlightLine(res, highlightRight, highlightStyle, lenPlainTextRes-len(highlightRight), lenPlainTextRes)
 	}
 
+	res = constants.EmptySequenceRegex.ReplaceAllString(res, "")
+
 	return res
 }
 
