@@ -30,6 +30,14 @@ func TestTotalLines(t *testing.T) {
 			continuation: "",
 			expected:     10,
 		},
+		{
+			name:         "uneven number",
+			s:            "1234567890",
+			width:        3,
+			continuation: "",
+			expected:     4,
+		},
+		// TODO LEO: test unicode
 	}
 
 	for _, tt := range tests {
@@ -1127,6 +1135,7 @@ func TestOverflowsRight(t *testing.T) {
 			wantBool: false,
 			wantInt:  0,
 		},
+		// TODO LEO: seems like highlightLine or this is broken if there's a one character overflow
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

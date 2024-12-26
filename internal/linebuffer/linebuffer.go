@@ -83,7 +83,6 @@ func (l LineBuffer) fullWidth() int {
 	return l.lineNoAnsiCumWidths[len(l.lineNoAnsiCumWidths)-1]
 }
 
-// TODO LEO: test
 func (l LineBuffer) TotalLines() int {
 	return (l.fullWidth() + l.width - 1) / l.width
 }
