@@ -561,6 +561,17 @@ func TestPopLeft(t *testing.T) {
 				"\x1b[48;2;255;0;0mre\x1b[m\x1b[38;2;0;0;255m re\x1b[m",
 			},
 		},
+		{
+			name:         "toHighlight, no continuation, overflows right one char, no ansi",
+			s:            "hi there re",
+			width:        7,
+			continuation: "",
+			toHighlight:  "re",
+			numPopLefts:  1,
+			expected: []string{
+				"hi the" + highlightStyle.Render("r"),
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -800,7 +811,7 @@ func TestReapplyAnsi(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ansiCodeIndexes := constants.AnsiRegex.FindAllStringIndex(tt.original, -1)
-			actual := reapplyANSI(tt.original, tt.truncated, tt.truncByteOffset, ansiCodeIndexes)
+			actual := reapplyAnsi(tt.original, tt.truncated, tt.truncByteOffset, ansiCodeIndexes)
 			util.CmpStr(t, tt.expected, actual)
 		})
 	}
@@ -1017,6 +1028,14 @@ func TestOverflowsLeft(t *testing.T) {
 			wantBool: false,
 			wantInt:  0,
 		},
+		{
+			name:     "one char overflow",
+			str:      "some string",
+			index:    1,
+			substr:   "some",
+			wantBool: true,
+			wantInt:  4,
+		},
 	}
 
 	for _, tt := range tests {
@@ -1135,7 +1154,14 @@ func TestOverflowsRight(t *testing.T) {
 			wantBool: false,
 			wantInt:  0,
 		},
-		// TODO LEO: seems like highlightLine or this is broken if there's a one character overflow
+		{
+			name:     "one char overflow",
+			str:      "some string",
+			index:    4,
+			substr:   "ome s",
+			wantBool: true,
+			wantInt:  1,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
