@@ -42,7 +42,7 @@ func TestTotalLines(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lb := New(tt.s, tt.width, tt.continuation, "", lipgloss.NewStyle())
+			lb := New(tt.s, tt.width, tt.continuation)
 			if lb.TotalLines() != tt.expected {
 				t.Fatalf("expected %d, got %d", tt.expected, lb.TotalLines())
 			}
@@ -568,9 +568,9 @@ func TestPopLeft(t *testing.T) {
 			if len(tt.expected) != tt.numPopLefts {
 				t.Fatalf("num expected != num popLefts")
 			}
-			lb := New(tt.s, tt.width, tt.continuation, tt.toHighlight, highlightStyle)
+			lb := New(tt.s, tt.width, tt.continuation)
 			for i := 0; i < tt.numPopLefts; i++ {
-				actual := lb.PopLeft()
+				actual := lb.PopLeft(tt.toHighlight, highlightStyle)
 				util.CmpStr(t, tt.expected[i], actual)
 			}
 		})

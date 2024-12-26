@@ -202,7 +202,8 @@ func (m Model[T]) View() string {
 
 	visibleHeaderLines := m.getVisibleHeaderLines()
 	for i := range visibleHeaderLines {
-		viewString += m.truncateNoXOffset(visibleHeaderLines[i]) + "\n"
+		lineBuffer := linebuffer.New(visibleHeaderLines[i], m.width, "")
+		viewString += lineBuffer.PopLeft("", lipgloss.NewStyle()) + "\n"
 	}
 
 	// get the lines to show based on the vertical scroll position (topItemIdx and topItemLineOffset)
@@ -213,14 +214,18 @@ func (m Model[T]) View() string {
 		isSelection := m.selectionEnabled && visibleContentLines.itemIndexes[i] == m.selectedItemIdx
 		if isSelection {
 			// style entire selected line
+			// TODO LEO: can at least move this lower
 			visibleContentLines.lines[i] = m.styleSelection(visibleContentLines.lines[i])
 		}
 
-		truncated := m.truncate(visibleContentLines.lines[i])
+		lineBuffer := linebuffer.New(visibleContentLines.lines[i], m.width, m.continuationIndicator)
+		lineBuffer.SeekToWidth(m.xOffset)
+		truncated := lineBuffer.PopLeft(m.stringToHighlight, m.highlightStyle(visibleContentLines.itemIndexes[i]))
 
 		if m.xOffset > 0 && lipgloss.Width(truncated) == 0 && lipgloss.Width(visibleContentLines.lines[i]) > 0 {
 			// if panned right past where line ends, show continuation indicator
-			truncated = m.truncateNoXOffset(m.getLineContinuationIndicator())
+			lineBuffer := linebuffer.New(m.getLineContinuationIndicator(), m.width, "")
+			truncated = lineBuffer.PopLeft("", lipgloss.NewStyle())
 			if isSelection {
 				truncated = m.styleSelection(truncated)
 			}
@@ -443,7 +448,13 @@ func (m *Model[T]) ScrollSoItemIdxInView(itemIdx int) {
 	}
 }
 
-func (m Model[T]) wrap(line string, width int, maxLinesEachEnd int) []string {
+func (m Model[T]) wrap(
+	line string,
+	width int,
+	maxLinesEachEnd int,
+	toHighlight string,
+	toHighlightStyle lipgloss.Style,
+) []string {
 	if width <= 0 {
 		return []string{}
 	}
@@ -463,33 +474,21 @@ func (m Model[T]) wrap(line string, width int, maxLinesEachEnd int) []string {
 	}
 
 	var res []string
-	// TODO LEO: highlight style changes if selected
-	lineBuffer := linebuffer.New(line, m.width, "", m.stringToHighlight, m.HighlightStyle)
-	//lineWidth := lineBuffer.fullLineWidth()
+	lineBuffer := linebuffer.New(line, width, "")
 	totalLines := lineBuffer.TotalLines()
 
 	if maxLinesEachEnd > 0 && totalLines > maxLinesEachEnd*2 {
-		//for xOffset := 0; xOffset < width*maxLinesEachEnd; xOffset += width {
-		//	res = append(res, lineBuffer.Truncate(xOffset, width))
-		//}
 		for nLines := 0; nLines < maxLinesEachEnd; nLines++ {
-			res = append(res, lineBuffer.PopLeft())
+			res = append(res, lineBuffer.PopLeft(toHighlight, toHighlightStyle))
 		}
 
-		//startOffset := lineWidth - (maxLinesEachEnd * width)
-		//for xOffset := startOffset; xOffset < lineWidth; xOffset += width {
-		//	res = append(res, lineBuffer.Truncate(xOffset, width))
-		//}
 		lineBuffer.SeekToLine(totalLines - maxLinesEachEnd)
 		for nLines := 0; nLines < maxLinesEachEnd; nLines++ {
-			res = append(res, lineBuffer.PopLeft())
+			res = append(res, lineBuffer.PopLeft(toHighlight, toHighlightStyle))
 		}
 	} else {
-		//for xOffset := 0; xOffset < lineWidth; xOffset += width {
-		//	res = append(res, lineBuffer.Truncate(xOffset, width))
-		//}
 		for nLines := 0; nLines < totalLines; nLines++ {
-			res = append(res, lineBuffer.PopLeft())
+			res = append(res, lineBuffer.PopLeft(toHighlight, toHighlightStyle))
 		}
 	}
 
@@ -516,7 +515,7 @@ func (m Model[T]) numLinesForItem(itemIdx int) int {
 	if len(m.allItems) == 0 || itemIdx < 0 || itemIdx >= len(m.allItems) {
 		return 0
 	}
-	return len(m.wrap(m.allItems[itemIdx].Render(), m.width, m.height))
+	return len(m.wrap(m.allItems[itemIdx].Render(), m.width, m.height, "", lipgloss.NewStyle()))
 }
 
 func (m *Model[T]) safelySetXOffset(n int) {
@@ -675,7 +674,7 @@ func (m Model[T]) getVisibleHeaderLines() []string {
 		// wrapped
 		var wrappedHeaderLines []string
 		for _, s := range m.header {
-			wrappedHeaderLines = append(wrappedHeaderLines, m.wrap(s, m.width, m.height)...)
+			wrappedHeaderLines = append(wrappedHeaderLines, m.wrap(s, m.width, m.height, "", lipgloss.NewStyle())...)
 		}
 		return safeSliceUpToIdx(wrappedHeaderLines, m.height)
 	}
@@ -725,7 +724,7 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 	}
 
 	if m.wrapText {
-		itemLines := m.wrap(currItem.Render(), m.width, m.height)
+		itemLines := m.wrap(currItem.Render(), m.width, m.height, m.stringToHighlight, m.highlightStyle(currItemIdx))
 		offsetLines := safeSliceFromIdx(itemLines, m.topItemLineOffset)
 		done = addLines(offsetLines, currItemIdx)
 
@@ -735,7 +734,7 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 				done = true
 			} else {
 				currItem = m.allItems[currItemIdx]
-				itemLines = m.wrap(currItem.Render(), m.width, m.height)
+				itemLines = m.wrap(currItem.Render(), m.width, m.height, m.stringToHighlight, m.highlightStyle(currItemIdx))
 				done = addLines(itemLines, currItemIdx)
 			}
 		}
@@ -777,6 +776,13 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 	return visibleContentLinesResult{lines: contentLines, itemIndexes: itemIndexes, showFooter: showFooter}
 }
 
+func (m Model[T]) highlightStyle(itemIdx int) lipgloss.Style {
+	if m.selectionEnabled && itemIdx == m.selectedItemIdx {
+		return m.HighlightStyleIfSelected
+	}
+	return m.HighlightStyle
+}
+
 func (m Model[T]) getTruncatedFooterLine(visibleContentLines visibleContentLinesResult) string {
 	numerator := m.selectedItemIdx + 1 // 0th line is 1st
 	denominator := len(m.allItems)
@@ -800,8 +806,8 @@ func (m Model[T]) getTruncatedFooterLine(visibleContentLines visibleContentLines
 	footerString := fmt.Sprintf("%d%% (%d/%d)", percentScrolled, numerator, denominator)
 	// use m.continuationIndicator regardless of wrapText
 
-	footerBuffer := linebuffer.New(footerString, m.width, m.continuationIndicator, "", lipgloss.NewStyle())
-	return m.FooterStyle.Render(footerBuffer.PopLeft())
+	footerBuffer := linebuffer.New(footerString, m.width, m.continuationIndicator)
+	return m.FooterStyle.Render(footerBuffer.PopLeft("", lipgloss.NewStyle()))
 }
 
 func (m Model[T]) getLineContinuationIndicator() string {
@@ -889,22 +895,14 @@ func (m Model[T]) maxItemIdxAndMaxTopLineOffset() (int, int) {
 }
 
 // truncate truncates a line to fit within the viewport's width, accounting for the current xOffset (left/right) position
-func (m Model[T]) truncate(line string) string {
-	//lineBuffer := linebuffer.New(line, m.continuationIndicator)
-	//return lineBuffer.Truncate(m.xOffset, m.width)
-	// TODO LEO: highlight style fix if selected
-	lineBuffer := linebuffer.New(line, m.width, m.continuationIndicator, m.stringToHighlight, m.HighlightStyle)
-	lineBuffer.SeekToWidth(m.xOffset)
-	return lineBuffer.PopLeft()
-}
-
-func (m Model[T]) truncateNoXOffset(line string) string {
-	//lineBuffer := linebuffer.New(line, m.continuationIndicator)
-	//return lineBuffer.Truncate(0, m.width)
-	// TODO LEO: highlight style fix if selected
-	lineBuffer := linebuffer.New(line, m.width, m.continuationIndicator, m.stringToHighlight, m.HighlightStyle)
-	return lineBuffer.PopLeft()
-}
+//func (m Model[T]) truncate(line string) string {
+//	//lineBuffer := linebuffer.New(line, m.continuationIndicator)
+//	//return lineBuffer.Truncate(m.xOffset, m.width)
+//	// TODO LEO: highlight style fix if selected
+//	lineBuffer := linebuffer.New(line, m.width, m.continuationIndicator)
+//	lineBuffer.SeekToWidth(m.xOffset)
+//	return lineBuffer.PopLeft(m.stringToHighlight, m.HighlightStyle)
+//}
 
 func (m Model[T]) getNumVisibleItems() int {
 	if !m.wrapText {
@@ -920,6 +918,7 @@ func (m Model[T]) getNumVisibleItems() int {
 	}
 }
 
+// TODO LEO: can avoid this now, or simplify?
 func (m Model[T]) styleSelection(s string) string {
 	split := surroundingAnsiRegex.Split(s, -1)
 	matches := surroundingAnsiRegex.FindAllString(s, -1)
