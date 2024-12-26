@@ -724,20 +724,8 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 		return visibleContentLinesResult{lines: contentLines, itemIndexes: itemIndexes, showFooter: false}
 	}
 
-	renderAndHighlight := func(item T, idx int) string {
-		if m.stringToHighlight == "" {
-			return item.Render()
-		}
-		//highlightStyle := m.HighlightStyle
-		//if m.selectionEnabled && idx == m.selectedItemIdx {
-		//	highlightStyle = m.HighlightStyleIfSelected
-		//}
-		//println(fmt.Sprintf("highlightLine(%q, %s, %s) = %q", item.Render(), m.stringToHighlight, highlightStyle, highlighted))
-		return item.Render()
-	}
-
 	if m.wrapText {
-		itemLines := m.wrap(renderAndHighlight(currItem, currItemIdx), m.width, m.height)
+		itemLines := m.wrap(currItem.Render(), m.width, m.height)
 		offsetLines := safeSliceFromIdx(itemLines, m.topItemLineOffset)
 		done = addLines(offsetLines, currItemIdx)
 
@@ -747,19 +735,19 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 				done = true
 			} else {
 				currItem = m.allItems[currItemIdx]
-				itemLines = m.wrap(renderAndHighlight(currItem, currItemIdx), m.width, m.height)
+				itemLines = m.wrap(currItem.Render(), m.width, m.height)
 				done = addLines(itemLines, currItemIdx)
 			}
 		}
 	} else {
-		done = addLine(renderAndHighlight(currItem, currItemIdx), currItemIdx)
+		done = addLine(currItem.Render(), currItemIdx)
 		for !done {
 			currItemIdx += 1
 			if currItemIdx >= len(m.allItems) {
 				done = true
 			} else {
 				currItem = m.allItems[currItemIdx]
-				done = addLine(renderAndHighlight(currItem, currItemIdx), currItemIdx)
+				done = addLine(currItem.Render(), currItemIdx)
 			}
 		}
 	}
