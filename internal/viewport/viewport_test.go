@@ -771,7 +771,7 @@ func TestViewport_SelectionOff_WrapOff_StringToHighlightManyMatches(t *testing.T
 		vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
 		expectedView := pad(vp.width, vp.height, []string{
 			"header",
-			strings.Repeat("\x1b[38;2;0;255;0mr\x1b[m", 7) + strings.Repeat("\x1b[38;2;0;255;0m.\x1b[m", 3),
+			strings.Repeat("\x1b[38;2;0;255;0mr\x1b[m", 7) + strings.Repeat(".", 3),
 		})
 		util.CmpStr(t, expectedView, vp.View())
 	}
@@ -2121,7 +2121,7 @@ func TestViewport_SelectionOn_WrapOff_StringToHighlightManyMatches(t *testing.T)
 		vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
 		expectedView := pad(vp.width, vp.height, []string{
 			"header",
-			strings.Repeat("\x1b[38;2;255;0;0mr\x1b[m", 7) + strings.Repeat("\x1b[38;2;255;0;0m.\x1b[m", 3),
+			strings.Repeat("\x1b[38;2;255;0;0mr\x1b[m", 7) + "\x1b[38;2;0;0;255m" + strings.Repeat(".", 3) + "\x1b[m",
 		})
 		util.CmpStr(t, expectedView, vp.View())
 	}

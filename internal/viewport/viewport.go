@@ -202,7 +202,7 @@ func (m Model[T]) View() string {
 
 	visibleHeaderLines := m.getVisibleHeaderLines()
 	for i := range visibleHeaderLines {
-		lineBuffer := linebuffer.New(visibleHeaderLines[i], m.width, "")
+		lineBuffer := linebuffer.New(visibleHeaderLines[i], m.width, m.continuationIndicator)
 		viewString += lineBuffer.PopLeft("", lipgloss.NewStyle()) + "\n"
 	}
 
