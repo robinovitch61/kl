@@ -8,6 +8,40 @@ import (
 	"testing"
 )
 
+func TestTotalLines(t *testing.T) {
+	tests := []struct {
+		name         string
+		s            string
+		width        int
+		continuation string
+		expected     int
+	}{
+		{
+			name:         "simple",
+			s:            "1234567890",
+			width:        10,
+			continuation: "",
+			expected:     1,
+		},
+		{
+			name:         "simple small width",
+			s:            "1234567890",
+			width:        1,
+			continuation: "",
+			expected:     10,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lb := New(tt.s, tt.width, tt.continuation, "", lipgloss.NewStyle())
+			if lb.TotalLines() != tt.expected {
+				t.Fatalf("expected %d, got %d", tt.expected, lb.TotalLines())
+			}
+		})
+	}
+}
+
 func TestPopLeft(t *testing.T) {
 	highlightStyle := lipgloss.NewStyle().Background(lipgloss.Color("#FF0000"))
 	tests := []struct {

@@ -24,10 +24,10 @@ type LineBuffer struct {
 	lineNoAnsi          string         // line without ansi codes. utf-8 bytes
 	lineNoAnsiRunes     []rune         // runes of lineNoAnsi. len(lineNoAnsiRunes) == len(lineNoAnsiWidths)
 	lineNoAnsiWidths    []int          // terminal cell widths of lineNoAnsi. len(lineNoAnsiWidths) == len(lineNoAnsiRunes)
-	plainTextCumWidth   []int
-	continuationRunes   []rune  // runes of continuation
-	continuationWidths  []int   // terminal cell widths of continuation
-	ansiCodeIndexes     [][]int // slice of startByte, endByte indexes of ansi codes in the line
+	lineNoAnsiCumWidths []int          // cumulative lineNoAnsiWidths
+	continuationRunes   []rune         // runes of continuation
+	continuationWidths  []int          // terminal cell widths of continuation
+	ansiCodeIndexes     [][]int        // slice of startByte, endByte indexes of ansi codes in the line
 }
 
 func New(line string, width int, continuation string, toHighlight string, highlightStyle lipgloss.Style) LineBuffer {
@@ -53,14 +53,14 @@ func New(line string, width int, continuation string, toHighlight string, highli
 	lb.lineNoAnsiRunes = []rune(lb.lineNoAnsi)
 
 	lb.lineNoAnsiWidths = make([]int, len(lb.lineNoAnsiRunes))
-	lb.plainTextCumWidth = make([]int, len(lb.lineNoAnsiRunes))
+	lb.lineNoAnsiCumWidths = make([]int, len(lb.lineNoAnsiRunes))
 	for i := range lb.lineNoAnsiRunes {
 		runeWidth := runewidth.RuneWidth(lb.lineNoAnsiRunes[i])
 		lb.lineNoAnsiWidths[i] = runeWidth
 		if i == 0 {
-			lb.plainTextCumWidth[i] = runeWidth
+			lb.lineNoAnsiCumWidths[i] = runeWidth
 		} else {
-			lb.plainTextCumWidth[i] = lb.plainTextCumWidth[i-1] + runeWidth
+			lb.lineNoAnsiCumWidths[i] = lb.lineNoAnsiCumWidths[i-1] + runeWidth
 		}
 	}
 
@@ -77,7 +77,10 @@ func New(line string, width int, continuation string, toHighlight string, highli
 }
 
 func (l LineBuffer) fullWidth() int {
-	return l.lineNoAnsiWidths[len(l.lineNoAnsiWidths)-1]
+	if len(l.lineNoAnsiCumWidths) == 0 {
+		return 0
+	}
+	return l.lineNoAnsiCumWidths[len(l.lineNoAnsiCumWidths)-1]
 }
 
 // TODO LEO: test
@@ -95,18 +98,18 @@ func (l *LineBuffer) SeekToLine(n int) {
 	}
 
 	targetWidth := n * l.width
-	left, right := 0, len(l.plainTextCumWidth)-1
+	left, right := 0, len(l.lineNoAnsiCumWidths)-1
 
 	// handle case where target is beyond the end
-	if targetWidth >= l.plainTextCumWidth[right] {
-		l.leftRuneIdx = len(l.plainTextCumWidth)
+	if targetWidth >= l.lineNoAnsiCumWidths[right] {
+		l.leftRuneIdx = len(l.lineNoAnsiCumWidths)
 		return
 	}
 
 	// binary search for the first index where cumulative width exceeds target
 	for left < right {
 		mid := left + (right-left)/2
-		if l.plainTextCumWidth[mid] > targetWidth {
+		if l.lineNoAnsiCumWidths[mid] > targetWidth {
 			right = mid
 		} else {
 			left = mid + 1

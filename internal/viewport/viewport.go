@@ -464,7 +464,7 @@ func (m Model[T]) wrap(line string, width int, maxLinesEachEnd int) []string {
 
 	var res []string
 	// TODO LEO: highlight style changes if selected
-	lineBuffer := linebuffer.New(line, m.width, m.continuationIndicator, m.stringToHighlight, m.HighlightStyle)
+	lineBuffer := linebuffer.New(line, m.width, "", m.stringToHighlight, m.HighlightStyle)
 	//lineWidth := lineBuffer.fullLineWidth()
 	totalLines := lineBuffer.TotalLines()
 
