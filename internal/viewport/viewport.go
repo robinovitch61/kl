@@ -211,16 +211,14 @@ func (m Model[T]) View() string {
 
 	truncatedVisibleContentLines := make([]string, len(visibleContentLines.lines))
 	for i := range visibleContentLines.lines {
-		isSelection := m.selectionEnabled && visibleContentLines.itemIndexes[i] == m.selectedItemIdx
-		if isSelection {
-			// style entire selected line
-			// TODO LEO: can at least move this lower
-			visibleContentLines.lines[i] = m.styleSelection(visibleContentLines.lines[i])
-		}
-
 		lineBuffer := linebuffer.New(visibleContentLines.lines[i], m.width, m.continuationIndicator)
 		lineBuffer.SeekToWidth(m.xOffset)
 		truncated := lineBuffer.PopLeft(m.stringToHighlight, m.highlightStyle(visibleContentLines.itemIndexes[i]))
+
+		isSelection := m.selectionEnabled && visibleContentLines.itemIndexes[i] == m.selectedItemIdx
+		if isSelection {
+			truncated = m.styleSelection(truncated)
+		}
 
 		if m.xOffset > 0 && lipgloss.Width(truncated) == 0 && lipgloss.Width(visibleContentLines.lines[i]) > 0 {
 			// if panned right past where line ends, show continuation indicator
