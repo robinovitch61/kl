@@ -82,7 +82,6 @@ func (l LineBuffer) TotalLines() int {
 	return (l.fullWidth() + l.width - 1) / l.width
 }
 
-// TODO LEO: test
 func (l *LineBuffer) SeekToLine(n int) {
 	if n <= 0 {
 		l.leftRuneIdx = 0
