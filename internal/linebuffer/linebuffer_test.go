@@ -50,6 +50,42 @@ func TestLineBuffer_TotalLines(t *testing.T) {
 	}
 }
 
+func TestLineBuffer_getLeftRuneIdx(t *testing.T) {
+	tests := []struct {
+		name     string
+		w        int
+		vals     []int
+		expected int
+	}{
+		{
+			name:     "empty",
+			w:        0,
+			vals:     []int{},
+			expected: 0,
+		},
+		{
+			name:     "step by 1",
+			w:        2,
+			vals:     []int{1, 2, 3},
+			expected: 2,
+		},
+		{
+			name:     "step by 2",
+			w:        2,
+			vals:     []int{1, 3, 5},
+			expected: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if actual := getLeftRuneIdx(tt.w, tt.vals); actual != tt.expected {
+				t.Errorf("expected %d, got %d", tt.expected, actual)
+			}
+		})
+	}
+}
+
 func TestLineBuffer_SeekToWidth(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -60,10 +96,26 @@ func TestLineBuffer_SeekToWidth(t *testing.T) {
 		expectedPopLeft string
 	}{
 		{
+			name:            "empty",
+			s:               "",
+			width:           10,
+			seekWidth:       0,
+			continuation:    "",
+			expectedPopLeft: "",
+		},
+		{
 			name:            "simple",
 			s:               "1234567890",
 			width:           10,
 			seekWidth:       0,
+			continuation:    "",
+			expectedPopLeft: "1234567890",
+		},
+		{
+			name:            "negative seekWidth",
+			s:               "1234567890",
+			width:           10,
+			seekWidth:       -1,
 			continuation:    "",
 			expectedPopLeft: "1234567890",
 		},
@@ -124,12 +176,36 @@ func TestLineBuffer_SeekToWidth(t *testing.T) {
 			expectedPopLeft: "界🌟世界🌟",
 		},
 		{
-			name:            "unicode seek past first rune",
+			name:            "unicode seek past first 2 runes",
 			s:               "世界🌟世界🌟",
 			width:           10,
 			seekWidth:       3,
 			continuation:    "",
 			expectedPopLeft: "🌟世界🌟",
+		},
+		{
+			name:            "unicode seek past all but 1 rune",
+			s:               "世界🌟世界🌟",
+			width:           10,
+			seekWidth:       10,
+			continuation:    "",
+			expectedPopLeft: "🌟",
+		},
+		{
+			name:            "unicode seek almost to end",
+			s:               "世界🌟世界🌟",
+			width:           10,
+			seekWidth:       11,
+			continuation:    "",
+			expectedPopLeft: "",
+		},
+		{
+			name:            "unicode seek to end",
+			s:               "世界🌟世界🌟",
+			width:           10,
+			seekWidth:       12,
+			continuation:    "",
+			expectedPopLeft: "",
 		},
 	}
 
@@ -139,7 +215,7 @@ func TestLineBuffer_SeekToWidth(t *testing.T) {
 			lb.SeekToWidth(tt.seekWidth)
 			// highlighting is tested elsewhere
 			if actual := lb.PopLeft("", lipgloss.NewStyle()); actual != tt.expectedPopLeft {
-				t.Fatalf("expected %s, got %s", tt.expectedPopLeft, actual)
+				t.Errorf("expected %s, got %s", tt.expectedPopLeft, actual)
 			}
 		})
 	}
