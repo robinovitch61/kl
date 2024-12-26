@@ -207,6 +207,14 @@ func TestLineBuffer_SeekToWidth(t *testing.T) {
 			continuation:    "",
 			expectedPopLeft: "",
 		},
+		{
+			name:            "unicode insufficient width",
+			s:               "世界🌟世界🌟",
+			width:           1,
+			seekWidth:       2,
+			continuation:    "",
+			expectedPopLeft: "",
+		},
 	}
 
 	for _, tt := range tests {
@@ -217,6 +225,100 @@ func TestLineBuffer_SeekToWidth(t *testing.T) {
 			if actual := lb.PopLeft("", lipgloss.NewStyle()); actual != tt.expectedPopLeft {
 				t.Errorf("expected %s, got %s", tt.expectedPopLeft, actual)
 			}
+		})
+	}
+}
+
+func TestLineBuffer_SeekToLine(t *testing.T) {
+	tests := []struct {
+		name            string
+		s               string
+		width           int
+		continuation    string
+		seekToLine      int
+		expectedPopLeft string
+	}{
+		{
+			name:            "empty",
+			s:               "",
+			width:           0,
+			continuation:    "",
+			seekToLine:      0,
+			expectedPopLeft: "",
+		},
+		{
+			name:            "seek to negative line",
+			s:               "12345",
+			width:           2,
+			continuation:    "",
+			seekToLine:      -1,
+			expectedPopLeft: "12",
+		},
+		{
+			name:            "seek to zero'th line",
+			s:               "12345",
+			width:           2,
+			continuation:    "",
+			seekToLine:      0,
+			expectedPopLeft: "12",
+		},
+		{
+			name:            "seek to first line",
+			s:               "12345",
+			width:           2,
+			continuation:    "",
+			seekToLine:      1,
+			expectedPopLeft: "34",
+		},
+		{
+			name:            "seek to second line",
+			s:               "12345",
+			width:           2,
+			continuation:    "",
+			seekToLine:      2,
+			expectedPopLeft: "5",
+		},
+		{
+			name:            "seek past end",
+			s:               "12345",
+			width:           2,
+			continuation:    "",
+			seekToLine:      3,
+			expectedPopLeft: "",
+		},
+		{
+			name:            "unicode zero'th line",
+			s:               "世界🌟世界🌟",
+			width:           2,
+			continuation:    "",
+			seekToLine:      0,
+			expectedPopLeft: "世",
+		},
+		{
+			name:            "unicode first line",
+			s:               "世界🌟世界🌟",
+			width:           2,
+			continuation:    "",
+			seekToLine:      1,
+			expectedPopLeft: "界",
+		},
+		{
+			name:            "unicode insufficient width",
+			s:               "世界🌟世界🌟",
+			width:           1,
+			continuation:    "",
+			seekToLine:      1,
+			expectedPopLeft: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lb := New(tt.s, tt.width, tt.continuation)
+			lb.SeekToLine(tt.seekToLine)
+			// highlight tested elsewhere
+			actual := lb.PopLeft("", lipgloss.NewStyle())
+			util.CmpStr(t, tt.expectedPopLeft, actual)
 		})
 	}
 }
