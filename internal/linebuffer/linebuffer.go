@@ -145,36 +145,37 @@ func (l *LineBuffer) PopLeft(toHighlight string, highlightStyle lipgloss.Style) 
 		remainingWidth -= runeWidth
 	}
 
-	// if more runes to the left of the result, replace start runes with continuation indicator, respecting width
-	if startRuneIdx > 0 {
-		result = l.replaceStartRunesWithContinuation(result)
-	}
-	// if more runes to the right, replace final runes in result with continuation indicator, respecting width
-	if l.leftRuneIdx < len(l.lineNoAnsiRunes) {
-		result = l.replaceEndRunesWithContinuation(result)
-	}
+	// apply left/right line continuation indicators
+	result = l.applyContinuation(result, startRuneIdx)
 
 	res := result.String()
+
+	// reapply original styling
 	if len(l.ansiCodeIndexes) > 0 {
-		res = reapplyANSI(l.line, res, startByteOffset, l.ansiCodeIndexes)
+		res = reapplyAnsi(l.line, res, startByteOffset, l.ansiCodeIndexes)
 	}
 
-	res = highlightLine(res, toHighlight, highlightStyle, 0, len(res))
+	// highlight the desired string
+	res = l.highlightString(res, startByteOffset, toHighlight, highlightStyle)
 
-	if left, endIdx := overflowsLeft(l.lineNoAnsi, startByteOffset, toHighlight); left {
-		highlightLeft := l.lineNoAnsi[startByteOffset:endIdx]
-		res = highlightLine(res, highlightLeft, highlightStyle, 0, len(highlightLeft))
-	}
-	endByteOffset := l.runeIdxToByteOffset[l.leftRuneIdx]
-	if right, startIdx := overflowsRight(l.lineNoAnsi, endByteOffset, toHighlight); right {
-		highlightRight := l.lineNoAnsi[startIdx:endByteOffset]
-		lenPlainTextRes := len(stripAnsi(res))
-		res = highlightLine(res, highlightRight, highlightStyle, lenPlainTextRes-len(highlightRight), lenPlainTextRes)
-	}
-
+	// remove empty sequences
 	res = constants.EmptySequenceRegex.ReplaceAllString(res, "")
 
 	return res
+}
+
+func (l LineBuffer) applyContinuation(result strings.Builder, startRuneIdx int) strings.Builder {
+	// if more runes to the left of the result, replace start runes with continuation indicator, respecting width
+	if len(l.continuation) > 0 {
+		if startRuneIdx > 0 {
+			result = l.replaceStartRunesWithContinuation(result)
+		}
+		// if more runes to the right, replace final runes in result with continuation indicator, respecting width
+		if l.leftRuneIdx < len(l.lineNoAnsiRunes) {
+			result = l.replaceEndRunesWithContinuation(result)
+		}
+	}
+	return result
 }
 
 func (l LineBuffer) replaceStartRunesWithContinuation(result strings.Builder) strings.Builder {
@@ -280,7 +281,34 @@ func (l LineBuffer) replaceEndRunesWithContinuation(result strings.Builder) stri
 	}
 }
 
-func reapplyANSI(original, truncated string, truncByteOffset int, ansiCodeIndexes [][]int) string {
+func (l LineBuffer) highlightString(
+	s string,
+	startByteOffset int,
+	toHighlight string,
+	highlightStyle lipgloss.Style,
+) string {
+	if toHighlight != "" && len(highlightStyle.String()) > 0 {
+		// highlight
+		s = highlightLine(s, toHighlight, highlightStyle, 0, len(s))
+
+		if left, endIdx := overflowsLeft(l.lineNoAnsi, startByteOffset, toHighlight); left {
+			highlightLeft := l.lineNoAnsi[startByteOffset:endIdx]
+			s = highlightLine(s, highlightLeft, highlightStyle, 0, len(highlightLeft))
+		}
+		endByteOffset := l.runeIdxToByteOffset[l.leftRuneIdx]
+		// overflowsRight expects the exact index it ends at, so subtract 1
+		if right, startIdx := overflowsRight(l.lineNoAnsi, endByteOffset-1, toHighlight); right {
+			// regular slice is end exclusive, so don't subtract 1
+			highlightRight := l.lineNoAnsi[startIdx:endByteOffset]
+			lenPlainTextRes := len(stripAnsi(s))
+			s = highlightLine(s, highlightRight, highlightStyle, lenPlainTextRes-len(highlightRight), lenPlainTextRes)
+		}
+	}
+
+	return s
+}
+
+func reapplyAnsi(original, truncated string, truncByteOffset int, ansiCodeIndexes [][]int) string {
 	var result []byte
 	var lenAnsiAdded int
 	isReset := true
