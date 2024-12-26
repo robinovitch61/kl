@@ -84,7 +84,12 @@ func TestWrap(t *testing.T) {
 			input:           "This is a very long line that needs wrapping",
 			width:           10,
 			maxLinesEachEnd: 2,
-			want:            []string{"This is a ", "very long ", " that need", "s wrapping"},
+			want: []string{
+				"This is a ",
+				"very long ",
+				//"line that ",
+				"needs wrap",
+				"ping"},
 		},
 		{
 			name:            "Single chars",
@@ -104,24 +109,24 @@ func TestWrap(t *testing.T) {
 			},
 		},
 		{
-			name:            "Long input with truncation",
-			input:           strings.Repeat("This is a \x1b[38;2;0;0;255mtest\x1b[0m sentence. ", 200),
+			name:            "Long input with maxLinesEachEnd",
+			input:           strings.Repeat("This \x1b[38;2;0;0;255mtest\x1b[m sentence. ", 200),
 			width:           1,
-			maxLinesEachEnd: 10,
+			maxLinesEachEnd: 6,
 			want: []string{
 				"T",
 				"h",
 				"i",
 				"s",
 				" ",
-				"i",
-				"s",
-				" ",
-				"a",
-				" ",
-				"s",
-				"e",
-				"n",
+				"\x1b[38;2;0;0;255mt\x1b[m",
+				//"\x1b[38;2;0;0;255me\x1b[m",
+				//"\x1b[38;2;0;0;255ms\x1b[m",
+				//"\x1b[38;2;0;0;255mt\x1b[m",
+				//" ",
+				//"s",
+				//"e",
+				//"n",
 				"t",
 				"e",
 				"n",
@@ -148,8 +153,15 @@ func TestWrap(t *testing.T) {
 			name:            "Unicode characters",
 			input:           "Hello 世界! This is a test with unicode characters 🌟",
 			width:           10,
-			maxLinesEachEnd: 1,
-			want:            []string{"Hello 世界", "racters 🌟"},
+			maxLinesEachEnd: 2,
+			want: []string{
+				"Hello 世界",
+				"! This is ",
+				//"a test wit",
+				//"h unicode ",
+				"characters",
+				" 🌟",
+			},
 		},
 		{
 			name:            "Width exactly matches input length",
@@ -169,10 +181,8 @@ func TestWrap(t *testing.T) {
 			}
 
 			for i := range got {
-				if i < len(tt.want) {
-					if got[i] != tt.want[i] {
-						t.Errorf("wrap() line %d got %q, expected %q", i, got[i], tt.want[i])
-					}
+				if got[i] != tt.want[i] {
+					t.Errorf("wrap() line %d got %q, expected %q", i, got[i], tt.want[i])
 				}
 			}
 		})
