@@ -728,12 +728,12 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 		if m.stringToHighlight == "" {
 			return item.Render()
 		}
-		highlightStyle := m.HighlightStyle
-		if m.selectionEnabled && idx == m.selectedItemIdx {
-			highlightStyle = m.HighlightStyleIfSelected
-		}
+		//highlightStyle := m.HighlightStyle
+		//if m.selectionEnabled && idx == m.selectedItemIdx {
+		//	highlightStyle = m.HighlightStyleIfSelected
+		//}
 		//println(fmt.Sprintf("highlightLine(%q, %s, %s) = %q", item.Render(), m.stringToHighlight, highlightStyle, highlighted))
-		return highlightLine(item.Render(), m.stringToHighlight, highlightStyle)
+		return item.Render()
 	}
 
 	if m.wrapText {
