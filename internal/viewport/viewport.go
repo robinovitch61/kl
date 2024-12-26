@@ -9,7 +9,6 @@ import (
 	"github.com/robinovitch61/kl/internal/linebuffer"
 	"regexp"
 	"strings"
-	"unicode"
 )
 
 // Terminology:
@@ -446,53 +445,6 @@ func (m *Model[T]) ScrollSoItemIdxInView(itemIdx int) {
 	}
 }
 
-func (m Model[T]) wrap(
-	line string,
-	width int,
-	maxLinesEachEnd int,
-	toHighlight string,
-	toHighlightStyle lipgloss.Style,
-) []string {
-	if width <= 0 {
-		return []string{}
-	}
-
-	if maxLinesEachEnd <= 0 {
-		maxLinesEachEnd = -1
-	}
-
-	// if line has non-whitespace, trim trailing spaces
-	if strings.TrimSpace(line) != "" {
-		line = strings.TrimRightFunc(line, unicode.IsSpace)
-	}
-
-	// preserve empty lines
-	if line == "" {
-		return []string{line}
-	}
-
-	var res []string
-	lineBuffer := linebuffer.New(line, width, "")
-	totalLines := lineBuffer.TotalLines()
-
-	if maxLinesEachEnd > 0 && totalLines > maxLinesEachEnd*2 {
-		for nLines := 0; nLines < maxLinesEachEnd; nLines++ {
-			res = append(res, lineBuffer.PopLeft(toHighlight, toHighlightStyle))
-		}
-
-		lineBuffer.SeekToLine(totalLines - maxLinesEachEnd)
-		for nLines := 0; nLines < maxLinesEachEnd; nLines++ {
-			res = append(res, lineBuffer.PopLeft(toHighlight, toHighlightStyle))
-		}
-	} else {
-		for nLines := 0; nLines < totalLines; nLines++ {
-			res = append(res, lineBuffer.PopLeft(toHighlight, toHighlightStyle))
-		}
-	}
-
-	return res
-}
-
 func (m Model[T]) maxLineWidth() int {
 	maxLineWidth := 0
 	headerLines := m.getVisibleHeaderLines()
@@ -513,7 +465,7 @@ func (m Model[T]) numLinesForItem(itemIdx int) int {
 	if len(m.allItems) == 0 || itemIdx < 0 || itemIdx >= len(m.allItems) {
 		return 0
 	}
-	return len(m.wrap(m.allItems[itemIdx].Render(), m.width, m.height, "", lipgloss.NewStyle()))
+	return len(wrap(m.allItems[itemIdx].Render(), m.width, m.height, "", lipgloss.NewStyle()))
 }
 
 func (m *Model[T]) safelySetXOffset(n int) {
@@ -672,7 +624,7 @@ func (m Model[T]) getVisibleHeaderLines() []string {
 		// wrapped
 		var wrappedHeaderLines []string
 		for _, s := range m.header {
-			wrappedHeaderLines = append(wrappedHeaderLines, m.wrap(s, m.width, m.height, "", lipgloss.NewStyle())...)
+			wrappedHeaderLines = append(wrappedHeaderLines, wrap(s, m.width, m.height, "", lipgloss.NewStyle())...)
 		}
 		return safeSliceUpToIdx(wrappedHeaderLines, m.height)
 	}
@@ -722,7 +674,7 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 	}
 
 	if m.wrapText {
-		itemLines := m.wrap(currItem.Render(), m.width, m.height, m.stringToHighlight, m.highlightStyle(currItemIdx))
+		itemLines := wrap(currItem.Render(), m.width, m.height, m.stringToHighlight, m.highlightStyle(currItemIdx))
 		offsetLines := safeSliceFromIdx(itemLines, m.topItemLineOffset)
 		done = addLines(offsetLines, currItemIdx)
 
@@ -732,7 +684,7 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 				done = true
 			} else {
 				currItem = m.allItems[currItemIdx]
-				itemLines = m.wrap(currItem.Render(), m.width, m.height, m.stringToHighlight, m.highlightStyle(currItemIdx))
+				itemLines = wrap(currItem.Render(), m.width, m.height, m.stringToHighlight, m.highlightStyle(currItemIdx))
 				done = addLines(itemLines, currItemIdx)
 			}
 		}
