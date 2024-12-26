@@ -5,7 +5,6 @@ import (
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/mattn/go-runewidth"
 	"github.com/robinovitch61/kl/internal/constants"
-	"github.com/robinovitch61/kl/internal/dev"
 	"strings"
 	"unicode/utf8"
 )
@@ -116,7 +115,7 @@ func (l *LineBuffer) SeekToLine(n int) {
 
 // TODO LEO: test
 func (l *LineBuffer) SeekToWidth(w int) {
-	if w >= 0 && w < l.fullWidth() {
+	if w >= 0 {
 		l.leftRuneIdx = w
 	}
 }
@@ -431,11 +430,6 @@ func initByteOffsets(runes []rune) []int {
 	for i, r := range runes {
 		offsets[i] = currentOffset
 		runeLen := utf8.RuneLen(r)
-		if runeLen == -1 {
-			// invalid utf-8 value, assume 1 byte
-			dev.Debug(fmt.Sprintf("invalid utf-8 value: %v", r))
-			runeLen = 1
-		}
 		currentOffset += runeLen
 	}
 	offsets[len(runes)] = currentOffset

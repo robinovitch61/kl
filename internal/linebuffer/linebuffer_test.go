@@ -557,8 +557,8 @@ func TestPopLeft(t *testing.T) {
 			toHighlight:  "hi there",
 			numPopLefts:  2,
 			expected: []string{
-				"\x1b[38;2;0;0;255m\x1b[m\x1b[48;2;255;0;0mhi the\x1b[m\x1b[38;2;0;0;255m\x1b[m",
-				"\x1b[38;2;0;0;255m\x1b[m\x1b[48;2;255;0;0mre\x1b[m\x1b[38;2;0;0;255m re\x1b[m",
+				"\x1b[48;2;255;0;0mhi the\x1b[m",
+				"\x1b[48;2;255;0;0mre\x1b[m\x1b[38;2;0;0;255m re\x1b[m",
 			},
 		},
 	}
