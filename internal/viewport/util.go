@@ -13,6 +13,7 @@ func wrap(
 	maxLinesEachEnd int,
 	toHighlight string,
 	toHighlightStyle lipgloss.Style,
+	makeLineBuffer func(string, int, string) *linebuffer.LineBuffer,
 ) []string {
 	if width <= 0 {
 		return []string{}
@@ -33,7 +34,7 @@ func wrap(
 	}
 
 	var res []string
-	lineBuffer := linebuffer.New(line, width, "")
+	lineBuffer := makeLineBuffer(line, width, "")
 	totalLines := lineBuffer.TotalLines()
 
 	if maxLinesEachEnd > 0 && totalLines > maxLinesEachEnd*2 {

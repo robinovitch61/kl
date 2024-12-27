@@ -2,6 +2,7 @@ package viewport
 
 import (
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/robinovitch61/kl/internal/linebuffer"
 	"github.com/robinovitch61/kl/internal/util"
 	"strings"
 	"testing"
@@ -175,7 +176,11 @@ func TestWrap(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := wrap(tt.input, tt.width, tt.maxLinesEachEnd, tt.toHighlight, tt.highlightStyle)
+			fakeCache := func(s string, width int, continuation string) *linebuffer.LineBuffer {
+				lb := linebuffer.New(s, width, continuation)
+				return &lb
+			}
+			got := wrap(tt.input, tt.width, tt.maxLinesEachEnd, tt.toHighlight, tt.highlightStyle, fakeCache)
 			if len(got) != len(tt.want) {
 				t.Errorf("wrap() len = %d, want %d", len(got), len(tt.want))
 			}
