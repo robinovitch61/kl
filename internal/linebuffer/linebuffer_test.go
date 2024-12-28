@@ -37,14 +37,27 @@ func TestLineBuffer_TotalLines(t *testing.T) {
 			continuation: "",
 			expected:     4,
 		},
-		// TODO LEO: test unicode
+		{
+			name:         "unicode even",
+			s:            "世界🌟世界",
+			width:        2,
+			continuation: "",
+			expected:     5,
+		},
+		{
+			name:         "unicode odd",
+			s:            "世界🌟世界",
+			width:        3,
+			continuation: "",
+			expected:     4,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			lb := New(tt.s, tt.width, tt.continuation)
 			if lb.TotalLines() != tt.expected {
-				t.Fatalf("expectedPopLeft %d, got %d", tt.expected, lb.TotalLines())
+				t.Fatalf("expected %d, got %d", tt.expected, lb.TotalLines())
 			}
 		})
 	}
@@ -845,12 +858,13 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 				"hi the" + highlightStyle.Render("r"),
 			},
 		},
+		// TODO LEO: test unicode highlight
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if len(tt.expected) != tt.numPopLefts {
-				t.Fatalf("num expectedPopLeft != num popLefts")
+				t.Fatalf("num expected != num popLefts")
 			}
 			lb := New(tt.s, tt.width, tt.continuation)
 			for i := 0; i < tt.numPopLefts; i++ {
@@ -998,7 +1012,7 @@ func TestLineBuffer_WrappedLines(t *testing.T) {
 			maxLinesEachEnd: 2,
 			want:            []string{"Hello World"},
 		},
-		// TODO LEO: add tests for highlight
+		// TODO LEO: add tests for unicode
 	}
 
 	for _, tt := range tests {
