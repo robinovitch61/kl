@@ -9,6 +9,7 @@ import (
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/linebuffer"
 	"regexp"
+	"unicode"
 
 	"strings"
 	"time"
@@ -101,7 +102,7 @@ type Model[T RenderableComparable] struct {
 	xOffset int
 
 	// lineBufferCache is a cache of linebuffers as calls to linebuffer.New are expensive and repeated multiple times
-	// for the same input for each Update -> View cycle at the moment. It is faster to hash the inputs and store in a
+	// for the same s for each Update -> View cycle at the moment. It is faster to hash the inputs and store in a
 	// map than rerun linebuffer.New multiple times
 	lineBufferCache *expirable.LRU[string, *linebuffer.LineBuffer]
 }
@@ -490,7 +491,8 @@ func (m Model[T]) numLinesForItem(itemIdx int) int {
 	if len(m.allItems) == 0 || itemIdx < 0 || itemIdx >= len(m.allItems) {
 		return 0
 	}
-	return len(wrap(m.allItems[itemIdx].Render(), m.width, m.height, "", lipgloss.NewStyle(), m.getLineBuffer))
+	lb := m.getLineBuffer(m.allItems[itemIdx].Render(), m.width, "")
+	return len(lb.WrappedLines(m.height, "", lipgloss.NewStyle()))
 }
 
 func (m *Model[T]) safelySetXOffset(n int) {
@@ -660,7 +662,9 @@ func (m Model[T]) getVisibleHeaderLines() []string {
 		// wrapped
 		var wrappedHeaderLines []string
 		for _, s := range m.header {
-			wrappedHeaderLines = append(wrappedHeaderLines, wrap(s, m.width, m.height, "", lipgloss.NewStyle(), m.getLineBuffer)...)
+			// TODO LEO: WrappedLines + continuationIndicator is weird - pass contination into PopLeft
+			lb := m.getLineBuffer(s, m.width, "")
+			wrappedHeaderLines = append(wrappedHeaderLines, lb.WrappedLines(m.height, "", lipgloss.NewStyle())...)
 		}
 		return safeSliceUpToIdx(wrappedHeaderLines, m.height)
 	}
@@ -710,7 +714,8 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 	}
 
 	if m.wrapText {
-		itemLines := wrap(currItem.Render(), m.width, m.height, m.stringToHighlight, m.highlightStyle(currItemIdx), m.getLineBuffer)
+		lb := m.getLineBuffer(strings.TrimRightFunc(currItem.Render(), unicode.IsSpace), m.width, "")
+		itemLines := lb.WrappedLines(m.height, m.stringToHighlight, m.highlightStyle(currItemIdx))
 		offsetLines := safeSliceFromIdx(itemLines, m.topItemLineOffset)
 		done = addLines(offsetLines, currItemIdx)
 
@@ -720,7 +725,8 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 				done = true
 			} else {
 				currItem = m.allItems[currItemIdx]
-				itemLines = wrap(currItem.Render(), m.width, m.height, m.stringToHighlight, m.highlightStyle(currItemIdx), m.getLineBuffer)
+				lb = m.getLineBuffer(strings.TrimRightFunc(currItem.Render(), unicode.IsSpace), m.width, "")
+				itemLines = lb.WrappedLines(m.height, m.stringToHighlight, m.highlightStyle(currItemIdx))
 				done = addLines(itemLines, currItemIdx)
 			}
 		}
@@ -899,7 +905,7 @@ func (m Model[T]) styleSelection(s string) string {
 	matches := surroundingAnsiRegex.FindAllString(s, -1)
 	var builder strings.Builder
 
-	// Pre-allocate the builder's capacity based on the input string length
+	// Pre-allocate the builder's capacity based on the s string length
 	// This is optional but can improve performance for longer strings
 	builder.Grow(len(s))
 

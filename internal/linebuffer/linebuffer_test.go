@@ -641,7 +641,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			expected:     []string{"1234567890123456789012345"},
 		},
 		{
-			name:         "sufficient width, space at end",
+			name:         "sufficient width, space at end preserved",
 			s:            "1234567890123456789012345     ",
 			width:        30,
 			continuation: "...",
@@ -856,6 +856,163 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			for i := 0; i < tt.numPopLefts; i++ {
 				actual := lb.PopLeft(tt.toHighlight, highlightStyle)
 				util.CmpStr(t, tt.expected[i], actual)
+			}
+		})
+	}
+}
+
+func TestLineBuffer_WrappedLines(t *testing.T) {
+	tests := []struct {
+		name            string
+		s               string
+		width           int
+		maxLinesEachEnd int
+		toHighlight     string
+		highlightStyle  lipgloss.Style
+		want            []string
+	}{
+		{
+			name:            "Empty string",
+			s:               "",
+			width:           10,
+			maxLinesEachEnd: 2,
+			want:            []string{""},
+		},
+		{
+			name:            "Single line within width",
+			s:               "Hello",
+			width:           10,
+			maxLinesEachEnd: 2,
+			want:            []string{"Hello"},
+		},
+		{
+			name:            "Zero width",
+			s:               "Hello",
+			width:           0,
+			maxLinesEachEnd: 2,
+			want:            []string{},
+		},
+		{
+			name:            "Zero maxLinesEachEnd",
+			s:               "This is a very long line that needs wrapping",
+			width:           10,
+			maxLinesEachEnd: 0,
+			want:            []string{"This is a ", "very long ", "line that ", "needs wrap", "ping"},
+		},
+		{
+			name:            "Negative maxLinesEachEnd",
+			s:               "This is a very long line that needs wrapping",
+			width:           10,
+			maxLinesEachEnd: -1,
+			want:            []string{"This is a ", "very long ", "line that ", "needs wrap", "ping"},
+		},
+		{
+			name:            "Limited by maxLinesEachEnd",
+			s:               "This is a very long line that needs wrapping",
+			width:           10,
+			maxLinesEachEnd: 2,
+			want: []string{
+				"This is a ",
+				"very long ",
+				//"line that ",
+				"needs wrap",
+				"ping"},
+		},
+		{
+			name:            "Single chars",
+			s:               strings.Repeat("Test \x1b[38;2;0;0;255mtest\x1b[m", 1),
+			width:           1,
+			maxLinesEachEnd: -1,
+			want: []string{
+				"T",
+				"e",
+				"s",
+				"t",
+				" ",
+				"\x1b[38;2;0;0;255mt\x1b[m",
+				"\x1b[38;2;0;0;255me\x1b[m",
+				"\x1b[38;2;0;0;255ms\x1b[m",
+				"\x1b[38;2;0;0;255mt\x1b[m",
+			},
+		},
+		{
+			name:            "Long s with maxLinesEachEnd and space at end",
+			s:               strings.Repeat("This \x1b[38;2;0;0;255mtest\x1b[m sentence. ", 200),
+			width:           1,
+			maxLinesEachEnd: 6,
+			want: []string{
+				"T",
+				"h",
+				"i",
+				"s",
+				" ",
+				"\x1b[38;2;0;0;255mt\x1b[m",
+				//"\x1b[38;2;0;0;255me\x1b[m",
+				//"\x1b[38;2;0;0;255ms\x1b[m",
+				//"\x1b[38;2;0;0;255mt\x1b[m",
+				//" ",
+				//"s",
+				//"e",
+				//"n",
+				//"t",
+				"e",
+				"n",
+				"c",
+				"e",
+				".",
+				" ",
+			},
+		},
+		{
+			name:            "Input with trailing spaces are not trimmed",
+			s:               "Hello   ",
+			width:           10,
+			maxLinesEachEnd: 2,
+			want:            []string{"Hello   "},
+		},
+		{
+			name:            "Input with only spaces is not trimmed",
+			s:               "     ",
+			width:           10,
+			maxLinesEachEnd: 2,
+			want:            []string{"     "},
+		},
+		{
+			name:            "Unicode characters",
+			s:               "Hello 世界! This is a test with unicode characters 🌟",
+			width:           10,
+			maxLinesEachEnd: 2,
+			want: []string{
+				"Hello 世界",
+				"! This is ",
+				//"a test wit",
+				//"h unicode ",
+				"characters",
+				" 🌟",
+			},
+		},
+		{
+			name:            "Width exactly matches s length",
+			s:               "Hello World",
+			width:           11,
+			maxLinesEachEnd: 2,
+			want:            []string{"Hello World"},
+		},
+		// TODO LEO: add tests for highlight
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lb := New(tt.s, tt.width, "")
+			got := lb.WrappedLines(tt.maxLinesEachEnd, tt.toHighlight, tt.highlightStyle)
+			if len(got) != len(tt.want) {
+				t.Errorf("wrap() len = %d, want %d", len(got), len(tt.want))
+			}
+
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Errorf("wrap() line %d got %q, expected %q", i, got[i], tt.want[i])
+				}
 			}
 		})
 	}

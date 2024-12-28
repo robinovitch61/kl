@@ -79,6 +79,9 @@ func (l LineBuffer) fullWidth() int {
 }
 
 func (l LineBuffer) TotalLines() int {
+	if l.width == 0 {
+		return 0
+	}
 	return (l.fullWidth() + l.width - 1) / l.width
 }
 
@@ -168,6 +171,47 @@ func (l *LineBuffer) PopLeft(toHighlight string, highlightStyle lipgloss.Style) 
 	// remove empty sequences
 	res = constants.EmptySequenceRegex.ReplaceAllString(res, "")
 
+	return res
+}
+
+func (l *LineBuffer) WrappedLines(
+	maxLinesEachEnd int,
+	toHighlight string,
+	toHighlightStyle lipgloss.Style,
+) []string {
+	if l.width <= 0 {
+		return []string{}
+	}
+
+	if maxLinesEachEnd <= 0 {
+		maxLinesEachEnd = -1
+	}
+
+	// preserve empty lines
+	if l.line == "" {
+		return []string{l.line}
+	}
+
+	var res []string
+	totalLines := l.TotalLines()
+
+	l.SeekToWidth(0)
+	if maxLinesEachEnd > 0 && totalLines > maxLinesEachEnd*2 {
+		for nLines := 0; nLines < maxLinesEachEnd; nLines++ {
+			res = append(res, l.PopLeft(toHighlight, toHighlightStyle))
+		}
+
+		l.SeekToLine(totalLines - maxLinesEachEnd)
+		for nLines := 0; nLines < maxLinesEachEnd; nLines++ {
+			res = append(res, l.PopLeft(toHighlight, toHighlightStyle))
+		}
+	} else {
+		for nLines := 0; nLines < totalLines; nLines++ {
+			res = append(res, l.PopLeft(toHighlight, toHighlightStyle))
+		}
+	}
+
+	l.SeekToWidth(0)
 	return res
 }
 
