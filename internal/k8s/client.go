@@ -201,7 +201,7 @@ func (c clientImpl) GetLogStream(
 	// create a scanner that reads lines from the log stream
 	scanner := bufio.NewScanner(logStream)
 	maxLineLength := 1024 * 1024 * 1024
-	scanner.Buffer(make([]byte, maxLineLength), maxLineLength)
+	scanner.Buffer(make([]byte, 64*1024), maxLineLength)
 	scanner.Split(bufio.ScanLines)
 	return scanner, cancel, nil
 }
