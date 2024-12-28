@@ -5,10 +5,13 @@ import (
 	"github.com/charmbracelet/bubbles/v2/key"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/linebuffer"
 	"regexp"
+
 	"strings"
+	"time"
 )
 
 // Terminology:
@@ -100,7 +103,7 @@ type Model[T RenderableComparable] struct {
 	// lineBufferCache is a cache of linebuffers as calls to linebuffer.New are expensive and repeated multiple times
 	// for the same input for each Update -> View cycle at the moment. It is faster to hash the inputs and store in a
 	// map than rerun linebuffer.New multiple times
-	lineBufferCache map[string]*linebuffer.LineBuffer
+	lineBufferCache *expirable.LRU[string, *linebuffer.LineBuffer]
 }
 
 // New creates a new viewport model with reasonable defaults
@@ -113,20 +116,28 @@ func New[T RenderableComparable](width, height int) (m Model[T]) {
 	m.KeyMap = DefaultKeyMap()
 	m.continuationIndicator = "..."
 	m.footerVisible = true
-	m.lineBufferCache = make(map[string]*linebuffer.LineBuffer)
+
+	// the cache is purged at the start of each call to Update, as it's mostly helpful for the repeated calls to
+	// linebuffer.New within a single Update -> View cycle. In addition, it's configured with LRU params in case
+	// for some reason Update -> View isn't called for a while:
+	// - size of 500 is an estimate for the max reasonable height of a terminal viewport
+	// - 5 seconds expiry is a conservative upper bound for a single Update -> View cycle to complete (don't want to
+	//   expire the cache midway through this operation)
+	m.lineBufferCache = expirable.NewLRU[string, *linebuffer.LineBuffer](500, nil, 5*time.Second)
+
 	return m
 }
 
 // Update processes messages and updates the model
 func (m Model[T]) Update(msg tea.Msg) (Model[T], tea.Cmd) {
 	dev.DebugUpdateMsg("Viewport", msg)
+
+	m.lineBufferCache.Purge()
+
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
-
-	// clear cache
-	m.lineBufferCache = make(map[string]*linebuffer.LineBuffer)
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -263,9 +274,6 @@ func (m Model[T]) View() string {
 	} else {
 		viewString = strings.TrimSuffix(viewString, "\n")
 	}
-
-	// clear cache
-	m.lineBufferCache = make(map[string]*linebuffer.LineBuffer)
 
 	return lipgloss.NewStyle().Width(m.width).Height(m.height).Render(viewString)
 }
@@ -553,12 +561,12 @@ func (m *Model[T]) viewRight(n int) {
 
 func (m *Model[T]) getLineBuffer(s string, width int, continuationIndicator string) *linebuffer.LineBuffer {
 	k := fmt.Sprintf("%s-%d-%s", s, width, continuationIndicator)
-	if lb, ok := m.lineBufferCache[k]; ok {
+	if lb, ok := m.lineBufferCache.Get(k); ok {
 		lb.SeekToWidth(0)
 		return lb
 	}
 	lb := linebuffer.New(s, width, continuationIndicator)
-	m.lineBufferCache[k] = &lb
+	m.lineBufferCache.Add(k, &lb)
 	return &lb
 }
 
