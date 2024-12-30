@@ -802,6 +802,26 @@ func TestViewport_SelectionOff_WrapOff_StringToHighlightAnsi(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 }
 
+// TODO LEO: fix and add to other cases
+func TestViewport_SelectionOff_WrapOff_StringToHighlightAnsiUnicode(t *testing.T) {
+	w, h := 10, 5
+	vp := newViewport(w, h)
+	// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+	vp.SetHeader([]string{"A💖中e\u0301"})
+	vp.SetContent([]RenderableString{
+		{Content: "A💖中e\u0301"},
+		{Content: "A💖中e\u0301A💖中e\u0301"},
+	})
+	vp.SetStringToHighlight("中e\u0301")
+	vp.HighlightStyle = selectionStyle
+	expectedView := pad(vp.width, vp.height, []string{
+		"A💖中e\u0301",
+		"A💖\x1b[38;2;0;0;255m中e\u0301\x1b[m",
+		"A💖\x1b[38;2;0;0;255m中e\u0301\x1b[mA...",
+	})
+	util.CmpStr(t, expectedView, vp.View())
+}
+
 // # SELECTION ENABLED, WRAP OFF
 
 func TestViewport_SelectionOn_WrapOff_Empty(t *testing.T) {

@@ -63,42 +63,6 @@ func TestLineBuffer_TotalLines(t *testing.T) {
 	}
 }
 
-func TestLineBuffer_getLeftRuneIdx(t *testing.T) {
-	tests := []struct {
-		name     string
-		w        int
-		vals     []int
-		expected int
-	}{
-		{
-			name:     "empty",
-			w:        0,
-			vals:     []int{},
-			expected: 0,
-		},
-		{
-			name:     "step by 1",
-			w:        2,
-			vals:     []int{1, 2, 3},
-			expected: 2,
-		},
-		{
-			name:     "step by 2",
-			w:        2,
-			vals:     []int{1, 3, 5},
-			expected: 2,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if actual := getLeftRuneIdx(tt.w, tt.vals); actual != tt.expected {
-				t.Errorf("expected %d, got %d", tt.expected, actual)
-			}
-		})
-	}
-}
-
 func TestLineBuffer_SeekToWidth(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -934,42 +898,42 @@ func TestLineBuffer_WrappedLines(t *testing.T) {
 		want            []string
 	}{
 		{
-			name:            "Empty string",
+			name:            "empty string",
 			s:               "",
 			width:           10,
 			maxLinesEachEnd: 2,
 			want:            []string{""},
 		},
 		{
-			name:            "Single line within width",
+			name:            "single line within width",
 			s:               "Hello",
 			width:           10,
 			maxLinesEachEnd: 2,
 			want:            []string{"Hello"},
 		},
 		{
-			name:            "Zero width",
+			name:            "zero width",
 			s:               "Hello",
 			width:           0,
 			maxLinesEachEnd: 2,
 			want:            []string{},
 		},
 		{
-			name:            "Zero maxLinesEachEnd",
+			name:            "zero maxLinesEachEnd",
 			s:               "This is a very long line that needs wrapping",
 			width:           10,
 			maxLinesEachEnd: 0,
 			want:            []string{"This is a ", "very long ", "line that ", "needs wrap", "ping"},
 		},
 		{
-			name:            "Negative maxLinesEachEnd",
+			name:            "negative maxLinesEachEnd",
 			s:               "This is a very long line that needs wrapping",
 			width:           10,
 			maxLinesEachEnd: -1,
 			want:            []string{"This is a ", "very long ", "line that ", "needs wrap", "ping"},
 		},
 		{
-			name:            "Limited by maxLinesEachEnd",
+			name:            "limited by maxLinesEachEnd",
 			s:               "This is a very long line that needs wrapping",
 			width:           10,
 			maxLinesEachEnd: 2,
@@ -981,7 +945,7 @@ func TestLineBuffer_WrappedLines(t *testing.T) {
 				"ping"},
 		},
 		{
-			name:            "Single chars",
+			name:            "single chars",
 			s:               strings.Repeat("Test \x1b[38;2;0;0;255mtest\x1b[m", 1),
 			width:           1,
 			maxLinesEachEnd: -1,
@@ -998,7 +962,7 @@ func TestLineBuffer_WrappedLines(t *testing.T) {
 			},
 		},
 		{
-			name:            "Long s with maxLinesEachEnd and space at end",
+			name:            "long s with maxLinesEachEnd and space at end",
 			s:               strings.Repeat("This \x1b[38;2;0;0;255mtest\x1b[m sentence. ", 200),
 			width:           1,
 			maxLinesEachEnd: 6,
@@ -1026,21 +990,21 @@ func TestLineBuffer_WrappedLines(t *testing.T) {
 			},
 		},
 		{
-			name:            "Input with trailing spaces are not trimmed",
+			name:            "input with trailing spaces are not trimmed",
 			s:               "Hello   ",
 			width:           10,
 			maxLinesEachEnd: 2,
 			want:            []string{"Hello   "},
 		},
 		{
-			name:            "Input with only spaces is not trimmed",
+			name:            "input with only spaces is not trimmed",
 			s:               "     ",
 			width:           10,
 			maxLinesEachEnd: 2,
 			want:            []string{"     "},
 		},
 		{
-			name:            "Unicode characters",
+			name:            "unicode characters",
 			s:               "Hello 世界! This is a test with unicode characters 🌟",
 			width:           10,
 			maxLinesEachEnd: 2,
@@ -1060,7 +1024,6 @@ func TestLineBuffer_WrappedLines(t *testing.T) {
 			maxLinesEachEnd: 2,
 			want:            []string{"Hello World"},
 		},
-		// TODO LEO: add tests for unicode
 	}
 
 	for _, tt := range tests {
@@ -1080,7 +1043,43 @@ func TestLineBuffer_WrappedLines(t *testing.T) {
 	}
 }
 
-func TestLineBuffer_ReapplyAnsi(t *testing.T) {
+func TestLineBuffer_getLeftRuneIdx(t *testing.T) {
+	tests := []struct {
+		name     string
+		w        int
+		vals     []int
+		expected int
+	}{
+		{
+			name:     "empty",
+			w:        0,
+			vals:     []int{},
+			expected: 0,
+		},
+		{
+			name:     "step by 1",
+			w:        2,
+			vals:     []int{1, 2, 3},
+			expected: 2,
+		},
+		{
+			name:     "step by 2",
+			w:        2,
+			vals:     []int{1, 3, 5},
+			expected: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if actual := getLeftRuneIdx(tt.w, tt.vals); actual != tt.expected {
+				t.Errorf("expected %d, got %d", tt.expected, actual)
+			}
+		})
+	}
+}
+
+func TestLineBuffer_reapplyAnsi(t *testing.T) {
 	tests := []struct {
 		name            string
 		original        string
@@ -1309,7 +1308,7 @@ func TestLineBuffer_ReapplyAnsi(t *testing.T) {
 	}
 }
 
-func TestLineBuffer_HighlightLine(t *testing.T) {
+func TestLineBuffer_highlightLine(t *testing.T) {
 	red := lipgloss.Color("#ff0000")
 	blue := lipgloss.Color("#0000ff")
 
@@ -1415,7 +1414,7 @@ func TestLineBuffer_HighlightLine(t *testing.T) {
 	}
 }
 
-func TestLineBuffer_OverflowsLeft(t *testing.T) {
+func TestLineBuffer_overflowsLeft(t *testing.T) {
 	tests := []struct {
 		name         string
 		str          string
@@ -1577,10 +1576,10 @@ func TestLineBuffer_OverflowsLeft(t *testing.T) {
 	}
 }
 
-func TestLineBuffer_OverflowsRight(t *testing.T) {
+func TestLineBuffer_overflowsRight(t *testing.T) {
 	tests := []struct {
 		name       string
-		str        string
+		s          string
 		endByteIdx int
 		substr     string
 		wantBool   bool
@@ -1588,7 +1587,7 @@ func TestLineBuffer_OverflowsRight(t *testing.T) {
 	}{
 		{
 			name:       "example 1",
-			str:        "my str here",
+			s:          "my str here",
 			endByteIdx: 3,
 			substr:     "y str",
 			wantBool:   true,
@@ -1596,7 +1595,7 @@ func TestLineBuffer_OverflowsRight(t *testing.T) {
 		},
 		{
 			name:       "example 2",
-			str:        "my str here",
+			s:          "my str here",
 			endByteIdx: 3,
 			substr:     "y strong",
 			wantBool:   false,
@@ -1604,7 +1603,7 @@ func TestLineBuffer_OverflowsRight(t *testing.T) {
 		},
 		{
 			name:       "example 3",
-			str:        "my str here",
+			s:          "my str here",
 			endByteIdx: 6,
 			substr:     "tr here",
 			wantBool:   true,
@@ -1612,7 +1611,7 @@ func TestLineBuffer_OverflowsRight(t *testing.T) {
 		},
 		{
 			name:       "empty string",
-			str:        "",
+			s:          "",
 			endByteIdx: 0,
 			substr:     "test",
 			wantBool:   false,
@@ -1620,7 +1619,7 @@ func TestLineBuffer_OverflowsRight(t *testing.T) {
 		},
 		{
 			name:       "empty substring",
-			str:        "test string",
+			s:          "test string",
 			endByteIdx: 0,
 			substr:     "",
 			wantBool:   false,
@@ -1628,7 +1627,7 @@ func TestLineBuffer_OverflowsRight(t *testing.T) {
 		},
 		{
 			name:       "end index out of bounds",
-			str:        "test",
+			s:          "test",
 			endByteIdx: 10,
 			substr:     "test",
 			wantBool:   false,
@@ -1636,7 +1635,7 @@ func TestLineBuffer_OverflowsRight(t *testing.T) {
 		},
 		{
 			name:       "exact full match",
-			str:        "hello world",
+			s:          "hello world",
 			endByteIdx: 11,
 			substr:     "hello world",
 			wantBool:   false,
@@ -1644,7 +1643,7 @@ func TestLineBuffer_OverflowsRight(t *testing.T) {
 		},
 		{
 			name:       "case sensitivity test - no match",
-			str:        "Hello World",
+			s:          "Hello World",
 			endByteIdx: 4,
 			substr:     "hello",
 			wantBool:   false,
@@ -1652,7 +1651,7 @@ func TestLineBuffer_OverflowsRight(t *testing.T) {
 		},
 		{
 			name:       "multiple character same overflow",
-			str:        "aaaa",
+			s:          "aaaa",
 			endByteIdx: 2,
 			substr:     "aaa",
 			wantBool:   true,
@@ -1660,7 +1659,7 @@ func TestLineBuffer_OverflowsRight(t *testing.T) {
 		},
 		{
 			name:       "multiple character same overflow but difference",
-			str:        "aaaa",
+			s:          "aaaa",
 			endByteIdx: 2,
 			substr:     "aaab",
 			wantBool:   false,
@@ -1668,7 +1667,7 @@ func TestLineBuffer_OverflowsRight(t *testing.T) {
 		},
 		{
 			name:       "false if does not overflow",
-			str:        "some string",
+			s:          "some string",
 			endByteIdx: 5,
 			substr:     "ome ",
 			wantBool:   false,
@@ -1676,7 +1675,7 @@ func TestLineBuffer_OverflowsRight(t *testing.T) {
 		},
 		{
 			name:       "one char overflow",
-			str:        "some string",
+			s:          "some string",
 			endByteIdx: 5,
 			substr:     "ome s",
 			wantBool:   true,
@@ -1688,7 +1687,7 @@ func TestLineBuffer_OverflowsRight(t *testing.T) {
 		// "世界🌟世界🌟"[3:10] = "界🌟"
 		{
 			name:       "unicode with ansi no overflow",
-			str:        "世界🌟世界🌟",
+			s:          "世界🌟世界🌟",
 			endByteIdx: 13,
 			substr:     "界🌟世",
 			wantBool:   false,
@@ -1696,7 +1695,7 @@ func TestLineBuffer_OverflowsRight(t *testing.T) {
 		},
 		{
 			name:       "unicode with ansi overflow right one byte",
-			str:        "世界🌟世界🌟",
+			s:          "世界🌟世界🌟",
 			endByteIdx: 12,
 			substr:     "界🌟世",
 			wantBool:   true,
@@ -1704,7 +1703,7 @@ func TestLineBuffer_OverflowsRight(t *testing.T) {
 		},
 		{
 			name:       "unicode with ansi overflow right two bytes",
-			str:        "世界🌟世界🌟",
+			s:          "世界🌟世界🌟",
 			endByteIdx: 11,
 			substr:     "界🌟世",
 			wantBool:   true,
@@ -1712,7 +1711,7 @@ func TestLineBuffer_OverflowsRight(t *testing.T) {
 		},
 		{
 			name:       "unicode with ansi overflow right full rune",
-			str:        "世界🌟世界🌟",
+			s:          "世界🌟世界🌟",
 			endByteIdx: 10,
 			substr:     "界🌟世",
 			wantBool:   true,
@@ -1721,10 +1720,60 @@ func TestLineBuffer_OverflowsRight(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotBool, gotInt := overflowsRight(tt.str, tt.endByteIdx, tt.substr)
+			gotBool, gotInt := overflowsRight(tt.s, tt.endByteIdx, tt.substr)
 			if gotBool != tt.wantBool || gotInt != tt.wantInt {
 				t.Errorf("overflowsRight(%q, %d, %q) = (%v, %d), want (%v, %d)",
-					tt.str, tt.endByteIdx, tt.substr, gotBool, gotInt, tt.wantBool, tt.wantInt)
+					tt.s, tt.endByteIdx, tt.substr, gotBool, gotInt, tt.wantBool, tt.wantInt)
+			}
+		})
+	}
+}
+
+func TestLineBuffer_replaceStartWithContinuation(t *testing.T) {
+	tests := []struct {
+		name         string
+		s            string
+		continuation string
+		expected     string
+	}{
+		{
+			name:         "empty",
+			s:            "",
+			continuation: "",
+			expected:     "",
+		},
+		{
+			name:         "empty continuation",
+			s:            "my string",
+			continuation: "",
+			expected:     "my string",
+		},
+		{
+			name:         "simple",
+			s:            "my string",
+			continuation: "...",
+			expected:     "...string",
+		},
+		// TODO LEO: fix
+		{
+			name: "unicode",
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			s:            "A💖中e\u0301",
+			continuation: "...",
+			expected:     "...中e\u0301",
+		},
+		{
+			name: "unicode width overlap",
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			s:            "中💖中e\u0301",
+			continuation: "...",
+			expected:     "...中e\u0301", // shrinks width by 1 in order to show continuation
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if r := replaceStartWithContinuation(tt.s, []rune(tt.continuation)); r != tt.expected {
+				t.Errorf("expected %s, got %s", tt.expected, r)
 			}
 		})
 	}

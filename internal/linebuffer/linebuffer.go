@@ -135,10 +135,22 @@ func (l *LineBuffer) PopLeft(continuation, toHighlight string, highlightStyle li
 		remainingWidth -= runeWidth
 	}
 
-	// apply left/right line continuation indicators
-	result = l.applyContinuation(result, continuation, startRuneIdx)
-
 	res := result.String()
+
+	// apply left/right line continuation indicators
+	if len(continuation) > 0 && (startRuneIdx > 0 || l.leftRuneIdx < len(l.lineNoAnsiRunes)) {
+		continuationRunes := []rune(continuation)
+
+		// if more runes to the left of the result, replace start runes with continuation indicator, respecting width
+		if startRuneIdx > 0 {
+			res = replaceStartWithContinuation(res, continuationRunes)
+		}
+
+		// if more runes to the right, replace final runes in result with continuation indicator, respecting width
+		if l.leftRuneIdx < len(l.lineNoAnsiRunes) {
+			res = replaceEndWithContinuation(res, continuationRunes)
+		}
+	}
 
 	// reapply original styling
 	if len(l.ansiCodeIndexes) > 0 {
@@ -193,126 +205,6 @@ func (l *LineBuffer) WrappedLines(
 
 	l.SeekToWidth(0)
 	return res
-}
-
-func (l LineBuffer) applyContinuation(result strings.Builder, continuation string, startRuneIdx int) strings.Builder {
-	if len(continuation) > 0 && (startRuneIdx > 0 || l.leftRuneIdx < len(l.lineNoAnsiRunes)) {
-		continuationRunes := []rune(continuation)
-
-		// if more runes to the left of the result, replace start runes with continuation indicator, respecting width
-		if startRuneIdx > 0 {
-			result = l.replaceStartRunesWithContinuation(result, continuationRunes)
-		}
-
-		// if more runes to the right, replace final runes in result with continuation indicator, respecting width
-		if l.leftRuneIdx < len(l.lineNoAnsiRunes) {
-			result = l.replaceEndRunesWithContinuation(result, continuationRunes)
-		}
-	}
-	return result
-}
-
-func (l LineBuffer) replaceStartRunesWithContinuation(result strings.Builder, continuationRunes []rune) strings.Builder {
-	if result.Len() == 0 {
-		return result
-	}
-
-	var res strings.Builder
-	resultRunes := []rune(result.String())
-	totalContinuationRunes := len(continuationRunes)
-	continuationRunesPlaced := 0
-	resultRunesReplaced := 0
-
-	for {
-		if continuationRunesPlaced >= totalContinuationRunes {
-			res.WriteString(string(resultRunes))
-			return res
-		}
-
-		resultRuneToReplaceIdx := resultRunesReplaced
-		if resultRuneToReplaceIdx >= len(resultRunes) {
-			res.WriteString(string(resultRunes))
-			return res
-		}
-
-		widthToReplace := runewidth.RuneWidth(resultRunes[resultRuneToReplaceIdx])
-
-		// get a slice of continuation runes that will replace the result rune, e.g. ".." for double-width unicode char
-		var cont []rune
-		for {
-			if widthToReplace <= 0 {
-				break
-			}
-
-			nextContinuationRuneIdx := continuationRunesPlaced
-			if nextContinuationRuneIdx >= len(continuationRunes) {
-				break
-			}
-
-			nextContinuationRune := continuationRunes[nextContinuationRuneIdx]
-			cont = append(cont, nextContinuationRune)
-			widthToReplace -= 1 // assumes continuation runes are of width 1
-			continuationRunesPlaced += 1
-		}
-
-		var leftResult []rune
-		if resultRuneToReplaceIdx > 0 {
-			leftResult = resultRunes[:resultRuneToReplaceIdx]
-		}
-		rightResult := resultRunes[resultRuneToReplaceIdx+1:]
-		resultRunes = append(append(leftResult, cont...), rightResult...)
-		resultRunesReplaced += 1
-	}
-}
-
-func (l LineBuffer) replaceEndRunesWithContinuation(result strings.Builder, continuationRunes []rune) strings.Builder {
-	if result.Len() == 0 {
-		return result
-	}
-
-	var res strings.Builder
-
-	resultRunes := []rune(result.String())
-	totalContinuationRunes := len(continuationRunes)
-	continuationRunesPlaced := 0
-	resultRunesReplaced := 0
-	for {
-		if continuationRunesPlaced >= totalContinuationRunes {
-			res.WriteString(string(resultRunes))
-			return res
-		}
-
-		resultRuneToReplaceIdx := len(resultRunes) - 1 - resultRunesReplaced
-		if resultRuneToReplaceIdx < 0 {
-			res.WriteString(string(resultRunes))
-			return res
-		}
-		widthToReplace := runewidth.RuneWidth(resultRunes[resultRuneToReplaceIdx])
-
-		// get a slice of continuation runes that will replace the result rune, e.g. ".." for double-width unicode char
-		var cont []rune
-		for {
-			if widthToReplace <= 0 {
-				break
-			}
-			nextContinuationRuneIdx := len(continuationRunes) - 1 - continuationRunesPlaced
-			if nextContinuationRuneIdx < 0 {
-				break
-			}
-			nextContinuationRune := continuationRunes[nextContinuationRuneIdx]
-			cont = append([]rune{nextContinuationRune}, cont...)
-			widthToReplace -= 1 // assumes continuation runes are of width 1
-			continuationRunesPlaced += 1
-		}
-
-		leftResult := append(resultRunes[:resultRuneToReplaceIdx], cont...)
-		var rightResult []rune
-		if resultRuneToReplaceIdx+1 < len(resultRunes) {
-			rightResult = resultRunes[resultRuneToReplaceIdx+1:]
-		}
-		resultRunes = append(leftResult, rightResult...)
-		resultRunesReplaced += 1
-	}
 }
 
 func (l LineBuffer) highlightString(
@@ -553,4 +445,100 @@ func overflowsRight(s string, endByteIdx int, substr string) (bool, int) {
 		}
 	}
 	return false, 0
+}
+
+func replaceStartWithContinuation(result string, continuationRunes []rune) string {
+	if len(result) == 0 {
+		return result
+	}
+
+	resultRunes := []rune(result)
+	totalContinuationRunes := len(continuationRunes)
+	continuationRunesPlaced := 0
+	resultRunesReplaced := 0
+
+	for {
+		if continuationRunesPlaced >= totalContinuationRunes {
+			return string(resultRunes)
+		}
+
+		resultRuneToReplaceIdx := resultRunesReplaced
+		if resultRuneToReplaceIdx >= len(resultRunes) {
+			return string(resultRunes)
+		}
+
+		widthToReplace := runewidth.RuneWidth(resultRunes[resultRuneToReplaceIdx])
+
+		// get a slice of continuation runes that will replace the result rune, e.g. ".." for double-width unicode char
+		var cont []rune
+		for {
+			if widthToReplace <= 0 {
+				break
+			}
+
+			nextContinuationRuneIdx := continuationRunesPlaced
+			if nextContinuationRuneIdx >= len(continuationRunes) {
+				break
+			}
+
+			nextContinuationRune := continuationRunes[nextContinuationRuneIdx]
+			cont = append(cont, nextContinuationRune)
+			widthToReplace -= 1 // assumes continuation runes are of width 1
+			continuationRunesPlaced += 1
+		}
+
+		var leftResult []rune
+		if resultRuneToReplaceIdx > 0 {
+			leftResult = resultRunes[:resultRuneToReplaceIdx]
+		}
+		rightResult := resultRunes[resultRuneToReplaceIdx+1:]
+		resultRunes = append(append(leftResult, cont...), rightResult...)
+		resultRunesReplaced += 1
+	}
+}
+
+func replaceEndWithContinuation(s string, continuationRunes []rune) string {
+	if len(s) == 0 {
+		return s
+	}
+
+	resultRunes := []rune(s)
+	totalContinuationRunes := len(continuationRunes)
+	continuationRunesPlaced := 0
+	resultRunesReplaced := 0
+	for {
+		if continuationRunesPlaced >= totalContinuationRunes {
+			return string(resultRunes)
+		}
+
+		resultRuneToReplaceIdx := len(resultRunes) - 1 - resultRunesReplaced
+		if resultRuneToReplaceIdx < 0 {
+			return string(resultRunes)
+		}
+		widthToReplace := runewidth.RuneWidth(resultRunes[resultRuneToReplaceIdx])
+
+		// get a slice of continuation runes that will replace the result rune, e.g. ".." for double-width unicode char
+		var cont []rune
+		for {
+			if widthToReplace <= 0 {
+				break
+			}
+			nextContinuationRuneIdx := len(continuationRunes) - 1 - continuationRunesPlaced
+			if nextContinuationRuneIdx < 0 {
+				break
+			}
+			nextContinuationRune := continuationRunes[nextContinuationRuneIdx]
+			cont = append([]rune{nextContinuationRune}, cont...)
+			widthToReplace -= 1 // assumes continuation runes are of width 1
+			continuationRunesPlaced += 1
+		}
+
+		leftResult := append(resultRunes[:resultRuneToReplaceIdx], cont...)
+		var rightResult []rune
+		if resultRuneToReplaceIdx+1 < len(resultRunes) {
+			rightResult = resultRunes[resultRuneToReplaceIdx+1:]
+		}
+		resultRunes = append(leftResult, rightResult...)
+		resultRunesReplaced += 1
+	}
 }
