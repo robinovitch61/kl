@@ -47,23 +47,23 @@ func TestViewport_SelectionOff_WrapOff_SmolDimensions(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetContent([]RenderableString{{Content: "hi"}})
-	//expectedView := pad(vp.width, vp.height, []string{""})
-	//util.CmpStr(t, expectedView, vp.View())
+	expectedView := pad(vp.width, vp.height, []string{""})
+	util.CmpStr(t, expectedView, vp.View())
 
 	vp.SetWidth(1)
 	vp.SetHeight(1)
-	expectedView := pad(vp.width, vp.height, []string{"."})
+	expectedView = pad(vp.width, vp.height, []string{"."})
 	util.CmpStr(t, expectedView, vp.View())
 
-	//vp.SetWidth(2)
-	//vp.SetHeight(2)
-	//expectedView = pad(vp.width, vp.height, []string{"..", ""})
-	//util.CmpStr(t, expectedView, vp.View())
-	//
-	//vp.SetWidth(3)
-	//vp.SetHeight(3)
-	//expectedView = pad(vp.width, vp.height, []string{"...", "hi", "..."})
-	//util.CmpStr(t, expectedView, vp.View())
+	vp.SetWidth(2)
+	vp.SetHeight(2)
+	expectedView = pad(vp.width, vp.height, []string{"..", ""})
+	util.CmpStr(t, expectedView, vp.View())
+
+	vp.SetWidth(3)
+	vp.SetHeight(3)
+	expectedView = pad(vp.width, vp.height, []string{"...", "hi", "..."})
+	util.CmpStr(t, expectedView, vp.View())
 }
 
 func TestViewport_SelectionOff_WrapOff_Basic(t *testing.T) {

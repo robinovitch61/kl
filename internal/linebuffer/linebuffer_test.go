@@ -883,7 +883,6 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 				highlightStyle.Render("世") + "界🌟",
 			},
 		},
-		// TODO LEO: test unicode overflow left/right with ansi
 		{
 			name:         "unicode toHighlight, no continuation, overflow, ansi",
 			s:            "\x1b[38;2;0;0;255m世界🌟世界🌟\x1b[m",
@@ -896,7 +895,18 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 				highlightStyle.Render("世") + "\x1b[38;2;0;0;255m界🌟\x1b[m",
 			},
 		},
-		// TODO LEO: test unicode highlight
+		{
+			name:         "unicode toHighlight, continuation, overflow, ansi",
+			s:            "\x1b[38;2;0;0;255m世界🌟世界🌟\x1b[m",
+			width:        7,
+			continuation: "...",
+			toHighlight:  "世界🌟世",
+			numPopLefts:  2,
+			expected: []string{
+				"\x1b[38;2;0;0;255m世界..\x1b[m", // does not highlight continuation, could in future
+				"\x1b[38;2;0;0;255m..界🌟\x1b[m", // does not highlight continuation, could in future
+			},
+		},
 	}
 
 	for _, tt := range tests {

@@ -33,7 +33,7 @@ func New(line string, width int) LineBuffer {
 	lb.ansiCodeIndexes = constants.AnsiRegex.FindAllStringIndex(line, -1)
 	lb.lineNoAnsi = stripAnsi(line)
 
-	lb.lineRunes = []rune(lb.line)
+	lb.lineRunes = []rune(lb.lineNoAnsi)
 	lb.runeIdxToByteOffset = initByteOffsets(lb.lineRunes)
 
 	lb.lineNoAnsiRunes = []rune(lb.lineNoAnsi)
