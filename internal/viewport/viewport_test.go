@@ -771,7 +771,7 @@ func TestViewport_SelectionOff_WrapOff_StringToHighlightManyMatches(t *testing.T
 		vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
 		expectedView := pad(vp.width, vp.height, []string{
 			"header",
-			strings.Repeat("\x1b[38;2;0;255;0mr\x1b[m", 7) + strings.Repeat("\x1b[38;2;0;255;0m.\x1b[m", 3),
+			strings.Repeat("\x1b[38;2;0;255;0mr\x1b[m", 7) + strings.Repeat(".", 3),
 		})
 		util.CmpStr(t, expectedView, vp.View())
 	}
@@ -798,6 +798,25 @@ func TestViewport_SelectionOff_WrapOff_StringToHighlightAnsi(t *testing.T) {
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"line \x1b[38;2;255;0;0mred\x1b[m e again",
+	})
+	util.CmpStr(t, expectedView, vp.View())
+}
+
+func TestViewport_SelectionOff_WrapOff_StringToHighlightAnsiUnicode(t *testing.T) {
+	w, h := 10, 5
+	vp := newViewport(w, h)
+	// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
+	vp.SetHeader([]string{"A💖中e\u0301"})
+	vp.SetContent([]RenderableString{
+		{Content: "A💖中e\u0301"},
+		{Content: "A💖中e\u0301A💖中e\u0301"},
+	})
+	vp.SetStringToHighlight("中e\u0301")
+	vp.HighlightStyle = selectionStyle
+	expectedView := pad(vp.width, vp.height, []string{
+		"A💖中e\u0301",
+		"A💖\x1b[38;2;0;0;255m中e\u0301\x1b[m",
+		"A💖\x1b[38;2;0;0;255m中e\u0301\x1b[m...",
 	})
 	util.CmpStr(t, expectedView, vp.View())
 }
@@ -2121,7 +2140,7 @@ func TestViewport_SelectionOn_WrapOff_StringToHighlightManyMatches(t *testing.T)
 		vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
 		expectedView := pad(vp.width, vp.height, []string{
 			"header",
-			strings.Repeat("\x1b[38;2;255;0;0mr\x1b[m", 7) + strings.Repeat("\x1b[38;2;255;0;0m.\x1b[m", 3),
+			strings.Repeat("\x1b[38;2;255;0;0mr\x1b[m", 7) + "\x1b[38;2;0;0;255m" + strings.Repeat(".", 3) + "\x1b[m",
 		})
 		util.CmpStr(t, expectedView, vp.View())
 	}
@@ -2169,6 +2188,27 @@ func TestViewport_SelectionOn_WrapOff_ExtraSlash(t *testing.T) {
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
 		"\x1b[38;2;0;0;255m|2024|\x1b[m\x1b[38;2;0mfl..lq\x1b[m\x1b[38;2;0;0;255m/\x1b[m\x1b[38;2;0mflask-3\x1b[m\x1b[38;2;0;0;255m|\x1b[m",
+	})
+	util.CmpStr(t, expectedView, vp.View())
+}
+
+func TestViewport_SelectionOn_WrapOff_StringToHighlightAnsiUnicode(t *testing.T) {
+	w, h := 10, 5
+	vp := newViewport(w, h)
+	// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
+	vp.SetHeader([]string{"A💖中e\u0301"})
+	vp.SetSelectionEnabled(true)
+	vp.SetContent([]RenderableString{
+		{Content: "A💖中e\u0301"},
+		{Content: "A💖中e\u0301A💖中e\u0301"},
+	})
+	vp.SetStringToHighlight("中e\u0301")
+	vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
+	vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
+	expectedView := pad(vp.width, vp.height, []string{
+		"A💖中e\u0301",
+		"\x1b[38;2;0;0;255mA💖\x1b[m\x1b[38;2;255;0;0m中e\u0301\x1b[m",
+		"A💖\x1b[38;2;0;255;0m中e\u0301\x1b[m...",
 	})
 	util.CmpStr(t, expectedView, vp.View())
 }
@@ -3030,6 +3070,29 @@ func TestViewport_SelectionOff_WrapOn_SuperLongWrappedLine(t *testing.T) {
 		"7812345678",
 		"smol",
 		"100% (3/3)",
+	})
+	util.CmpStr(t, expectedView, vp.View())
+}
+
+func TestViewport_SelectionOff_WrapOn_StringToHighlightAnsiUnicode(t *testing.T) {
+	w, h := 10, 5
+	vp := newViewport(w, h)
+	// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
+	vp.SetHeader([]string{"A💖中e\u0301"})
+	vp.SetWrapText(true)
+	vp.SetContent([]RenderableString{
+		{Content: "A💖中e\u0301"},
+		{Content: "A💖中e\u0301A💖中e\u0301"},
+	})
+	vp.SetStringToHighlight("中e\u0301")
+	vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
+	vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
+	expectedView := pad(vp.width, vp.height, []string{
+		"A💖中e\u0301",
+		"A💖\x1b[38;2;0;255;0m中e\u0301\x1b[m",
+		"A💖\x1b[38;2;0;255;0m中e\u0301\x1b[mA💖",
+		"\x1b[38;2;0;255;0m中e\u0301\x1b[m",
+		"100% (2/2)",
 	})
 	util.CmpStr(t, expectedView, vp.View())
 }
@@ -4090,6 +4153,46 @@ func TestViewport_SelectionOn_WrapOn_StickyTopBottom(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 }
 
+func TestViewport_SelectionOn_WrapOn_StickyBottomLongLine(t *testing.T) {
+	w, h := 10, 10
+	vp := newViewport(w, h)
+	vp.SetHeader([]string{"header"})
+	vp.SetWrapText(true)
+	vp.SetSelectionEnabled(true)
+	// stickyness should override maintain selection
+	vp.SetMaintainSelection(true)
+	vp.SetBottomSticky(true)
+	vp.SetContent([]RenderableString{
+		{Content: "first line"},
+		{Content: "next line"},
+	})
+	expectedView := pad(vp.width, vp.height, []string{
+		"header",
+		"first line",
+		"\x1b[38;2;0;0;255mnext line\x1b[m",
+	})
+	util.CmpStr(t, expectedView, vp.View())
+
+	vp.SetContent([]RenderableString{
+		{Content: "first line"},
+		{Content: "next line"},
+		{Content: "a very long line at the bottom that wraps many times"},
+	})
+	expectedView = pad(vp.width, vp.height, []string{
+		"header",
+		"first line",
+		"next line",
+		"\x1b[38;2;0;0;255ma very lon\x1b[m",
+		"\x1b[38;2;0;0;255mg line at \x1b[m",
+		"\x1b[38;2;0;0;255mthe bottom\x1b[m",
+		"\x1b[38;2;0;0;255m that wrap\x1b[m",
+		"\x1b[38;2;0;0;255ms many tim\x1b[m",
+		"\x1b[38;2;0;0;255mes\x1b[m",
+		"100% (3/3)",
+	})
+	util.CmpStr(t, expectedView, vp.View())
+}
+
 func TestViewport_SelectionOn_WrapOn_RemoveLogsWhenSelectionBottom(t *testing.T) {
 	w, h := 10, 3
 	vp := newViewport(w, h)
@@ -4479,6 +4582,30 @@ func TestViewport_SelectionOn_WrapOn_SuperLongWrappedLine(t *testing.T) {
 		"7812345678",
 		"\x1b[38;2;0;0;255msmol\x1b[m",
 		"100% (3/3)",
+	})
+	util.CmpStr(t, expectedView, vp.View())
+}
+
+func TestViewport_SelectionOn_WrapOn_StringToHighlightAnsiUnicode(t *testing.T) {
+	w, h := 10, 5
+	vp := newViewport(w, h)
+	// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
+	vp.SetHeader([]string{"A💖中e\u0301"})
+	vp.SetSelectionEnabled(true)
+	vp.SetWrapText(true)
+	vp.SetContent([]RenderableString{
+		{Content: "A💖中e\u0301"},
+		{Content: "A💖中e\u0301A💖中e\u0301"},
+	})
+	vp.SetStringToHighlight("中e\u0301")
+	vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
+	vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
+	expectedView := pad(vp.width, vp.height, []string{
+		"A💖中e\u0301",
+		"\x1b[38;2;0;0;255mA💖\x1b[m\x1b[38;2;255;0;0m中e\u0301\x1b[m",
+		"A💖\x1b[38;2;0;255;0m中e\u0301\x1b[mA💖",
+		"\x1b[38;2;0;255;0m中e\u0301\x1b[m",
+		"50% (1/2)",
 	})
 	util.CmpStr(t, expectedView, vp.View())
 }

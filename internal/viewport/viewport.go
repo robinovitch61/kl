@@ -5,10 +5,14 @@ import (
 	"github.com/charmbracelet/bubbles/v2/key"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/linebuffer"
 	"regexp"
+	"unicode"
+
 	"strings"
+	"time"
 )
 
 // Terminology:
@@ -55,8 +59,8 @@ type Model[T RenderableComparable] struct {
 	// allItems is the complete list of items to be rendered in the viewport
 	allItems []T
 
-	// lineContinuationIndicator is the string to use to indicate that a line has been truncated from the left or right
-	lineContinuationIndicator string
+	// continuationIndicator is the string to use to indicate that a line has been truncated from the left or right
+	continuationIndicator string
 
 	// selectionEnabled is true if the viewport allows individual line selection
 	selectionEnabled bool
@@ -96,6 +100,11 @@ type Model[T RenderableComparable] struct {
 
 	// xOffset is the number of columns scrolled right when rendered lines overflow the viewport and wrapText is false
 	xOffset int
+
+	// lineBufferCache is a cache of linebuffers as calls to linebuffer.New are expensive and repeated multiple times
+	// for the same s for each Update -> View cycle at the moment. It is faster to hash the inputs and store in a
+	// map than rerun linebuffer.New multiple times
+	lineBufferCache *expirable.LRU[string, *linebuffer.LineBuffer]
 }
 
 // New creates a new viewport model with reasonable defaults
@@ -106,14 +115,26 @@ func New[T RenderableComparable](width, height int) (m Model[T]) {
 	m.wrapText = false
 
 	m.KeyMap = DefaultKeyMap()
-	m.lineContinuationIndicator = "..."
+	m.continuationIndicator = "..."
 	m.footerVisible = true
+
+	// the cache is purged at the start of each call to Update, as it's mostly helpful for the repeated calls to
+	// linebuffer.New within a single Update -> View cycle. In addition, it's configured with LRU params in case
+	// for some reason Update -> View isn't called for a while:
+	// - size of 500 is an estimate for the max reasonable height of a terminal viewport
+	// - 5 seconds expiry is a conservative upper bound for a single Update -> View cycle to complete (don't want to
+	//   expire the cache midway through this operation)
+	m.lineBufferCache = expirable.NewLRU[string, *linebuffer.LineBuffer](500, nil, 5*time.Second)
+
 	return m
 }
 
 // Update processes messages and updates the model
 func (m Model[T]) Update(msg tea.Msg) (Model[T], tea.Cmd) {
 	dev.DebugUpdateMsg("Viewport", msg)
+
+	m.lineBufferCache.Purge()
+
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -201,25 +222,33 @@ func (m Model[T]) View() string {
 
 	visibleHeaderLines := m.getVisibleHeaderLines()
 	for i := range visibleHeaderLines {
-		viewString += m.truncateNoXOffset(visibleHeaderLines[i]) + "\n"
+		lineBuffer := m.getLineBuffer(visibleHeaderLines[i], m.width)
+		viewString += lineBuffer.PopLeft(m.continuationIndicator, "", lipgloss.NewStyle()) + "\n"
 	}
 
 	// get the lines to show based on the vertical scroll position (topItemIdx and topItemLineOffset)
 	visibleContentLines := m.getVisibleContentLines()
 
+	var truncated string
 	truncatedVisibleContentLines := make([]string, len(visibleContentLines.lines))
 	for i := range visibleContentLines.lines {
-		isSelection := m.selectionEnabled && visibleContentLines.itemIndexes[i] == m.selectedItemIdx
-		if isSelection {
-			// style entire selected line
-			visibleContentLines.lines[i] = m.styleSelection(visibleContentLines.lines[i])
+		if m.wrapText {
+			truncated = visibleContentLines.lines[i]
+		} else {
+			lineBuffer := m.getLineBuffer(visibleContentLines.lines[i], m.width)
+			lineBuffer.SeekToWidth(m.xOffset)
+			truncated = lineBuffer.PopLeft(m.continuationIndicator, m.stringToHighlight, m.highlightStyle(visibleContentLines.itemIndexes[i]))
 		}
 
-		truncated := m.truncate(visibleContentLines.lines[i])
+		isSelection := m.selectionEnabled && visibleContentLines.itemIndexes[i] == m.selectedItemIdx
+		if isSelection {
+			truncated = m.styleSelection(truncated)
+		}
 
-		if m.xOffset > 0 && lipgloss.Width(truncated) == 0 && lipgloss.Width(visibleContentLines.lines[i]) > 0 {
+		if !m.wrapText && m.xOffset > 0 && lipgloss.Width(truncated) == 0 && lipgloss.Width(visibleContentLines.lines[i]) > 0 {
 			// if panned right past where line ends, show continuation indicator
-			truncated = m.truncateNoXOffset(m.getLineContinuationIndicator())
+			lineBuffer := m.getLineBuffer(m.getLineContinuationIndicator(), m.width)
+			truncated = lineBuffer.PopLeft("", "", lipgloss.NewStyle())
 			if isSelection {
 				truncated = m.styleSelection(truncated)
 			}
@@ -462,7 +491,8 @@ func (m Model[T]) numLinesForItem(itemIdx int) int {
 	if len(m.allItems) == 0 || itemIdx < 0 || itemIdx >= len(m.allItems) {
 		return 0
 	}
-	return len(wrap(m.allItems[itemIdx].Render(), m.width, m.height))
+	lb := m.getLineBuffer(m.allItems[itemIdx].Render(), m.width)
+	return len(lb.WrappedLines(m.height, "", lipgloss.NewStyle()))
 }
 
 func (m *Model[T]) safelySetXOffset(n int) {
@@ -529,6 +559,17 @@ func (m *Model[T]) viewLeft(n int) {
 
 func (m *Model[T]) viewRight(n int) {
 	m.safelySetXOffset(m.xOffset + n)
+}
+
+func (m *Model[T]) getLineBuffer(s string, width int) *linebuffer.LineBuffer {
+	k := fmt.Sprintf("%s-%d", s, width)
+	if lb, ok := m.lineBufferCache.Get(k); ok {
+		lb.SeekToWidth(0)
+		return lb
+	}
+	lb := linebuffer.New(s, width)
+	m.lineBufferCache.Add(k, &lb)
+	return &lb
 }
 
 // scrollByNLines edits topItemIdx and topItemLineOffset to scroll the viewport by n lines (negative for up, positive for down)
@@ -621,7 +662,8 @@ func (m Model[T]) getVisibleHeaderLines() []string {
 		// wrapped
 		var wrappedHeaderLines []string
 		for _, s := range m.header {
-			wrappedHeaderLines = append(wrappedHeaderLines, wrap(s, m.width, m.height)...)
+			lb := m.getLineBuffer(s, m.width)
+			wrappedHeaderLines = append(wrappedHeaderLines, lb.WrappedLines(m.height, "", lipgloss.NewStyle())...)
 		}
 		return safeSliceUpToIdx(wrappedHeaderLines, m.height)
 	}
@@ -670,20 +712,9 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 		return visibleContentLinesResult{lines: contentLines, itemIndexes: itemIndexes, showFooter: false}
 	}
 
-	renderAndHighlight := func(item T, idx int) string {
-		if m.stringToHighlight == "" {
-			return item.Render()
-		}
-		highlightStyle := m.HighlightStyle
-		if m.selectionEnabled && idx == m.selectedItemIdx {
-			highlightStyle = m.HighlightStyleIfSelected
-		}
-		//println(fmt.Sprintf("highlightLine(%q, %s, %s) = %q", item.Render(), m.stringToHighlight, highlightStyle, highlighted))
-		return highlightLine(item.Render(), m.stringToHighlight, highlightStyle)
-	}
-
 	if m.wrapText {
-		itemLines := wrap(renderAndHighlight(currItem, currItemIdx), m.width, m.height)
+		lb := m.getLineBuffer(strings.TrimRightFunc(currItem.Render(), unicode.IsSpace), m.width)
+		itemLines := lb.WrappedLines(m.height, m.stringToHighlight, m.highlightStyle(currItemIdx))
 		offsetLines := safeSliceFromIdx(itemLines, m.topItemLineOffset)
 		done = addLines(offsetLines, currItemIdx)
 
@@ -693,19 +724,20 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 				done = true
 			} else {
 				currItem = m.allItems[currItemIdx]
-				itemLines = wrap(renderAndHighlight(currItem, currItemIdx), m.width, m.height)
+				lb = m.getLineBuffer(strings.TrimRightFunc(currItem.Render(), unicode.IsSpace), m.width)
+				itemLines = lb.WrappedLines(m.height, m.stringToHighlight, m.highlightStyle(currItemIdx))
 				done = addLines(itemLines, currItemIdx)
 			}
 		}
 	} else {
-		done = addLine(renderAndHighlight(currItem, currItemIdx), currItemIdx)
+		done = addLine(currItem.Render(), currItemIdx)
 		for !done {
 			currItemIdx += 1
 			if currItemIdx >= len(m.allItems) {
 				done = true
 			} else {
 				currItem = m.allItems[currItemIdx]
-				done = addLine(renderAndHighlight(currItem, currItemIdx), currItemIdx)
+				done = addLine(currItem.Render(), currItemIdx)
 			}
 		}
 	}
@@ -735,6 +767,13 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 	return visibleContentLinesResult{lines: contentLines, itemIndexes: itemIndexes, showFooter: showFooter}
 }
 
+func (m Model[T]) highlightStyle(itemIdx int) lipgloss.Style {
+	if m.selectionEnabled && itemIdx == m.selectedItemIdx {
+		return m.HighlightStyleIfSelected
+	}
+	return m.HighlightStyle
+}
+
 func (m Model[T]) getTruncatedFooterLine(visibleContentLines visibleContentLinesResult) string {
 	numerator := m.selectedItemIdx + 1 // 0th line is 1st
 	denominator := len(m.allItems)
@@ -756,17 +795,17 @@ func (m Model[T]) getTruncatedFooterLine(visibleContentLines visibleContentLines
 
 	percentScrolled := percent(numerator, denominator)
 	footerString := fmt.Sprintf("%d%% (%d/%d)", percentScrolled, numerator, denominator)
-	// use m.lineContinuationIndicator regardless of wrapText
+	// use m.continuationIndicator regardless of wrapText
 
-	footerBuffer := linebuffer.New(footerString, m.lineContinuationIndicator)
-	return m.FooterStyle.Render(footerBuffer.Truncate(0, m.width))
+	footerBuffer := m.getLineBuffer(footerString, m.width)
+	return m.FooterStyle.Render(footerBuffer.PopLeft(m.continuationIndicator, "", lipgloss.NewStyle()))
 }
 
 func (m Model[T]) getLineContinuationIndicator() string {
 	if m.wrapText {
 		return ""
 	}
-	return m.lineContinuationIndicator
+	return m.continuationIndicator
 }
 
 func (m Model[T]) isScrolledToBottom() bool {
@@ -846,17 +885,6 @@ func (m Model[T]) maxItemIdxAndMaxTopLineOffset() (int, int) {
 	return max(0, maxTopItemIdx), max(0, maxTopItemLineOffset)
 }
 
-// truncate truncates a line to fit within the viewport's width, accounting for the current xOffset (left/right) position
-func (m Model[T]) truncate(line string) string {
-	lineBuffer := linebuffer.New(line, m.lineContinuationIndicator)
-	return lineBuffer.Truncate(m.xOffset, m.width)
-}
-
-func (m Model[T]) truncateNoXOffset(line string) string {
-	lineBuffer := linebuffer.New(line, m.lineContinuationIndicator)
-	return lineBuffer.Truncate(0, m.width)
-}
-
 func (m Model[T]) getNumVisibleItems() int {
 	if !m.wrapText {
 		return m.getNumContentLines()
@@ -876,7 +904,7 @@ func (m Model[T]) styleSelection(s string) string {
 	matches := surroundingAnsiRegex.FindAllString(s, -1)
 	var builder strings.Builder
 
-	// Pre-allocate the builder's capacity based on the input string length
+	// Pre-allocate the builder's capacity based on the s string length
 	// This is optional but can improve performance for longer strings
 	builder.Grow(len(s))
 
