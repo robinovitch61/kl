@@ -462,15 +462,33 @@ func replaceStartWithContinuation(result string, continuationRunes []rune) strin
 			return string(resultRunes)
 		}
 
-		resultRuneToReplaceIdx := resultRunesReplaced
-		if resultRuneToReplaceIdx >= len(resultRunes) {
-			return string(resultRunes)
+		var widthToReplace int
+		resultRuneToReplaceIdx := continuationRunesPlaced
+		for {
+			if resultRuneToReplaceIdx >= len(resultRunes) {
+				return string(resultRunes)
+			}
+
+			widthToReplace = runewidth.RuneWidth(resultRunes[resultRuneToReplaceIdx])
+			if widthToReplace > totalContinuationRunes-continuationRunesPlaced {
+				return string(resultRunes)
+			}
+
+			if widthToReplace > 0 {
+				// remove any following zero-width runes
+				for resultRuneToReplaceIdx+1 < len(resultRunes) && runewidth.RuneWidth(resultRunes[resultRuneToReplaceIdx+1]) == 0 {
+					resultRunes = replaceRuneWithRunes(resultRunes, resultRuneToReplaceIdx+1, []rune{})
+				}
+				break
+			} else {
+				// this can occur when two runes combine into the width of 1
+				// e.g. e\u0301 (i.e. é) is 2 runes, the second of which has zero width so should not be replaced
+				resultRunes = replaceRuneWithRunes(resultRunes, resultRuneToReplaceIdx, []rune{})
+			}
 		}
 
-		widthToReplace := runewidth.RuneWidth(resultRunes[resultRuneToReplaceIdx])
-
 		// get a slice of continuation runes that will replace the result rune, e.g. ".." for double-width unicode char
-		var cont []rune
+		var replaceWith []rune
 		for {
 			if widthToReplace <= 0 {
 				break
@@ -482,17 +500,12 @@ func replaceStartWithContinuation(result string, continuationRunes []rune) strin
 			}
 
 			nextContinuationRune := continuationRunes[nextContinuationRuneIdx]
-			cont = append(cont, nextContinuationRune)
+			replaceWith = append(replaceWith, nextContinuationRune)
 			widthToReplace -= 1 // assumes continuation runes are of width 1
 			continuationRunesPlaced += 1
 		}
 
-		var leftResult []rune
-		if resultRuneToReplaceIdx > 0 {
-			leftResult = resultRunes[:resultRuneToReplaceIdx]
-		}
-		rightResult := resultRunes[resultRuneToReplaceIdx+1:]
-		resultRunes = append(append(leftResult, cont...), rightResult...)
+		resultRunes = replaceRuneWithRunes(resultRunes, resultRuneToReplaceIdx, replaceWith)
 		resultRunesReplaced += 1
 	}
 }
@@ -503,6 +516,7 @@ func replaceEndWithContinuation(s string, continuationRunes []rune) string {
 	}
 
 	resultRunes := []rune(s)
+	originalResultRunesLen := len(resultRunes)
 	totalContinuationRunes := len(continuationRunes)
 	continuationRunesPlaced := 0
 	resultRunesReplaced := 0
@@ -511,14 +525,31 @@ func replaceEndWithContinuation(s string, continuationRunes []rune) string {
 			return string(resultRunes)
 		}
 
-		resultRuneToReplaceIdx := len(resultRunes) - 1 - resultRunesReplaced
-		if resultRuneToReplaceIdx < 0 {
-			return string(resultRunes)
+		var widthToReplace int
+		var resultRuneToReplaceIdx int
+		for {
+			resultRuneToReplaceIdx = originalResultRunesLen - 1 - resultRunesReplaced
+			if resultRuneToReplaceIdx < 0 {
+				return string(resultRunes)
+			}
+
+			widthToReplace = runewidth.RuneWidth(resultRunes[resultRuneToReplaceIdx])
+			if widthToReplace > totalContinuationRunes-continuationRunesPlaced {
+				return string(resultRunes)
+			}
+
+			if widthToReplace > 0 {
+				break
+			} else {
+				// this can occur when two runes combine into the width of 1
+				// e.g. e\u0301 (i.e. é) is 2 runes, the second of which has zero width so should not be replaced
+				resultRunes = replaceRuneWithRunes(resultRunes, resultRuneToReplaceIdx, []rune{})
+				resultRunesReplaced++
+			}
 		}
-		widthToReplace := runewidth.RuneWidth(resultRunes[resultRuneToReplaceIdx])
 
 		// get a slice of continuation runes that will replace the result rune, e.g. ".." for double-width unicode char
-		var cont []rune
+		var replaceWith []rune
 		for {
 			if widthToReplace <= 0 {
 				break
@@ -528,17 +559,20 @@ func replaceEndWithContinuation(s string, continuationRunes []rune) string {
 				break
 			}
 			nextContinuationRune := continuationRunes[nextContinuationRuneIdx]
-			cont = append([]rune{nextContinuationRune}, cont...)
+			replaceWith = append([]rune{nextContinuationRune}, replaceWith...)
 			widthToReplace -= 1 // assumes continuation runes are of width 1
 			continuationRunesPlaced += 1
 		}
 
-		leftResult := append(resultRunes[:resultRuneToReplaceIdx], cont...)
-		var rightResult []rune
-		if resultRuneToReplaceIdx+1 < len(resultRunes) {
-			rightResult = resultRunes[resultRuneToReplaceIdx+1:]
-		}
-		resultRunes = append(leftResult, rightResult...)
+		resultRunes = replaceRuneWithRunes(resultRunes, resultRuneToReplaceIdx, replaceWith)
 		resultRunesReplaced += 1
 	}
+}
+
+func replaceRuneWithRunes(rs []rune, idxToReplace int, replaceWith []rune) []rune {
+	result := make([]rune, len(rs)+len(replaceWith)-1)
+	copy(result, rs[:idxToReplace])
+	copy(result[idxToReplace:], replaceWith)
+	copy(result[idxToReplace+len(replaceWith):], rs[idxToReplace+1:])
+	return result
 }

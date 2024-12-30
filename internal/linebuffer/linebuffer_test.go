@@ -871,6 +871,18 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 				"\x1b[38;2;0;0;255m..界🌟\x1b[m", // does not highlight continuation, could in future
 			},
 		},
+		{
+			name: "unicode combining",
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
+			s:            "A💖中e\u0301A💖中e\u0301", // 12w total
+			width:        10,
+			continuation: "",
+			numPopLefts:  2,
+			expected: []string{
+				"A💖中e\u0301A💖",
+				"中e\u0301",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -1754,7 +1766,6 @@ func TestLineBuffer_replaceStartWithContinuation(t *testing.T) {
 			continuation: "...",
 			expected:     "...string",
 		},
-		// TODO LEO: fix
 		{
 			name: "unicode",
 			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
@@ -1763,16 +1774,93 @@ func TestLineBuffer_replaceStartWithContinuation(t *testing.T) {
 			expected:     "...中e\u0301",
 		},
 		{
+			name: "unicode leading combined",
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			s:            "e\u0301💖中",
+			continuation: "...",
+			expected:     "...中",
+		},
+		{
+			name: "unicode combined",
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			s:            "💖e\u0301💖中",
+			continuation: "...",
+			expected:     "...💖中",
+		},
+		{
 			name: "unicode width overlap",
 			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
 			s:            "中💖中e\u0301",
 			continuation: "...",
-			expected:     "...中e\u0301", // shrinks width by 1 in order to show continuation
+			expected:     "..💖中e\u0301", // continuation shrinks by 1
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if r := replaceStartWithContinuation(tt.s, []rune(tt.continuation)); r != tt.expected {
+				t.Errorf("expected %s, got %s", tt.expected, r)
+			}
+		})
+	}
+}
+
+func TestLineBuffer_replaceEndWithContinuation(t *testing.T) {
+	tests := []struct {
+		name         string
+		s            string
+		continuation string
+		expected     string
+	}{
+		{
+			name:         "empty",
+			s:            "",
+			continuation: "",
+			expected:     "",
+		},
+		{
+			name:         "empty continuation",
+			s:            "my string",
+			continuation: "",
+			expected:     "my string",
+		},
+		{
+			name:         "simple",
+			s:            "my string",
+			continuation: "...",
+			expected:     "my str...",
+		},
+		{
+			name: "unicode",
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			s:            "A💖中e",
+			continuation: "...",
+			expected:     "A💖...",
+		},
+		{
+			name: "unicode trailing combined",
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			s:            "A💖中e\u0301",
+			continuation: "...",
+			expected:     "A💖...",
+		},
+		{
+			name: "unicode combined",
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			s:            "A💖e\u0301中",
+			continuation: "...",
+			expected:     "A💖...",
+		},
+		{
+			name: "unicode width overlap",
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			s:            "💖中",
+			continuation: "...",
+			expected:     "💖..", // continuation shrinks by 1
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if r := replaceEndWithContinuation(tt.s, []rune(tt.continuation)); r != tt.expected {
 				t.Errorf("expected %s, got %s", tt.expected, r)
 			}
 		})
