@@ -488,6 +488,9 @@ func (m Model[T]) maxLineWidth() int {
 }
 
 func (m Model[T]) numLinesForItem(itemIdx int) int {
+	if m.width == 0 {
+		return 0
+	}
 	if len(m.allItems) == 0 || itemIdx < 0 || itemIdx >= len(m.allItems) {
 		return 0
 	}
@@ -681,6 +684,9 @@ type visibleContentLinesResult struct {
 // getVisibleContentLines returns the lines of content that are visible in the viewport given vertical scroll position
 // and the content. It also returns the item index for each associated visible line and whether or not to show the footer
 func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
+	if m.width == 0 {
+		return visibleContentLinesResult{lines: nil, itemIndexes: nil, showFooter: false}
+	}
 	if len(m.allItems) == 0 {
 		return visibleContentLinesResult{lines: nil, itemIndexes: nil, showFooter: false}
 	}
