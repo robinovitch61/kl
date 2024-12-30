@@ -330,9 +330,7 @@ func (l LineBuffer) highlightString(
 			s = highlightLine(s, highlightLeft, highlightStyle, 0, len(highlightLeft))
 		}
 		endByteOffset := l.runeIdxToByteOffset[l.leftRuneIdx]
-		// overflowsRight expects the exact index it ends at, so subtract 1
-		if right, startIdx := overflowsRight(l.lineNoAnsi, endByteOffset-1, toHighlight); right {
-			// regular slice is end exclusive, so don't subtract 1
+		if right, startIdx := overflowsRight(l.lineNoAnsi, endByteOffset, toHighlight); right {
 			highlightRight := l.lineNoAnsi[startIdx:endByteOffset]
 			lenPlainTextRes := len(stripAnsi(s))
 			s = highlightLine(s, highlightRight, highlightStyle, lenPlainTextRes-len(highlightRight), lenPlainTextRes)
@@ -498,10 +496,11 @@ func initByteOffsets(runes []rune) []int {
 	return offsets
 }
 
-// overflowsLeft checks if a substring overflows a string on the left if the string were to start at a given index.
+// overflowsLeft checks if a substring overflows a string on the left if the string were to start at startByteIdx inclusive.
+// assumes s has no ansi codes.
 // It performs a case-sensitive comparison and returns two values:
 //   - A boolean indicating whether there is overflow
-//   - An integer indicating the ending string index of the overflow (0 if none)
+//   - An integer indicating the ending string index (exclusive) of the overflow (0 if none)
 //
 // Examples:
 //
@@ -509,26 +508,27 @@ func initByteOffsets(runes []rune) []int {
 //		overflowsLeft("my str here", 3, "my str") returns (true, 6)
 //		overflowsLeft("my str here", 3, "your str") returns (false, 0)
 //		overflowsLeft("my str here", 6, "my str") returns (false, 0)
-func overflowsLeft(s string, index int, substr string) (bool, int) {
+func overflowsLeft(s string, startByteIdx int, substr string) (bool, int) {
 	if len(s) == 0 || len(substr) == 0 || len(substr) > len(s) {
 		return false, 0
 	}
-	end := len(substr) + index
+	end := len(substr) + startByteIdx
 	for offset := 1; offset < len(substr); offset++ {
-		if index-offset < 0 || end-offset > len(s) {
+		if startByteIdx-offset < 0 || end-offset > len(s) {
 			continue
 		}
-		if s[index-offset:end-offset] == substr {
+		if s[startByteIdx-offset:end-offset] == substr {
 			return true, end - offset
 		}
 	}
 	return false, 0
 }
 
-// overflowsRight checks if a substring overflows a string on the right if the string were to end at a given index.
+// overflowsRight checks if a substring overflows a string on the right if the string were to end at endByteIdx exclusive.
+// assumes s has no ansi codes.
 // It performs a case-sensitive comparison and returns two values:
 //   - A boolean indicating whether there is overflow
-//   - An integer indicating the starting string index of the overflow (0 if none)
+//   - An integer indicating the starting string startByteIdx of the overflow (0 if none)
 //
 // Examples:
 //
@@ -536,18 +536,20 @@ func overflowsLeft(s string, index int, substr string) (bool, int) {
 //		overflowsRight("my str here", 3, "y str") returns (true, 1)
 //		overflowsRight("my str here", 3, "y strong") returns (false, 0)
 //		overflowsRight("my str here", 6, "tr here") returns (true, 4)
-func overflowsRight(s string, index int, substr string) (bool, int) {
+func overflowsRight(s string, endByteIdx int, substr string) (bool, int) {
 	if len(s) == 0 || len(substr) == 0 || len(substr) > len(s) {
 		return false, 0
 	}
 
-	start := index - len(substr) + 1
-	for offset := 1; offset < len(substr); offset++ {
-		if start+offset < 0 || start+offset+len(substr) > len(s) {
+	leftmostIdx := endByteIdx - len(substr) + 1
+	for offset := 0; offset < len(substr); offset++ {
+		startIdx := leftmostIdx + offset
+		if startIdx < 0 || startIdx+len(substr) > len(s) {
 			continue
 		}
-		if s[start+offset:start+offset+len(substr)] == substr {
-			return true, start + offset
+		sl := s[startIdx : startIdx+len(substr)]
+		if sl == substr {
+			return true, leftmostIdx + offset
 		}
 	}
 	return false, 0

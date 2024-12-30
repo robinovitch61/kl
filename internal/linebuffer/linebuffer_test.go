@@ -848,14 +848,52 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			},
 		},
 		{
-			name:         "toHighlight, no continuation, overflows right one char, no ansi",
+			name:         "toHighlight, no continuation, overflows left and right one char, no ansi",
 			s:            "hi there re",
 			width:        7,
 			continuation: "",
-			toHighlight:  "re",
-			numPopLefts:  1,
+			toHighlight:  "hi there",
+			numPopLefts:  2,
 			expected: []string{
-				"hi the" + highlightStyle.Render("r"),
+				highlightStyle.Render("hi ther"),
+				highlightStyle.Render("e") + " re",
+			},
+		},
+		{
+			name:         "unicode toHighlight, no continuation, no overflow, no ansi",
+			s:            "世界🌟世界🌟",
+			width:        7,
+			continuation: "",
+			toHighlight:  "世界",
+			numPopLefts:  2,
+			expected: []string{
+				highlightStyle.Render("世界") + "🌟",
+				highlightStyle.Render("世界") + "🌟",
+			},
+		},
+		{
+			name:         "unicode toHighlight, no continuation, overflow, no ansi",
+			s:            "世界🌟世界🌟",
+			width:        7,
+			continuation: "",
+			toHighlight:  "世界🌟世",
+			numPopLefts:  2,
+			expected: []string{
+				highlightStyle.Render("世界🌟"),
+				highlightStyle.Render("世") + "界🌟",
+			},
+		},
+		// TODO LEO: test unicode overflow left/right with ansi
+		{
+			name:         "unicode toHighlight, no continuation, overflow, ansi",
+			s:            "\x1b[38;2;0;0;255m世界🌟世界🌟\x1b[m",
+			width:        7,
+			continuation: "",
+			toHighlight:  "世界🌟世",
+			numPopLefts:  2,
+			expected: []string{
+				highlightStyle.Render("世界🌟"),
+				highlightStyle.Render("世") + "\x1b[38;2;0;0;255m界🌟\x1b[m",
 			},
 		},
 		// TODO LEO: test unicode highlight
@@ -1369,125 +1407,161 @@ func TestLineBuffer_HighlightLine(t *testing.T) {
 
 func TestLineBuffer_OverflowsLeft(t *testing.T) {
 	tests := []struct {
-		name     string
-		str      string
-		index    int
-		substr   string
-		wantBool bool
-		wantInt  int
+		name         string
+		str          string
+		startByteIdx int
+		substr       string
+		wantBool     bool
+		wantInt      int
 	}{
 		{
-			name:     "basic overflow case",
-			str:      "my str here",
-			index:    3,
-			substr:   "my str",
-			wantBool: true,
-			wantInt:  6,
+			name:         "basic overflow case",
+			str:          "my str here",
+			startByteIdx: 3,
+			substr:       "my str",
+			wantBool:     true,
+			wantInt:      6,
 		},
 		{
-			name:     "no overflow case",
-			str:      "my str here",
-			index:    6,
-			substr:   "my str",
-			wantBool: false,
-			wantInt:  0,
+			name:         "no overflow case",
+			str:          "my str here",
+			startByteIdx: 6,
+			substr:       "my str",
+			wantBool:     false,
+			wantInt:      0,
 		},
 		{
-			name:     "empty string",
-			str:      "",
-			index:    0,
-			substr:   "test",
-			wantBool: false,
-			wantInt:  0,
+			name:         "empty string",
+			str:          "",
+			startByteIdx: 0,
+			substr:       "test",
+			wantBool:     false,
+			wantInt:      0,
 		},
 		{
-			name:     "empty substring",
-			str:      "test string",
-			index:    0,
-			substr:   "",
-			wantBool: false,
-			wantInt:  0,
+			name:         "empty substring",
+			str:          "test string",
+			startByteIdx: 0,
+			substr:       "",
+			wantBool:     false,
+			wantInt:      0,
 		},
 		{
-			name:     "index out of bounds",
-			str:      "test",
-			index:    10,
-			substr:   "test",
-			wantBool: false,
-			wantInt:  0,
+			name:         "startByteIdx out of bounds",
+			str:          "test",
+			startByteIdx: 10,
+			substr:       "test",
+			wantBool:     false,
+			wantInt:      0,
 		},
 		{
-			name:     "exact full match",
-			str:      "hello world",
-			index:    0,
-			substr:   "hello world",
-			wantBool: false,
-			wantInt:  0,
+			name:         "exact full match",
+			str:          "hello world",
+			startByteIdx: 0,
+			substr:       "hello world",
+			wantBool:     false,
+			wantInt:      0,
 		},
 		{
-			name:     "partial overflow at end",
-			str:      "hello world",
-			index:    9,
-			substr:   "dd",
-			wantBool: false,
-			wantInt:  0,
+			name:         "partial overflow at end",
+			str:          "hello world",
+			startByteIdx: 9,
+			substr:       "dd",
+			wantBool:     false,
+			wantInt:      0,
 		},
 		{
-			name:     "case sensitivity test - no match",
-			str:      "Hello World",
-			index:    0,
-			substr:   "hello",
-			wantBool: false,
-			wantInt:  0,
+			name:         "case sensitivity test - no match",
+			str:          "Hello World",
+			startByteIdx: 0,
+			substr:       "hello",
+			wantBool:     false,
+			wantInt:      0,
 		},
 		{
-			name:     "multiple character same overflow",
-			str:      "aaaa",
-			index:    1,
-			substr:   "aaa",
-			wantBool: true,
-			wantInt:  3,
+			name:         "multiple character same overflow",
+			str:          "aaaa",
+			startByteIdx: 1,
+			substr:       "aaa",
+			wantBool:     true,
+			wantInt:      3,
 		},
 		{
-			name:     "multiple character same overflow but difference",
-			str:      "aaaa",
-			index:    1,
-			substr:   "baaa",
-			wantBool: false,
-			wantInt:  0,
+			name:         "multiple character same overflow but difference",
+			str:          "aaaa",
+			startByteIdx: 1,
+			substr:       "baaa",
+			wantBool:     false,
+			wantInt:      0,
 		},
 		{
-			name:     "special characters",
-			str:      "test!@#$",
-			index:    4,
-			substr:   "st!@#",
-			wantBool: true,
-			wantInt:  7,
+			name:         "special characters",
+			str:          "test!@#$",
+			startByteIdx: 4,
+			substr:       "st!@#",
+			wantBool:     true,
+			wantInt:      7,
 		},
 		{
-			name:     "false if does not overflow",
-			str:      "some string",
-			index:    1,
-			substr:   "ome",
-			wantBool: false,
-			wantInt:  0,
+			name:         "false if does not overflow",
+			str:          "some string",
+			startByteIdx: 1,
+			substr:       "ome",
+			wantBool:     false,
+			wantInt:      0,
 		},
 		{
-			name:     "one char overflow",
-			str:      "some string",
-			index:    1,
-			substr:   "some",
-			wantBool: true,
-			wantInt:  4,
+			name:         "one char overflow",
+			str:          "some string",
+			startByteIdx: 1,
+			substr:       "some",
+			wantBool:     true,
+			wantInt:      4,
+		},
+		// 世 is 3 bytes
+		// 界 is 3 bytes
+		// 🌟 is 4 bytes
+		// "世界🌟世界🌟"[3:13] = "界🌟世"
+		{
+			name:         "unicode with ansi left not overflowing",
+			str:          "世界🌟世界🌟",
+			startByteIdx: 0,
+			substr:       "世界🌟世",
+			wantBool:     false,
+			wantInt:      0,
+		},
+		{
+			name:         "unicode with ansi left overflow 1 byte",
+			str:          "世界🌟世界🌟",
+			startByteIdx: 1,
+			substr:       "世界🌟世",
+			wantBool:     true,
+			wantInt:      13,
+		},
+		{
+			name:         "unicode with ansi left overflow 2 bytes",
+			str:          "世界🌟世界🌟",
+			startByteIdx: 2,
+			substr:       "世界🌟世",
+			wantBool:     true,
+			wantInt:      13,
+		},
+		{
+			name:         "unicode with ansi left overflow full rune",
+			str:          "世界🌟世界🌟",
+			startByteIdx: 3,
+			substr:       "世界🌟世",
+			wantBool:     true,
+			wantInt:      13,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotBool, gotInt := overflowsLeft(tt.str, tt.index, tt.substr)
+			gotBool, gotInt := overflowsLeft(tt.str, tt.startByteIdx, tt.substr)
 			if gotBool != tt.wantBool || gotInt != tt.wantInt {
 				t.Errorf("overflowsLeft(%q, %d, %q) = (%v, %d), want (%v, %d)",
-					tt.str, tt.index, tt.substr, gotBool, gotInt, tt.wantBool, tt.wantInt)
+					tt.str, tt.startByteIdx, tt.substr, gotBool, gotInt, tt.wantBool, tt.wantInt)
 			}
 		})
 	}
@@ -1495,124 +1569,152 @@ func TestLineBuffer_OverflowsLeft(t *testing.T) {
 
 func TestLineBuffer_OverflowsRight(t *testing.T) {
 	tests := []struct {
-		name     string
-		str      string
-		index    int
-		substr   string
-		wantBool bool
-		wantInt  int
+		name       string
+		str        string
+		endByteIdx int
+		substr     string
+		wantBool   bool
+		wantInt    int
 	}{
 		{
-			name:     "example 1",
-			str:      "my str here",
-			index:    3,
-			substr:   "y str",
-			wantBool: true,
-			wantInt:  1,
+			name:       "example 1",
+			str:        "my str here",
+			endByteIdx: 3,
+			substr:     "y str",
+			wantBool:   true,
+			wantInt:    1,
 		},
 		{
-			name:     "example 2",
-			str:      "my str here",
-			index:    3,
-			substr:   "y strong",
-			wantBool: false,
-			wantInt:  0,
+			name:       "example 2",
+			str:        "my str here",
+			endByteIdx: 3,
+			substr:     "y strong",
+			wantBool:   false,
+			wantInt:    0,
 		},
 		{
-			name:     "example 3",
-			str:      "my str here",
-			index:    6,
-			substr:   "tr here",
-			wantBool: true,
-			wantInt:  4,
+			name:       "example 3",
+			str:        "my str here",
+			endByteIdx: 6,
+			substr:     "tr here",
+			wantBool:   true,
+			wantInt:    4,
 		},
 		{
-			name:     "empty string",
-			str:      "",
-			index:    0,
-			substr:   "test",
-			wantBool: false,
-			wantInt:  0,
+			name:       "empty string",
+			str:        "",
+			endByteIdx: 0,
+			substr:     "test",
+			wantBool:   false,
+			wantInt:    0,
 		},
 		{
-			name:     "empty substring",
-			str:      "test string",
-			index:    0,
-			substr:   "",
-			wantBool: false,
-			wantInt:  0,
+			name:       "empty substring",
+			str:        "test string",
+			endByteIdx: 0,
+			substr:     "",
+			wantBool:   false,
+			wantInt:    0,
 		},
 		{
-			name:     "index out of bounds",
-			str:      "test",
-			index:    10,
-			substr:   "test",
-			wantBool: false,
-			wantInt:  0,
+			name:       "end index out of bounds",
+			str:        "test",
+			endByteIdx: 10,
+			substr:     "test",
+			wantBool:   false,
+			wantInt:    0,
 		},
 		{
-			name:     "exact full match",
-			str:      "hello world",
-			index:    10,
-			substr:   "hello world",
-			wantBool: false,
-			wantInt:  0,
+			name:       "exact full match",
+			str:        "hello world",
+			endByteIdx: 11,
+			substr:     "hello world",
+			wantBool:   false,
+			wantInt:    0,
 		},
 		{
-			name:     "case sensitivity test - no match",
-			str:      "Hello World",
-			index:    4,
-			substr:   "hello",
-			wantBool: false,
-			wantInt:  0,
+			name:       "case sensitivity test - no match",
+			str:        "Hello World",
+			endByteIdx: 4,
+			substr:     "hello",
+			wantBool:   false,
+			wantInt:    0,
 		},
 		{
-			name:     "multiple character same overflow",
-			str:      "aaaa",
-			index:    2,
-			substr:   "aaa",
-			wantBool: true,
-			wantInt:  1,
+			name:       "multiple character same overflow",
+			str:        "aaaa",
+			endByteIdx: 2,
+			substr:     "aaa",
+			wantBool:   true,
+			wantInt:    0,
 		},
 		{
-			name:     "multiple character same overflow but difference",
-			str:      "aaaa",
-			index:    2,
-			substr:   "aaab",
-			wantBool: false,
-			wantInt:  0,
+			name:       "multiple character same overflow but difference",
+			str:        "aaaa",
+			endByteIdx: 2,
+			substr:     "aaab",
+			wantBool:   false,
+			wantInt:    0,
 		},
 		{
-			name:     "special characters",
-			str:      "test!@#$",
-			index:    6,
-			substr:   "@#$",
-			wantBool: true,
-			wantInt:  5,
+			name:       "false if does not overflow",
+			str:        "some string",
+			endByteIdx: 5,
+			substr:     "ome ",
+			wantBool:   false,
+			wantInt:    0,
 		},
 		{
-			name:     "false if does not overflow",
-			str:      "some string",
-			index:    4,
-			substr:   "ome ",
-			wantBool: false,
-			wantInt:  0,
+			name:       "one char overflow",
+			str:        "some string",
+			endByteIdx: 5,
+			substr:     "ome s",
+			wantBool:   true,
+			wantInt:    1,
+		},
+		// 世 is 3 bytes
+		// 界 is 3 bytes
+		// 🌟 is 4 bytes
+		// "世界🌟世界🌟"[3:10] = "界🌟"
+		{
+			name:       "unicode with ansi no overflow",
+			str:        "世界🌟世界🌟",
+			endByteIdx: 13,
+			substr:     "界🌟世",
+			wantBool:   false,
+			wantInt:    0,
 		},
 		{
-			name:     "one char overflow",
-			str:      "some string",
-			index:    4,
-			substr:   "ome s",
-			wantBool: true,
-			wantInt:  1,
+			name:       "unicode with ansi overflow right one byte",
+			str:        "世界🌟世界🌟",
+			endByteIdx: 12,
+			substr:     "界🌟世",
+			wantBool:   true,
+			wantInt:    3,
+		},
+		{
+			name:       "unicode with ansi overflow right two bytes",
+			str:        "世界🌟世界🌟",
+			endByteIdx: 11,
+			substr:     "界🌟世",
+			wantBool:   true,
+			wantInt:    3,
+		},
+		{
+			name:       "unicode with ansi overflow right full rune",
+			str:        "世界🌟世界🌟",
+			endByteIdx: 10,
+			substr:     "界🌟世",
+			wantBool:   true,
+			wantInt:    3,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotBool, gotInt := overflowsRight(tt.str, tt.index, tt.substr)
+			gotBool, gotInt := overflowsRight(tt.str, tt.endByteIdx, tt.substr)
 			if gotBool != tt.wantBool || gotInt != tt.wantInt {
 				t.Errorf("overflowsRight(%q, %d, %q) = (%v, %d), want (%v, %d)",
-					tt.str, tt.index, tt.substr, gotBool, gotInt, tt.wantBool, tt.wantInt)
+					tt.str, tt.endByteIdx, tt.substr, gotBool, gotInt, tt.wantBool, tt.wantInt)
 			}
 		})
 	}
