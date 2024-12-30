@@ -98,6 +98,10 @@ func (p EntityPage) ContentForFile() []string {
 	return content
 }
 
+func (p EntityPage) HasAppliedFilter() bool {
+	return p.filterableViewport.Filter.Value() != ""
+}
+
 func (p EntityPage) ToggleShowContext() GenericPage {
 	p.filterableViewport.ToggleShowContext()
 	return p

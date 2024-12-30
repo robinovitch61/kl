@@ -10,6 +10,7 @@ type GenericPage interface {
 	View() string
 	ContentForFile() []string
 	ToggleShowContext() GenericPage
+	HasAppliedFilter() bool
 	HighjackingInput() bool
 	WithDimensions(width, height int) GenericPage
 	WithFocus() GenericPage

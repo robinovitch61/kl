@@ -86,6 +86,10 @@ func (p SingleLogPage) ToggleShowContext() GenericPage {
 	return p
 }
 
+func (p SingleLogPage) HasAppliedFilter() bool {
+	return p.filterableViewport.Filter.Value() != ""
+}
+
 func (p SingleLogPage) ContentForClipboard() []string {
 	// don't include asci escape chars in header when copying single log to clipboard
 	header, content := veryNicelyFormatThisLog(p.log, false)
@@ -130,10 +134,6 @@ func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
 	}
 	p.filterableViewport.SetAllRows(renderableStrings)
 	return p
-}
-
-func (p SingleLogPage) HasAppliedFilter() bool {
-	return p.filterableViewport.Filter.Value() != ""
 }
 
 func veryNicelyFormatThisLog(log model.PageLog, styleHeader bool) (string, []string) {

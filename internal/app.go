@@ -422,6 +422,10 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 	}
 
+	// store whether a filter is currently applied - helps make decisions later like whether to go back
+	// from single log page to logs page or just clear the filter upon user pressing ESC
+	hasAppliedFilter := m.pages[m.focusedPageType].HasAppliedFilter()
+
 	// update current page with key msg
 	m.pages[m.focusedPageType], cmd = m.pages[m.focusedPageType].Update(msg)
 	cmds = append(cmds, cmd)
@@ -498,7 +502,7 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	// single log page specific actions
 	if m.focusedPageType == page.SingleLogPageType {
-		m, cmd = m.handleSingleLogPageKeyMsg(msg)
+		m, cmd = m.handleSingleLogPageKeyMsg(msg, hasAppliedFilter)
 		cmds = append(cmds, cmd)
 		return m, tea.Batch(cmds...)
 	}
@@ -633,13 +637,13 @@ func (m Model) handleLogsPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) handleSingleLogPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
+func (m Model) handleSingleLogPageKeyMsg(msg tea.KeyMsg, hasAppliedFilter bool) (Model, tea.Cmd) {
 	// handle clear
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 	isClear := key.Matches(msg, m.keyMap.Clear)
 	notHighjackingInput := !m.pages[m.focusedPageType].HighjackingInput()
-	noAppliedFilter := !m.pages[m.focusedPageType].(page.SingleLogPage).HasAppliedFilter()
+	noAppliedFilter := !hasAppliedFilter
 	if isClear && notHighjackingInput && noAppliedFilter {
 		m, cmd = m.changeFocusedPage(page.LogsPageType)
 		cmds = append(cmds, cmd)
