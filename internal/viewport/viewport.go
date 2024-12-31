@@ -309,6 +309,7 @@ func (m *Model[T]) SetContent(content []T) {
 			m.selectedItemIdx = 0
 		} else if stayAtBottom {
 			m.selectedItemIdx = max(0, len(m.allItems)-1)
+			m.scrollSoSelectionInView()
 		} else if m.maintainSelection {
 			// TODO: could flag when content is sorted & comparable and use binary search instead
 			found := false
@@ -323,10 +324,14 @@ func (m *Model[T]) SetContent(content []T) {
 				m.selectedItemIdx = 0
 			}
 		}
-		m.selectedItemIdx = clampValMinMax(m.selectedItemIdx, 0, len(m.allItems)-1)
-		m.scrollSoSelectionInView()
-		if inView := m.selectionInViewInfo(); inView.numLinesSelectionInView > 0 {
-			m.scrollUp(initialNumLinesAboveSelection - inView.numLinesAboveSelection)
+
+		// when staying at bottom, just want to scroll so selection in view, which is done above
+		if !stayAtBottom {
+			m.selectedItemIdx = clampValMinMax(m.selectedItemIdx, 0, len(m.allItems)-1)
+			m.scrollSoSelectionInView()
+			if inView := m.selectionInViewInfo(); inView.numLinesSelectionInView > 0 {
+				m.scrollUp(initialNumLinesAboveSelection - inView.numLinesAboveSelection)
+			}
 		}
 	}
 }
