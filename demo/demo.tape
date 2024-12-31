@@ -63,7 +63,7 @@ Require kl
 
 Set TypingSpeed 160ms
 Set FontSize 20
-Set Width 1440
+Set Width 1500
 Set Height 700
 Set Padding 25
 
