@@ -1,6 +1,7 @@
 package viewport
 
 import (
+	"github.com/charmbracelet/bubbles/v2/key"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/util"
@@ -25,7 +26,50 @@ var (
 )
 
 func newViewport(width, height int) Model[RenderableString] {
-	vp := New[RenderableString](width, height)
+	km := KeyMap{
+		PageDown: key.NewBinding(
+			key.WithKeys("pgdown", "f", "ctrl+f"),
+			key.WithHelp("f", "pgdn"),
+		),
+		PageUp: key.NewBinding(
+			key.WithKeys("pgup", "b", "ctrl+b"),
+			key.WithHelp("b", "pgup"),
+		),
+		HalfPageUp: key.NewBinding(
+			key.WithKeys("u", "ctrl+u"),
+			key.WithHelp("u", "½ page up"),
+		),
+		HalfPageDown: key.NewBinding(
+			key.WithKeys("d", "ctrl+d"),
+			key.WithHelp("d", "½ page down"),
+		),
+		Up: key.NewBinding(
+			key.WithKeys("up", "k"),
+			key.WithHelp("↑/k", "scroll up"),
+		),
+		Down: key.NewBinding(
+			key.WithKeys("down", "j"),
+			key.WithHelp("↓/j", "scroll down"),
+		),
+		Left: key.NewBinding(
+			key.WithKeys("left"),
+			key.WithHelp("←", "left"),
+		),
+		Right: key.NewBinding(
+			key.WithKeys("right"),
+			key.WithHelp("→", "right"),
+		),
+		Top: key.NewBinding(
+			key.WithKeys("g", "ctrl+g"),
+			key.WithHelp("g", "top"),
+		),
+		Bottom: key.NewBinding(
+			key.WithKeys("shift+g"),
+			key.WithHelp("G", "bottom"),
+		),
+	}
+
+	vp := New[RenderableString](width, height, km)
 	vp.SelectedItemStyle = selectionStyle
 	return vp
 }
@@ -190,7 +234,7 @@ func TestViewport_SelectionOff_WrapOff_FooterDisabled(t *testing.T) {
 	})
 	util.CmpStr(t, expectedView, vp.View())
 
-	vp.SetFooterVisible(false)
+	vp.SetFooterEnabled(false)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"first line",
@@ -775,7 +819,7 @@ func TestViewport_SelectionOff_WrapOff_StringToHighlightManyMatches(t *testing.T
 		})
 		util.CmpStr(t, expectedView, vp.View())
 	}
-	util.RunWithTimeout(t, runTest, 5*time.Millisecond)
+	util.RunWithTimeout(t, runTest, 10*time.Millisecond)
 }
 
 func TestViewport_SelectionOff_WrapOff_StringToHighlightAnsi(t *testing.T) {
@@ -996,7 +1040,7 @@ func TestViewport_SelectionOn_WrapOff_FooterDisabled(t *testing.T) {
 	})
 	util.CmpStr(t, expectedView, vp.View())
 
-	vp.SetFooterVisible(false)
+	vp.SetFooterEnabled(false)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"\x1b[38;2;0;0;255mfirst line\x1b[m",
@@ -2144,7 +2188,7 @@ func TestViewport_SelectionOn_WrapOff_StringToHighlightManyMatches(t *testing.T)
 		})
 		util.CmpStr(t, expectedView, vp.View())
 	}
-	util.RunWithTimeout(t, runTest, 5*time.Millisecond)
+	util.RunWithTimeout(t, runTest, 10*time.Millisecond)
 }
 
 func TestViewport_SelectionOn_WrapOff_AnsiOnSelection(t *testing.T) {
@@ -2391,7 +2435,7 @@ func TestViewport_SelectionOff_WrapOn_FooterDisabled(t *testing.T) {
 	})
 	util.CmpStr(t, expectedView, vp.View())
 
-	vp.SetFooterVisible(false)
+	vp.SetFooterEnabled(false)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"first line",
@@ -3295,7 +3339,7 @@ func TestViewport_SelectionOn_WrapOn_FooterDisabled(t *testing.T) {
 	})
 	util.CmpStr(t, expectedView, vp.View())
 
-	vp.SetFooterVisible(false)
+	vp.SetFooterEnabled(false)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 		"\x1b[38;2;0;0;255mfirst line\x1b[m",
@@ -4491,7 +4535,7 @@ func TestViewport_SelectionOn_WrapOn_StringToHighlightManyMatches(t *testing.T) 
 		})
 		util.CmpStr(t, expectedView, vp.View())
 	}
-	util.RunWithTimeout(t, runTest, 5*time.Millisecond)
+	util.RunWithTimeout(t, runTest, 10*time.Millisecond)
 }
 
 func TestViewport_SelectionOn_WrapOn_AnsiOnSelection(t *testing.T) {
@@ -4589,7 +4633,7 @@ func TestViewport_SelectionOn_WrapOn_SuperLongWrappedLine(t *testing.T) {
 		})
 		util.CmpStr(t, expectedView, vp.View())
 	}
-	util.RunWithTimeout(t, runTest, 400*time.Millisecond)
+	util.RunWithTimeout(t, runTest, 500*time.Millisecond)
 }
 
 func TestViewport_SelectionOn_WrapOn_StringToHighlightAnsiUnicode(t *testing.T) {

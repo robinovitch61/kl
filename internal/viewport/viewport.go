@@ -16,12 +16,12 @@ import (
 )
 
 // Terminology:
-// - allItems: an item to be rendered in the viewport
-// - line: a row in the terminal
+// - allItems: a collection of item to be rendered in the viewport
+// - line: a row of terminal cells in viewport
 // - visible: in the vertical sense, a line is visible if it is within the viewport
 // - truncated: in the horizontal sense, a line is truncated if it is too long to fit in the viewport
 //
-// wrap disabled:
+// wrap disabled, wide enough viewport:
 //                           allItems index   line index
 // this is the first line    0               0
 // this is the second line   1               1
@@ -33,24 +33,24 @@ import (
 //
 // wrap enabled:
 //               allItems index   line index
-// this is the   0               1
-// first line    0               2
-// this is the   1               3
-// second line   1               4
+// this is the   0               0
+// first line    0               1
+// this is the   1               2
+// second line   1               3
 //
 
 var surroundingAnsiRegex = regexp.MustCompile(`(\x1b\[[0-9;]*m.*?\x1b\[0?m)`)
 
 // Model represents a viewport component
 type Model[T RenderableComparable] struct {
-	// KeyMap is the keymap for the viewport
-	KeyMap KeyMap
-
 	// styles
 	FooterStyle              lipgloss.Style
 	HighlightStyle           lipgloss.Style
 	HighlightStyleIfSelected lipgloss.Style
 	SelectedItemStyle        lipgloss.Style
+
+	// keyMap is the keymap for the viewport
+	keyMap KeyMap
 
 	// header is the fixed header lines at the top of the viewport
 	// these lines will wrap and be horizontally scrollable similar to other rendered allItems
@@ -65,13 +65,13 @@ type Model[T RenderableComparable] struct {
 	// selectionEnabled is true if the viewport allows individual line selection
 	selectionEnabled bool
 
-	// footerVisible is true if the viewport will show the footer when it overflows
-	footerVisible bool
+	// footerEnabled is true if the viewport will show the footer when it overflows
+	footerEnabled bool
 
 	// wrapText is true if the viewport wraps text rather than showing that a line is truncated/horizontally scrollable
 	wrapText bool
 
-	// stringToHighlight is a string to highlight in the viewport wherever it shows up
+	// stringToHighlight is a string to highlight in the viewport wherever it shows up, even wrapped around lines
 	stringToHighlight string
 
 	// topSelectionSticky is true when selection should remain at the top until user manually scrolls down
@@ -89,16 +89,16 @@ type Model[T RenderableComparable] struct {
 	// width is the width of the entire viewport in terminal columns
 	width int
 
-	// height is the height of the entire viewport in terminal rows
+	// height is the height of the entire viewport in lines
 	height int
 
-	// topItemIdx is the allItems index of the topmost visible viewport line
+	// topItemIdx is the allItems index of the topmost visible viewport item
 	topItemIdx int
 
-	// topItemLineOffset is the number of lines scrolled out of view of the topmost visible line, when wrapped
+	// topItemLineOffset is the number of lines scrolled out of view of the topmost visible line. Only non-zero when wrapped
 	topItemLineOffset int
 
-	// xOffset is the number of columns scrolled right when rendered lines overflow the viewport and wrapText is false
+	// xOffset is the number of terminal cells scrolled right when rendered lines overflow the viewport and wrapping is off
 	xOffset int
 
 	// lineBufferCache is a cache of linebuffers as calls to linebuffer.New are expensive and repeated multiple times
@@ -108,15 +108,15 @@ type Model[T RenderableComparable] struct {
 }
 
 // New creates a new viewport model with reasonable defaults
-func New[T RenderableComparable](width, height int) (m Model[T]) {
+func New[T RenderableComparable](width, height int, keyMap KeyMap) (m Model[T]) {
 	m.setWidthHeight(width, height)
 
 	m.selectionEnabled = false
 	m.wrapText = false
 
-	m.KeyMap = DefaultKeyMap()
+	m.keyMap = keyMap
 	m.continuationIndicator = "..."
-	m.footerVisible = true
+	m.footerEnabled = true
 
 	// the cache is purged at the start of each call to Update, as it's mostly helpful for the repeated calls to
 	// linebuffer.New within a single Update -> View cycle. In addition, it's configured with LRU params in case
@@ -143,59 +143,59 @@ func (m Model[T]) Update(msg tea.Msg) (Model[T], tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, m.KeyMap.Up):
+		case key.Matches(msg, m.keyMap.Up):
 			if m.selectionEnabled {
 				m.selectedItemIdxUp(1)
 			} else {
 				m.scrollUp(1)
 			}
 
-		case key.Matches(msg, m.KeyMap.Down):
+		case key.Matches(msg, m.keyMap.Down):
 			if m.selectionEnabled {
 				m.selectedItemIdxDown(1)
 			} else {
 				m.scrollDown(1)
 			}
 
-		case key.Matches(msg, m.KeyMap.Left):
+		case key.Matches(msg, m.keyMap.Left):
 			if !m.wrapText {
 				m.viewLeft(m.width / 4)
 			}
 
-		case key.Matches(msg, m.KeyMap.Right):
+		case key.Matches(msg, m.keyMap.Right):
 			if !m.wrapText {
 				m.viewRight(m.width / 4)
 			}
 
-		case key.Matches(msg, m.KeyMap.HalfPageUp):
+		case key.Matches(msg, m.keyMap.HalfPageUp):
 			offset := max(1, m.getNumVisibleItems()/2)
 			m.scrollUp(m.getNumContentLines() / 2)
 			if m.selectionEnabled {
 				m.selectedItemIdxUp(offset)
 			}
 
-		case key.Matches(msg, m.KeyMap.HalfPageDown):
+		case key.Matches(msg, m.keyMap.HalfPageDown):
 			offset := max(1, m.getNumVisibleItems()/2)
 			m.scrollDown(m.getNumContentLines() / 2)
 			if m.selectionEnabled {
 				m.selectedItemIdxDown(offset)
 			}
 
-		case key.Matches(msg, m.KeyMap.PageUp):
+		case key.Matches(msg, m.keyMap.PageUp):
 			offset := m.getNumVisibleItems()
 			m.scrollUp(m.getNumContentLines())
 			if m.selectionEnabled {
 				m.selectedItemIdxUp(offset)
 			}
 
-		case key.Matches(msg, m.KeyMap.PageDown):
+		case key.Matches(msg, m.keyMap.PageDown):
 			offset := m.getNumVisibleItems()
 			m.scrollDown(m.getNumContentLines())
 			if m.selectionEnabled {
 				m.selectedItemIdxDown(offset)
 			}
 
-		case key.Matches(msg, m.KeyMap.Top):
+		case key.Matches(msg, m.keyMap.Top):
 			if m.selectionEnabled {
 				m.SetSelectedItemIdx(0)
 			} else {
@@ -203,7 +203,7 @@ func (m Model[T]) Update(msg tea.Msg) (Model[T], tea.Cmd) {
 				m.topItemLineOffset = 0
 			}
 
-		case key.Matches(msg, m.KeyMap.Bottom):
+		case key.Matches(msg, m.keyMap.Bottom):
 			if m.selectionEnabled {
 				m.selectedItemIdxDown(len(m.allItems))
 			} else {
@@ -284,7 +284,11 @@ func (m Model[T]) View() string {
 	return lipgloss.NewStyle().Width(m.width).Height(m.height).Render(viewString)
 }
 
-// SetContent sets the allItems, the selectable set of lines in the viewport
+func (m *Model[T]) SetKeyMap(keyMap KeyMap) {
+	m.keyMap = keyMap
+}
+
+// SetContent sets the content, the selectable set of lines in the viewport
 func (m *Model[T]) SetContent(content []T) {
 	var initialNumLinesAboveSelection int
 	var stayAtTop, stayAtBottom bool
@@ -341,12 +345,12 @@ func (m *Model[T]) SetContent(content []T) {
 	}
 }
 
-// SetTopSticky sets whether selection should stay at top when new allItems added and selection is at the top
+// SetTopSticky sets whether selection should stay at top when new content added and selection is at the top
 func (m *Model[T]) SetTopSticky(topSticky bool) {
 	m.topSelectionSticky = topSticky
 }
 
-// SetBottomSticky sets whether selection should stay at bottom when new allItems added and selection is at the bottom
+// SetBottomSticky sets whether selection should stay at bottom when new content added and selection is at the bottom
 func (m *Model[T]) SetBottomSticky(bottomSticky bool) {
 	m.bottomSelectionSticky = bottomSticky
 }
@@ -356,12 +360,12 @@ func (m *Model[T]) SetSelectionEnabled(selectionEnabled bool) {
 	m.selectionEnabled = selectionEnabled
 }
 
-// SetFooterVisible sets whether the viewport shows the footer when it overflows
-func (m *Model[T]) SetFooterVisible(footerVisible bool) {
-	m.footerVisible = footerVisible
+// SetFooterEnabled sets whether the viewport shows the footer when it overflows
+func (m *Model[T]) SetFooterEnabled(footerEnabled bool) {
+	m.footerEnabled = footerEnabled
 }
 
-// SetMaintainSelection sets whether the viewport should try to maintain the current selection when allItems changes
+// SetMaintainSelection sets whether the viewport should try to maintain the current selection when content changes
 func (m *Model[T]) SetMaintainSelection(maintainSelection bool) {
 	m.maintainSelection = maintainSelection
 }
@@ -773,7 +777,7 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 		showFooter = true
 	}
 
-	if !m.footerVisible {
+	if !m.footerEnabled {
 		showFooter = false
 	}
 
