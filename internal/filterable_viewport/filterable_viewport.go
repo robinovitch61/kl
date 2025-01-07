@@ -45,7 +45,8 @@ func NewFilterableViewport[T viewport.RenderableComparable](config FilterableVie
 	f := filter.New(config.KeyMap)
 	f.SetShowContext(config.StartShowContext, config.CanToggleShowContext)
 
-	var vp = viewport.New[T](config.Width, config.Height)
+	km := makeViewportKeyMap(config.KeyMap)
+	var vp = viewport.New[T](config.Width, config.Height, km)
 	vp.SetSelectionEnabled(config.SelectionEnabled)
 	vp.SetWrapText(config.StartWrapOn)
 
@@ -242,23 +243,28 @@ func (fv *FilterableViewport[T]) ToggleShowContext() {
 }
 
 func (fv *FilterableViewport[T]) SetUpDownMovementWithShift() {
-	upDownBindings := []*key.Binding{
-		&fv.viewport.KeyMap.Up,
-		&fv.viewport.KeyMap.Down,
-		&fv.viewport.KeyMap.PageUp,
-		&fv.viewport.KeyMap.PageDown,
-		&fv.viewport.KeyMap.HalfPageUp,
-		&fv.viewport.KeyMap.HalfPageDown,
-	}
-	for i := range upDownBindings {
-		newKeys := upDownBindings[i].Keys()
+	addShiftToKeys := func(keys []string) []string {
+		newKeys := make([]string, len(keys))
+		copy(newKeys, keys)
 		for j := range newKeys {
 			if !strings.Contains(newKeys[j], "shift") {
 				newKeys[j] = "shift+" + newKeys[j]
 			}
 		}
-		upDownBindings[i].SetKeys(newKeys...)
+		return newKeys
 	}
+	fv.viewport.SetKeyMap(viewport.KeyMap{
+		PageDown:     key.NewBinding(key.WithKeys(addShiftToKeys(fv.keyMap.PageDown.Keys())...)),
+		PageUp:       key.NewBinding(key.WithKeys(addShiftToKeys(fv.keyMap.PageUp.Keys())...)),
+		HalfPageUp:   key.NewBinding(key.WithKeys(addShiftToKeys(fv.keyMap.HalfPageUp.Keys())...)),
+		HalfPageDown: key.NewBinding(key.WithKeys(addShiftToKeys(fv.keyMap.HalfPageDown.Keys())...)),
+		Up:           key.NewBinding(key.WithKeys(addShiftToKeys(fv.keyMap.Up.Keys())...)),
+		Down:         key.NewBinding(key.WithKeys(addShiftToKeys(fv.keyMap.Down.Keys())...)),
+		Left:         fv.keyMap.Left,
+		Right:        fv.keyMap.Right,
+		Top:          fv.keyMap.Top,
+		Bottom:       fv.keyMap.Bottom,
+	})
 }
 
 func (fv *FilterableViewport[T]) updateVisibleRows() {
@@ -333,5 +339,20 @@ func (fv *FilterableViewport[T]) updateViewportStyles() {
 
 	if fv.Filter.Focused() {
 		fv.viewport.SelectedItemStyle = fv.styles.AltInverse
+	}
+}
+
+func makeViewportKeyMap(keyMap keymap.KeyMap) viewport.KeyMap {
+	return viewport.KeyMap{
+		PageDown:     keyMap.PageDown,
+		PageUp:       keyMap.PageUp,
+		HalfPageUp:   keyMap.HalfPageUp,
+		HalfPageDown: keyMap.HalfPageDown,
+		Up:           keyMap.Up,
+		Down:         keyMap.Down,
+		Left:         keyMap.Left,
+		Right:        keyMap.Right,
+		Top:          keyMap.Top,
+		Bottom:       keyMap.Bottom,
 	}
 }
