@@ -1,11 +1,9 @@
 package command
 
 import (
-	"errors"
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/dev"
-	"github.com/robinovitch61/kl/internal/errtype"
 	"github.com/robinovitch61/kl/internal/k8s"
 	"github.com/robinovitch61/kl/internal/model"
 	"time"
@@ -87,9 +85,6 @@ func collectLogsForDuration(ls model.LogScanner, duration time.Duration) collect
 			}
 			collectedLogs = append(collectedLogs, log)
 		case err := <-ls.ErrChan:
-			if errors.Is(err, errtype.LogScannerStoppedErr{}) {
-				return collectedLogsResult{collectedLogs: collectedLogs, doneScanning: true, err: nil}
-			}
 			return collectedLogsResult{collectedLogs: collectedLogs, doneScanning: true, err: err}
 		case <-timeout:
 			return collectedLogsResult{collectedLogs: collectedLogs, doneScanning: false, err: nil}
