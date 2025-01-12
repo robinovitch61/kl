@@ -201,10 +201,10 @@ func initializePages(m Model) Model {
 
 	m.topBarHeight = lipgloss.Height(m.topBar())
 	contentHeight := m.height - m.topBarHeight
+	// keep all pages unfocused here since first page focus happens when first containers received
 	m.pages[page.EntitiesPageType] = page.NewEntitiesPage(m.keyMap, m.width, contentHeight, m.entityTree, style.Styles{})
 	m.pages[page.LogsPageType] = page.NewLogsPage(m.keyMap, m.width, contentHeight, m.config.Descending, style.Styles{})
 	m.pages[page.SingleLogPageType] = page.NewSingleLogPage(m.keyMap, m.width, contentHeight, style.Styles{})
-	// page focus happens on first containers received
 
 	if m.config.LogFilter.Value != "" {
 		m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithLogFilter(m.config.LogFilter)
