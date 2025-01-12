@@ -12,7 +12,7 @@ import (
 
 type Log struct {
 	Timestamp time.Time
-	Content   string
+	Content   *string
 	Container Container
 }
 
@@ -59,7 +59,7 @@ func (ls LogScanner) StartReadingLogs() {
 			logContent = strings.ReplaceAll(logContent, "\t", "    ")
 			newLog := Log{
 				Timestamp: parsedTime,
-				Content:   logContent,
+				Content:   &logContent,
 				Container: ls.Container,
 			}
 			ls.LogChan <- newLog

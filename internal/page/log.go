@@ -141,12 +141,12 @@ func veryNicelyFormatThisLog(log model.PageLog, styleHeader bool) (string, []str
 	return header, formatJSON(log.Log.Content)
 }
 
-func formatJSON(input string) []string {
+func formatJSON(input *string) []string {
 	var raw map[string]interface{}
 
-	err := json.Unmarshal([]byte(input), &raw)
+	err := json.Unmarshal([]byte(*input), &raw)
 	if err != nil {
-		return []string{input}
+		return []string{*input}
 	}
 
 	var prettyJSON bytes.Buffer
@@ -155,7 +155,7 @@ func formatJSON(input string) []string {
 	encoder.SetIndent("", "    ")
 	err = encoder.Encode(raw)
 	if err != nil {
-		return []string{input}
+		return []string{*input}
 	}
 
 	lines := strings.Split(prettyJSON.String(), "\n")

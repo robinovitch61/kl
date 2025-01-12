@@ -45,13 +45,19 @@ func (l PageLog) Render() string {
 		}
 		label += l.RenderName(l.CurrentName, true)
 	}
+
+	content := ""
+	if l.Log.Content != nil {
+		content = *l.Log.Content
+	}
+
 	prefix := ts + label
 	if len(prefix) > 0 {
-		if l.Log.Content != "" {
+		if content != "" {
 			prefix = prefix + " "
 		}
 	}
-	return prefix + l.Log.Content
+	return prefix + content
 }
 
 func (l PageLog) Equals(other interface{}) bool {
