@@ -3984,7 +3984,7 @@ func TestViewport_SelectionOn_WrapOn_StickyTop(t *testing.T) {
 }
 
 func TestViewport_SelectionOn_WrapOn_StickyBottom(t *testing.T) {
-	w, h := 10, 4
+	w, h := 10, 6
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
@@ -3999,7 +3999,6 @@ func TestViewport_SelectionOn_WrapOn_StickyBottom(t *testing.T) {
 		"header",
 		"\x1b[38;2;0;0;255mthe first \x1b[m",
 		"\x1b[38;2;0;0;255mline\x1b[m",
-		"100% (1/1)",
 	})
 	util.CmpStr(t, expectedView, vp.View())
 
@@ -4010,9 +4009,27 @@ func TestViewport_SelectionOn_WrapOn_StickyBottom(t *testing.T) {
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
+		"the second",
+		" line",
 		"\x1b[38;2;0;0;255mthe first \x1b[m",
 		"\x1b[38;2;0;0;255mline\x1b[m",
 		"100% (2/2)",
+	})
+	util.CmpStr(t, expectedView, vp.View())
+
+	// add longer content at bottom
+	vp.SetContent([]RenderableString{
+		{Content: "the second line"},
+		{Content: "the first line"},
+		{Content: "a very long line that wraps a lot"},
+	})
+	expectedView = pad(vp.width, vp.height, []string{
+		"header",
+		"\x1b[38;2;0;0;255ma very lon\x1b[m",
+		"\x1b[38;2;0;0;255mg line tha\x1b[m",
+		"\x1b[38;2;0;0;255mt wraps a \x1b[m",
+		"\x1b[38;2;0;0;255mlot\x1b[m",
+		"100% (3/3)",
 	})
 	util.CmpStr(t, expectedView, vp.View())
 
@@ -4020,9 +4037,11 @@ func TestViewport_SelectionOn_WrapOn_StickyBottom(t *testing.T) {
 	vp, _ = vp.Update(upKeyMsg)
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe second\x1b[m",
-		"\x1b[38;2;0;0;255m line\x1b[m",
-		"50% (1/2)",
+		"\x1b[38;2;0;0;255mthe first \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
+		"a very lon",
+		"g line tha",
+		"66% (2/3)",
 	})
 	util.CmpStr(t, expectedView, vp.View())
 
@@ -4030,13 +4049,16 @@ func TestViewport_SelectionOn_WrapOn_StickyBottom(t *testing.T) {
 	vp.SetContent([]RenderableString{
 		{Content: "the second line"},
 		{Content: "the first line"},
+		{Content: "a very long line that wraps a lot"},
 		{Content: "the third line"},
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255mthe second\x1b[m",
-		"\x1b[38;2;0;0;255m line\x1b[m",
-		"33% (1/3)",
+		"\x1b[38;2;0;0;255mthe first \x1b[m",
+		"\x1b[38;2;0;0;255mline\x1b[m",
+		"a very lon",
+		"g line tha",
+		"50% (2/4)",
 	})
 	util.CmpStr(t, expectedView, vp.View())
 }
