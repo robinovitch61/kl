@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/robinovitch61/kl/internal/dev"
-	"github.com/robinovitch61/kl/internal/errtype"
 	"strings"
 	"time"
 )
@@ -66,19 +65,14 @@ func (ls LogScanner) StartReadingLogs() {
 			ls.LogChan <- newLog
 		}
 
-		if ls.logLineScanner == nil {
-			ls.ErrChan <- errtype.LogScannerStoppedErr{}
-		} else if err := ls.logLineScanner.Err(); err != nil {
-			if err.Error() == "context canceled" {
-				// if err is "context canceled", it means the scanner was stopped by the user
-				ls.ErrChan <- errtype.LogScannerStoppedErr{}
-			} else {
-				ls.ErrChan <- err
-			}
-		} else {
-			// io.EOF causes Err() to return nil
-			ls.ErrChan <- errtype.LogScannerStoppedErr{}
+		err := ls.logLineScanner.Err()
+		errorExists := err != nil
+		stoppedByUser := errorExists && err.Error() == "context canceled"
+
+		if errorExists && !stoppedByUser {
+			ls.ErrChan <- err
 		}
+
 		ls.Cancel()
 		close(ls.LogChan)
 		close(ls.ErrChan)
