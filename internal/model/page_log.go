@@ -46,18 +46,13 @@ func (l PageLog) Render() string {
 		label += l.RenderName(l.CurrentName, true)
 	}
 
-	content := ""
-	if l.Log.Content != nil {
-		content = *l.Log.Content
-	}
-
 	prefix := ts + label
 	if len(prefix) > 0 {
-		if content != "" {
+		if l.Log.Data.Content != "" {
 			prefix = prefix + " "
 		}
 	}
-	return prefix + content
+	return prefix + l.Log.Data.Content
 }
 
 func (l PageLog) Equals(other interface{}) bool {
@@ -65,7 +60,7 @@ func (l PageLog) Equals(other interface{}) bool {
 	if !ok {
 		return false
 	}
-	return l.Log == otherLog.Log && l.Timestamps.Full == otherLog.Timestamps.Full
+	return l.Log.Data.Content == otherLog.Log.Data.Content && l.Timestamps.Full == otherLog.Timestamps.Full
 }
 
 func (l PageLog) RenderName(name PageLogContainerName, includeStyle bool) string {

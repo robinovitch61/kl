@@ -123,7 +123,7 @@ func (p SingleLogPage) Help() string {
 }
 
 func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
-	if log == p.log {
+	if log.Log.Data.Content == p.log.Log.Data.Content {
 		return p
 	}
 	p.log = log
@@ -138,15 +138,15 @@ func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
 
 func veryNicelyFormatThisLog(log model.PageLog, styleHeader bool) (string, []string) {
 	header := fmt.Sprintf("%s | %s", log.Timestamps.Full, log.RenderName(log.ContainerNames.Full, styleHeader))
-	return header, formatJSON(log.Log.Content)
+	return header, formatJSON(log.Log.Data.Content)
 }
 
-func formatJSON(input *string) []string {
+func formatJSON(input string) []string {
 	var raw map[string]interface{}
 
-	err := json.Unmarshal([]byte(*input), &raw)
+	err := json.Unmarshal([]byte(input), &raw)
 	if err != nil {
-		return []string{*input}
+		return []string{input}
 	}
 
 	var prettyJSON bytes.Buffer
@@ -155,7 +155,7 @@ func formatJSON(input *string) []string {
 	encoder.SetIndent("", "    ")
 	err = encoder.Encode(raw)
 	if err != nil {
-		return []string{*input}
+		return []string{input}
 	}
 
 	lines := strings.Split(prettyJSON.String(), "\n")
