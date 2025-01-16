@@ -30,7 +30,7 @@ type TestItem struct {
 	content string
 }
 
-func (t TestItem) Render() string {
+func (t TestItem) String() string {
 	return t.content
 }
 
@@ -58,13 +58,13 @@ func newFilterableViewport() FilterableViewport[TestItem] {
 			return true
 		}
 		if f.IsRegex() {
-			matched, err := regexp.MatchString(f.Value(), item.Render())
+			matched, err := regexp.MatchString(f.Value(), item.String())
 			if err != nil {
 				return false
 			}
 			return matched
 		}
-		return strings.Contains(item.Render(), f.Value())
+		return strings.Contains(item.String(), f.Value())
 	}
 
 	return NewFilterableViewport[TestItem](

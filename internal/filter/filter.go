@@ -13,8 +13,8 @@ import (
 	"strings"
 )
 
-type Renderable interface {
-	Render() string
+type Stringer interface {
+	String() string
 }
 
 type Model struct {
@@ -122,15 +122,15 @@ func (m Model) View() string {
 	return filterStringStyle.Render(filterString)
 }
 
-func (m Model) Matches(renderable Renderable) bool {
+func (m Model) Matches(stringer Stringer) bool {
 	if m.Value() == "" {
 		return true
 	}
 	// if invalid regexp, fallback to string matching
 	if m.isRegex && m.regexp != nil {
-		return m.regexp.MatchString(renderable.Render())
+		return m.regexp.MatchString(stringer.String())
 	} else {
-		return strings.Contains(renderable.Render(), m.Value())
+		return strings.Contains(stringer.String(), m.Value())
 	}
 }
 

@@ -100,9 +100,9 @@ func (p LogsPage) ContentForFile() []string {
 	var content []string
 	for _, l := range p.logContainer.GetOrderedLogs() {
 		if p.filterableViewport.Filter.ShowContext {
-			content = append(content, l.Render())
+			content = append(content, l.String())
 		} else if p.filterableViewport.Filter.Matches(l) {
-			content = append(content, l.Render())
+			content = append(content, l.String())
 		}
 	}
 	return content

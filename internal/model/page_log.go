@@ -5,6 +5,7 @@ import (
 	"github.com/emirpasic/gods/trees/redblacktree"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/style"
+	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
 )
 
 type PageLogContainerName struct {
@@ -33,7 +34,7 @@ type PageLog struct {
 	Styles           *style.Styles
 }
 
-func (l PageLog) Render() string {
+func (l PageLog) Render() linebuffer.LineBuffer {
 	ts := ""
 	if l.CurrentTimestamp != "" {
 		ts = l.Styles.Green.Render(l.CurrentTimestamp)
@@ -48,11 +49,15 @@ func (l PageLog) Render() string {
 
 	prefix := ts + label
 	if len(prefix) > 0 {
-		if l.Log.Data.Content != "" {
+		if l.Log.LineBuffer.Content != "" {
 			prefix = prefix + " "
 		}
 	}
-	return prefix + l.Log.Data.Content
+	return linebuffer.New(prefix + l.Log.LineBuffer.Content)
+}
+
+func (l PageLog) String() string {
+	return l.Render().Content
 }
 
 func (l PageLog) Equals(other interface{}) bool {
@@ -60,7 +65,7 @@ func (l PageLog) Equals(other interface{}) bool {
 	if !ok {
 		return false
 	}
-	return l.Log.Data.Content == otherLog.Log.Data.Content && l.Timestamps.Full == otherLog.Timestamps.Full
+	return l.Log.LineBuffer.Content == otherLog.Log.LineBuffer.Content && l.Timestamps.Full == otherLog.Timestamps.Full
 }
 
 func (l PageLog) RenderName(name PageLogContainerName, includeStyle bool) string {
