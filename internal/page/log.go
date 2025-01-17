@@ -13,7 +13,6 @@ import (
 	"github.com/robinovitch61/kl/internal/model"
 	"github.com/robinovitch61/kl/internal/style"
 	"github.com/robinovitch61/kl/internal/viewport"
-	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
 	"strings"
 )
 
@@ -124,16 +123,17 @@ func (p SingleLogPage) Help() string {
 }
 
 func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
-	if log.Log.LineBuffer.Content == p.log.Log.LineBuffer.Content {
-		return p
-	}
-	p.log = log
-	header, content := veryNicelyFormatThisLog(log, true)
-	renderableStrings := []viewport.RenderableString{{LineBuffer: linebuffer.New(header)}}
-	for _, c := range content {
-		renderableStrings = append(renderableStrings, viewport.RenderableString{LineBuffer: linebuffer.New(c)})
-	}
-	p.filterableViewport.SetAllRows(renderableStrings)
+	// TODO LEO: uncomment
+	//if log.Log.LineBuffer.Content == p.log.Log.LineBuffer.Content {
+	//	return p
+	//}
+	//p.log = log
+	//header, content := veryNicelyFormatThisLog(log, true)
+	//renderableStrings := []viewport.RenderableString{{LineBuffer: linebuffer.New(header)}}
+	//for _, c := range content {
+	//	renderableStrings = append(renderableStrings, viewport.RenderableString{LineBuffer: linebuffer.New(c)})
+	//}
+	//p.filterableViewport.SetAllRows(renderableStrings)
 	return p
 }
 

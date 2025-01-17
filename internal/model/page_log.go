@@ -53,7 +53,7 @@ func (l PageLog) Render() linebuffer.LineBuffer {
 			prefix = prefix + " "
 		}
 	}
-	return linebuffer.New(prefix + l.Log.LineBuffer.Content)
+	return l.Log.LineBuffer // TODO LEO: figure out how to combine prefix and linebuffer
 }
 
 func (l PageLog) String() string {
