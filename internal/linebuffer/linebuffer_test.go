@@ -55,9 +55,9 @@ func TestLineBuffer_TotalLines(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lb := New(tt.s, tt.width)
-			if lb.TotalLines() != tt.expected {
-				t.Fatalf("expected %d, got %d", tt.expected, lb.TotalLines())
+			lb := New(tt.s)
+			if lines := lb.TotalLines(tt.width); lines != tt.expected {
+				t.Fatalf("expected %d, got %d", tt.expected, lines)
 			}
 		})
 	}
@@ -196,10 +196,10 @@ func TestLineBuffer_SeekToWidth(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lb := New(tt.s, tt.width)
+			lb := New(tt.s)
 			lb.SeekToWidth(tt.seekWidth)
 			// highlight tested in PopLeft tests
-			if actual := lb.PopLeft(tt.continuation, "", lipgloss.NewStyle()); actual != tt.expectedPopLeft {
+			if actual := lb.PopLeft(tt.width, tt.continuation, "", lipgloss.NewStyle()); actual != tt.expectedPopLeft {
 				t.Errorf("expected %s, got %s", tt.expectedPopLeft, actual)
 			}
 		})
@@ -291,10 +291,10 @@ func TestLineBuffer_SeekToLine(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lb := New(tt.s, tt.width)
-			lb.SeekToLine(tt.seekToLine)
+			lb := New(tt.s)
+			lb.SeekToLine(tt.seekToLine, tt.width)
 			// highlight tested in PopLeft tests
-			actual := lb.PopLeft(tt.continuation, "", lipgloss.NewStyle())
+			actual := lb.PopLeft(tt.width, tt.continuation, "", lipgloss.NewStyle())
 			util.CmpStr(t, tt.expectedPopLeft, actual)
 		})
 	}
@@ -890,9 +890,9 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			if len(tt.expected) != tt.numPopLefts {
 				t.Fatalf("num expected != num popLefts")
 			}
-			lb := New(tt.s, tt.width)
+			lb := New(tt.s)
 			for i := 0; i < tt.numPopLefts; i++ {
-				actual := lb.PopLeft(tt.continuation, tt.toHighlight, highlightStyle)
+				actual := lb.PopLeft(tt.width, tt.continuation, tt.toHighlight, highlightStyle)
 				util.CmpStr(t, tt.expected[i], actual)
 			}
 		})
@@ -1040,8 +1040,8 @@ func TestLineBuffer_WrappedLines(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lb := New(tt.s, tt.width)
-			got := lb.WrappedLines(tt.maxLinesEachEnd, tt.toHighlight, tt.highlightStyle)
+			lb := New(tt.s)
+			got := lb.WrappedLines(tt.width, tt.maxLinesEachEnd, tt.toHighlight, tt.highlightStyle)
 			if len(got) != len(tt.want) {
 				t.Errorf("wrap() len = %d, want %d", len(got), len(tt.want))
 			}
