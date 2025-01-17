@@ -11,45 +11,69 @@ import (
 // LineBuffer provides functionality to get sequential strings of a specified terminal width, accounting
 // for the ansi escape codes styling the line.
 type LineBuffer struct {
-	line                string  // line with ansi codes. utf-8 bytes
-	width               int     // width in terminal cells (not bytes or runes)
+	line                string  // underlying string with ansi codes. utf-8 bytes
 	leftRuneIdx         int     // left plaintext rune idx to start next PopLeft result from
-	lineRunes           []rune  // runes of line
-	runeIdxToByteOffset []int   // idx of lineRunes to byte offset. len(runeIdxToByteOffset) == len(lineRunes)
 	lineNoAnsi          string  // line without ansi codes. utf-8 bytes
 	lineNoAnsiRunes     []rune  // runes of lineNoAnsi. len(lineNoAnsiRunes) == len(lineNoAnsiWidths)
+	runeIdxToByteOffset []int   // idx of lineNoAnsiRunes to byte offset. len(runeIdxToByteOffset) == len(lineNoAnsiRunes)
 	lineNoAnsiWidths    []int   // terminal cell widths of lineNoAnsi. len(lineNoAnsiWidths) == len(lineNoAnsiRunes)
 	lineNoAnsiCumWidths []int   // cumulative lineNoAnsiWidths
 	ansiCodeIndexes     [][]int // slice of startByte, endByte indexes of ansi codes in the line
 }
 
-func New(line string, width int) LineBuffer {
+func New(line string) LineBuffer {
 	lb := LineBuffer{
 		line:        line,
-		width:       width,
 		leftRuneIdx: 0,
 	}
 
 	lb.ansiCodeIndexes = constants.AnsiRegex.FindAllStringIndex(line, -1)
 	lb.lineNoAnsi = stripAnsi(line)
 
-	lb.lineRunes = []rune(lb.lineNoAnsi)
-	lb.runeIdxToByteOffset = initByteOffsets(lb.lineRunes)
-
 	lb.lineNoAnsiRunes = []rune(lb.lineNoAnsi)
+	n := len(lb.lineNoAnsiRunes)
+	lb.runeIdxToByteOffset = make([]int, n+1)
+	lb.lineNoAnsiWidths = make([]int, n)
+	lb.lineNoAnsiCumWidths = make([]int, n)
 
-	lb.lineNoAnsiWidths = make([]int, len(lb.lineNoAnsiRunes))
-	lb.lineNoAnsiCumWidths = make([]int, len(lb.lineNoAnsiRunes))
-	for i := range lb.lineNoAnsiRunes {
-		runeWidth := runewidth.RuneWidth(lb.lineNoAnsiRunes[i])
-		lb.lineNoAnsiWidths[i] = runeWidth
-		if i == 0 {
-			lb.lineNoAnsiCumWidths[i] = runeWidth
-		} else {
-			lb.lineNoAnsiCumWidths[i] = lb.lineNoAnsiCumWidths[i-1] + runeWidth
-		}
+	currentOffset := 0
+	cumWidth := 0
+	for i, r := range lb.lineNoAnsiRunes {
+		lb.runeIdxToByteOffset[i] = currentOffset
+		currentOffset += utf8.RuneLen(r)
+
+		width := runewidth.RuneWidth(r)
+		lb.lineNoAnsiWidths[i] = width
+		cumWidth += width
+		lb.lineNoAnsiCumWidths[i] = cumWidth
 	}
+	lb.runeIdxToByteOffset[n] = currentOffset
+
 	return lb
+}
+
+func (l LineBuffer) TotalLines(width int) int {
+	if width == 0 {
+		return 0
+	}
+	return (l.fullWidth() + width - 1) / width
+}
+
+func (l *LineBuffer) SeekToLine(n, width int) {
+	if n <= 0 {
+		l.leftRuneIdx = 0
+		return
+	}
+	l.leftRuneIdx = getLeftRuneIdx(n*width, l.lineNoAnsiCumWidths)
+}
+
+func (l *LineBuffer) SeekToWidth(width int) {
+	// width can go past end, in which case PopLeft() returns "". Required when e.g. panning past line's end.
+	if width <= 0 {
+		l.leftRuneIdx = 0
+		return
+	}
+	l.leftRuneIdx = getLeftRuneIdx(width, l.lineNoAnsiCumWidths)
 }
 
 func (l LineBuffer) fullWidth() int {
@@ -57,30 +81,6 @@ func (l LineBuffer) fullWidth() int {
 		return 0
 	}
 	return l.lineNoAnsiCumWidths[len(l.lineNoAnsiCumWidths)-1]
-}
-
-func (l LineBuffer) TotalLines() int {
-	if l.width == 0 {
-		return 0
-	}
-	return (l.fullWidth() + l.width - 1) / l.width
-}
-
-func (l *LineBuffer) SeekToLine(n int) {
-	if n <= 0 {
-		l.leftRuneIdx = 0
-		return
-	}
-	l.leftRuneIdx = getLeftRuneIdx(n*l.width, l.lineNoAnsiCumWidths)
-}
-
-func (l *LineBuffer) SeekToWidth(w int) {
-	// width can go past end, in which case PopLeft() returns "". Required when e.g. panning past line's end.
-	if w <= 0 {
-		l.leftRuneIdx = 0
-		return
-	}
-	l.leftRuneIdx = getLeftRuneIdx(w, l.lineNoAnsiCumWidths)
 }
 
 // getLeftRuneIdx does a binary search to find the first index at which vals[index-1] >= w
@@ -112,13 +112,13 @@ func getLeftRuneIdx(w int, vals []int) int {
 }
 
 // PopLeft returns a string of the buffer's width from its current left offset, scrolling the left offset to the right
-func (l *LineBuffer) PopLeft(continuation, toHighlight string, highlightStyle lipgloss.Style) string {
-	if l.leftRuneIdx >= len(l.lineNoAnsiRunes) || l.width == 0 {
+func (l *LineBuffer) PopLeft(width int, continuation, toHighlight string, highlightStyle lipgloss.Style) string {
+	if l.leftRuneIdx >= len(l.lineNoAnsiRunes) || width == 0 {
 		return ""
 	}
 
 	var result strings.Builder
-	remainingWidth := l.width
+	remainingWidth := width
 	startRuneIdx := l.leftRuneIdx
 	startByteOffset := l.runeIdxToByteOffset[startRuneIdx]
 
@@ -167,11 +167,12 @@ func (l *LineBuffer) PopLeft(continuation, toHighlight string, highlightStyle li
 }
 
 func (l *LineBuffer) WrappedLines(
+	width int,
 	maxLinesEachEnd int,
 	toHighlight string,
 	toHighlightStyle lipgloss.Style,
 ) []string {
-	if l.width <= 0 {
+	if width <= 0 {
 		return []string{}
 	}
 
@@ -185,21 +186,21 @@ func (l *LineBuffer) WrappedLines(
 	}
 
 	var res []string
-	totalLines := l.TotalLines()
+	totalLines := l.TotalLines(width)
 
 	l.SeekToWidth(0)
 	if maxLinesEachEnd > 0 && totalLines > maxLinesEachEnd*2 {
 		for nLines := 0; nLines < maxLinesEachEnd; nLines++ {
-			res = append(res, l.PopLeft("", toHighlight, toHighlightStyle))
+			res = append(res, l.PopLeft(width, "", toHighlight, toHighlightStyle))
 		}
 
-		l.SeekToLine(totalLines - maxLinesEachEnd)
+		l.SeekToLine(totalLines-maxLinesEachEnd, width)
 		for nLines := 0; nLines < maxLinesEachEnd; nLines++ {
-			res = append(res, l.PopLeft("", toHighlight, toHighlightStyle))
+			res = append(res, l.PopLeft(width, "", toHighlight, toHighlightStyle))
 		}
 	} else {
 		for nLines := 0; nLines < totalLines; nLines++ {
-			res = append(res, l.PopLeft("", toHighlight, toHighlightStyle))
+			res = append(res, l.PopLeft(width, "", toHighlight, toHighlightStyle))
 		}
 	}
 
@@ -374,18 +375,6 @@ func simplifyAnsiCodes(ansis []string) []string {
 		}
 	}
 	return ansis
-}
-
-func initByteOffsets(runes []rune) []int {
-	offsets := make([]int, len(runes)+1)
-	currentOffset := 0
-	for i, r := range runes {
-		offsets[i] = currentOffset
-		runeLen := utf8.RuneLen(r)
-		currentOffset += runeLen
-	}
-	offsets[len(runes)] = currentOffset
-	return offsets
 }
 
 // overflowsLeft checks if a substring overflows a string on the left if the string were to start at startByteIdx inclusive.
