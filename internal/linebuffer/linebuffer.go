@@ -21,31 +21,89 @@ type LineBuffer struct {
 	ansiCodeIndexes     [][]int // slice of startByte, endByte indexes of ansi codes in the line
 }
 
+// Fast ANSI scanner that avoids regex allocations
+func findAnsiRanges(s string) [][]int {
+	// Pre-count to allocate exact size
+	count := strings.Count(s, "\x1b[")
+	if count == 0 {
+		return nil
+	}
+
+	ranges := make([][]int, 0, count)
+	for i := 0; i < len(s); {
+		if i+1 < len(s) && s[i] == '\x1b' && s[i+1] == '[' {
+			// Found start of ANSI sequence
+			start := i
+			i += 2 // skip \x1b[
+
+			// Find the 'm' that ends this sequence
+			for i < len(s) && s[i] != 'm' {
+				i++
+			}
+
+			if i < len(s) && s[i] == 'm' {
+				ranges = append(ranges, []int{start, i + 1})
+				i++
+				continue
+			}
+		}
+		i++
+	}
+	return ranges
+}
+
 func New(line string) LineBuffer {
 	lb := LineBuffer{
 		line:        line,
 		leftRuneIdx: 0,
 	}
 
-	lb.ansiCodeIndexes = constants.AnsiRegex.FindAllStringIndex(line, -1)
-	lb.lineNoAnsi = stripAnsi(line)
+	// Use custom scanner instead of regex
+	lb.ansiCodeIndexes = findAnsiRanges(line)
 
-	lb.lineNoAnsiRunes = []rune(lb.lineNoAnsi)
-	n := len(lb.lineNoAnsiRunes)
-	lb.runeIdxToByteOffset = make([]int, n+1)
-	lb.lineNoAnsiWidths = make([]int, n)
-	lb.lineNoAnsiCumWidths = make([]int, n)
+	// Use same string strip logic but with our ranges
+	if len(lb.ansiCodeIndexes) > 0 {
+		var b strings.Builder
+		b.Grow(len(line)) // Pre-allocate to avoid resizing
+		lastPos := 0
+		for _, r := range lb.ansiCodeIndexes {
+			b.WriteString(line[lastPos:r[0]])
+			lastPos = r[1]
+		}
+		b.WriteString(line[lastPos:])
+		lb.lineNoAnsi = b.String()
+	} else {
+		lb.lineNoAnsi = line
+	}
 
+	// Get exact rune count
+	n := utf8.RuneCountInString(lb.lineNoAnsi)
+
+	// Allocate one large slice to hold all our integer data
+	// Format: [runeIdxToByteOffset|widths|cumWidths]
+	combined := make([]int, n+1+n+n)
+	lb.runeIdxToByteOffset = combined[:n+1]
+	lb.lineNoAnsiWidths = combined[n+1 : n+1+n]
+	lb.lineNoAnsiCumWidths = combined[n+1+n:]
+
+	// Still need runes slice separately since it's []rune not []int
+	lb.lineNoAnsiRunes = make([]rune, n)
+
+	// Single pass to fill all slices
 	currentOffset := 0
 	cumWidth := 0
-	for i, r := range lb.lineNoAnsiRunes {
+	i := 0
+	for _, r := range lb.lineNoAnsi {
 		lb.runeIdxToByteOffset[i] = currentOffset
 		currentOffset += utf8.RuneLen(r)
+
+		lb.lineNoAnsiRunes[i] = r
 
 		width := runewidth.RuneWidth(r)
 		lb.lineNoAnsiWidths[i] = width
 		cumWidth += width
 		lb.lineNoAnsiCumWidths[i] = cumWidth
+		i++
 	}
 	lb.runeIdxToByteOffset[n] = currentOffset
 
