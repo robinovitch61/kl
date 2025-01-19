@@ -1,6 +1,7 @@
 package linebuffer
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -25,5 +26,30 @@ func BenchmarkNewLongLine(b *testing.B) {
 		lb := New(base)
 		// prevent compiler optimizations from eliminating the call
 		_ = lb
+	}
+}
+
+func BenchmarkMemoryComparison(b *testing.B) {
+	// tests different string lengths to see how memory usage scales
+	sizes := []int{10, 100, 1000, 10000}
+
+	for _, size := range sizes {
+		baseString := strings.Repeat("h", size)
+
+		b.Run(fmt.Sprintf("String_%d", size), func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				s := baseString
+				_ = s
+			}
+		})
+
+		b.Run(fmt.Sprintf("LineBuffer_%d", size), func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				lb := New(baseString)
+				_ = lb
+			}
+		})
 	}
 }
