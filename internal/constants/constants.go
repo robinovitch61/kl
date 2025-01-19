@@ -25,8 +25,6 @@ var AttemptUpdateSinceTimeInterval = 500 * time.Millisecond
 
 // *********************************************************************************************************************
 
-var AnsiRegex = regexp.MustCompile("\x1b\\[[0-9;]*m")
-
 var EmptySequenceRegex = regexp.MustCompile("\x1b\\[[0-9;]+m\x1b\\[m")
 
 // LeftPageWidthFraction controls the width of the left page as a fraction of the terminal width

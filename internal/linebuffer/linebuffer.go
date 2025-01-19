@@ -11,14 +11,14 @@ import (
 // LineBuffer provides functionality to get sequential strings of a specified terminal width, accounting
 // for the ansi escape codes styling the line.
 type LineBuffer struct {
-	line                string  // underlying string with ansi codes. utf-8 bytes
-	leftRuneIdx         int     // left plaintext rune idx to start next PopLeft result from
-	lineNoAnsi          string  // line without ansi codes. utf-8 bytes
-	lineNoAnsiRunes     []rune  // runes of lineNoAnsi. len(lineNoAnsiRunes) == len(lineNoAnsiWidths)
-	runeIdxToByteOffset []int   // idx of lineNoAnsiRunes to byte offset. len(runeIdxToByteOffset) == len(lineNoAnsiRunes)
-	lineNoAnsiWidths    []int   // terminal cell widths of lineNoAnsi. len(lineNoAnsiWidths) == len(lineNoAnsiRunes)
-	lineNoAnsiCumWidths []int   // cumulative lineNoAnsiWidths
-	ansiCodeIndexes     [][]int // slice of startByte, endByte indexes of ansi codes in the line
+	line                string     // underlying string with ansi codes. utf-8 bytes
+	leftRuneIdx         uint32     // left plaintext rune idx to start next PopLeft result from
+	lineNoAnsi          string     // line without ansi codes. utf-8 bytes
+	lineNoAnsiRunes     []rune     // runes of lineNoAnsi. len(lineNoAnsiRunes) == len(lineNoAnsiWidths)
+	runeIdxToByteOffset []uint32   // idx of lineNoAnsiRunes to byte offset. len(runeIdxToByteOffset) == len(lineNoAnsiRunes)
+	lineNoAnsiWidths    []uint8    // terminal cell widths of lineNoAnsi. len(lineNoAnsiWidths) == len(lineNoAnsiRunes)
+	lineNoAnsiCumWidths []uint32   // cumulative lineNoAnsiWidths
+	ansiCodeIndexes     [][]uint32 // slice of startByte, endByte indexes of ansi codes in the line
 }
 
 func New(line string) LineBuffer {
@@ -27,25 +27,48 @@ func New(line string) LineBuffer {
 		leftRuneIdx: 0,
 	}
 
-	lb.ansiCodeIndexes = constants.AnsiRegex.FindAllStringIndex(line, -1)
-	lb.lineNoAnsi = stripAnsi(line)
+	lb.ansiCodeIndexes = findAnsiRanges(line)
 
-	lb.lineNoAnsiRunes = []rune(lb.lineNoAnsi)
-	n := len(lb.lineNoAnsiRunes)
-	lb.runeIdxToByteOffset = make([]int, n+1)
-	lb.lineNoAnsiWidths = make([]int, n)
-	lb.lineNoAnsiCumWidths = make([]int, n)
+	if len(lb.ansiCodeIndexes) > 0 {
+		totalLen := len(line)
+		for _, r := range lb.ansiCodeIndexes {
+			totalLen -= int(r[1] - r[0])
+		}
 
-	currentOffset := 0
-	cumWidth := 0
-	for i, r := range lb.lineNoAnsiRunes {
+		buf := make([]byte, 0, totalLen)
+		lastPos := 0
+		for _, r := range lb.ansiCodeIndexes {
+			buf = append(buf, line[lastPos:int(r[0])]...)
+			lastPos = int(r[1])
+		}
+		buf = append(buf, line[lastPos:]...)
+		lb.lineNoAnsi = string(buf)
+	} else {
+		lb.lineNoAnsi = line
+	}
+
+	n := utf8.RuneCountInString(lb.lineNoAnsi)
+
+	// single allocation for all integer slices
+	combined := make([]uint32, n+1+n)
+	lb.runeIdxToByteOffset = combined[:n+1]
+	lb.lineNoAnsiCumWidths = combined[n+1:]
+
+	lb.lineNoAnsiWidths = make([]uint8, n)
+	lb.lineNoAnsiRunes = make([]rune, n)
+
+	var currentOffset uint32
+	var cumWidth uint32
+	i := 0
+	for _, r := range lb.lineNoAnsi {
 		lb.runeIdxToByteOffset[i] = currentOffset
-		currentOffset += utf8.RuneLen(r)
-
-		width := runewidth.RuneWidth(r)
+		currentOffset += uint32(utf8.RuneLen(r))
+		lb.lineNoAnsiRunes[i] = r
+		width := uint8(runewidth.RuneWidth(r))
 		lb.lineNoAnsiWidths[i] = width
-		cumWidth += width
+		cumWidth += uint32(width)
 		lb.lineNoAnsiCumWidths[i] = cumWidth
+		i++
 	}
 	lb.runeIdxToByteOffset[n] = currentOffset
 
@@ -56,7 +79,7 @@ func (l LineBuffer) TotalLines(width int) int {
 	if width == 0 {
 		return 0
 	}
-	return (l.fullWidth() + width - 1) / width
+	return (int(l.fullWidth()) + width - 1) / width
 }
 
 func (l *LineBuffer) SeekToLine(n, width int) {
@@ -64,7 +87,7 @@ func (l *LineBuffer) SeekToLine(n, width int) {
 		l.leftRuneIdx = 0
 		return
 	}
-	l.leftRuneIdx = getLeftRuneIdx(n*width, l.lineNoAnsiCumWidths)
+	l.leftRuneIdx = uint32(getLeftRuneIdx(n*width, l.lineNoAnsiCumWidths))
 }
 
 func (l *LineBuffer) SeekToWidth(width int) {
@@ -73,10 +96,10 @@ func (l *LineBuffer) SeekToWidth(width int) {
 		l.leftRuneIdx = 0
 		return
 	}
-	l.leftRuneIdx = getLeftRuneIdx(width, l.lineNoAnsiCumWidths)
+	l.leftRuneIdx = uint32(getLeftRuneIdx(width, l.lineNoAnsiCumWidths))
 }
 
-func (l LineBuffer) fullWidth() int {
+func (l LineBuffer) fullWidth() uint32 {
 	if len(l.lineNoAnsiCumWidths) == 0 {
 		return 0
 	}
@@ -84,7 +107,7 @@ func (l LineBuffer) fullWidth() int {
 }
 
 // getLeftRuneIdx does a binary search to find the first index at which vals[index-1] >= w
-func getLeftRuneIdx(w int, vals []int) int {
+func getLeftRuneIdx(w int, vals []uint32) int {
 	if w == 0 {
 		return 0
 	}
@@ -94,14 +117,14 @@ func getLeftRuneIdx(w int, vals []int) int {
 
 	left, right := 0, len(vals)-1
 
-	if vals[right] < w {
+	if vals[right] < uint32(w) {
 		return len(vals)
 	}
 
 	for left < right {
 		mid := left + (right-left)/2
 
-		if vals[mid] >= w {
+		if vals[mid] >= uint32(w) {
 			right = mid
 		} else {
 			left = mid + 1
@@ -113,7 +136,7 @@ func getLeftRuneIdx(w int, vals []int) int {
 
 // PopLeft returns a string of the buffer's width from its current left offset, scrolling the left offset to the right
 func (l *LineBuffer) PopLeft(width int, continuation, toHighlight string, highlightStyle lipgloss.Style) string {
-	if l.leftRuneIdx >= len(l.lineNoAnsiRunes) || width == 0 {
+	if int(l.leftRuneIdx) >= len(l.lineNoAnsiRunes) || width == 0 {
 		return ""
 	}
 
@@ -123,22 +146,22 @@ func (l *LineBuffer) PopLeft(width int, continuation, toHighlight string, highli
 	startByteOffset := l.runeIdxToByteOffset[startRuneIdx]
 
 	runesWritten := 0
-	for ; remainingWidth > 0 && l.leftRuneIdx < len(l.lineNoAnsiRunes); l.leftRuneIdx++ {
+	for ; remainingWidth > 0 && int(l.leftRuneIdx) < len(l.lineNoAnsiRunes); l.leftRuneIdx++ {
 		r := l.lineNoAnsiRunes[l.leftRuneIdx]
 		runeWidth := l.lineNoAnsiWidths[l.leftRuneIdx]
-		if runeWidth > remainingWidth {
+		if int(runeWidth) > remainingWidth {
 			break
 		}
 
 		result.WriteRune(r)
 		runesWritten++
-		remainingWidth -= runeWidth
+		remainingWidth -= int(runeWidth)
 	}
 
 	res := result.String()
 
 	// apply left/right line continuation indicators
-	if len(continuation) > 0 && (startRuneIdx > 0 || l.leftRuneIdx < len(l.lineNoAnsiRunes)) {
+	if len(continuation) > 0 && (startRuneIdx > 0 || int(l.leftRuneIdx) < len(l.lineNoAnsiRunes)) {
 		continuationRunes := []rune(continuation)
 
 		// if more runes to the left of the result, replace start runes with continuation indicator, respecting width
@@ -147,18 +170,18 @@ func (l *LineBuffer) PopLeft(width int, continuation, toHighlight string, highli
 		}
 
 		// if more runes to the right, replace final runes in result with continuation indicator, respecting width
-		if l.leftRuneIdx < len(l.lineNoAnsiRunes) {
+		if int(l.leftRuneIdx) < len(l.lineNoAnsiRunes) {
 			res = replaceEndWithContinuation(res, continuationRunes)
 		}
 	}
 
 	// reapply original styling
 	if len(l.ansiCodeIndexes) > 0 {
-		res = reapplyAnsi(l.line, res, startByteOffset, l.ansiCodeIndexes)
+		res = reapplyAnsi(l.line, res, int(startByteOffset), l.ansiCodeIndexes)
 	}
 
 	// highlight the desired string
-	res = l.highlightString(res, startByteOffset, toHighlight, highlightStyle)
+	res = l.highlightString(res, int(startByteOffset), toHighlight, highlightStyle)
 
 	// remove empty sequences
 	res = constants.EmptySequenceRegex.ReplaceAllString(res, "")
@@ -222,7 +245,7 @@ func (l LineBuffer) highlightString(
 			highlightLeft := l.lineNoAnsi[startByteOffset:endIdx]
 			s = highlightLine(s, highlightLeft, highlightStyle, 0, len(highlightLeft))
 		}
-		endByteOffset := l.runeIdxToByteOffset[l.leftRuneIdx]
+		endByteOffset := int(l.runeIdxToByteOffset[l.leftRuneIdx])
 		if right, startIdx := overflowsRight(l.lineNoAnsi, endByteOffset, toHighlight); right {
 			highlightRight := l.lineNoAnsi[startIdx:endByteOffset]
 			lenPlainTextRes := len(stripAnsi(s))
@@ -233,7 +256,7 @@ func (l LineBuffer) highlightString(
 	return s
 }
 
-func reapplyAnsi(original, truncated string, truncByteOffset int, ansiCodeIndexes [][]int) string {
+func reapplyAnsi(original, truncated string, truncByteOffset int, ansiCodeIndexes [][]uint32) string {
 	var result []byte
 	var lenAnsiAdded int
 	isReset := true
@@ -244,7 +267,7 @@ func reapplyAnsi(original, truncated string, truncByteOffset int, ansiCodeIndexe
 		var ansisToAdd []string
 		for len(ansiCodeIndexes) > 0 {
 			candidateAnsi := ansiCodeIndexes[0]
-			codeStart, codeEnd := candidateAnsi[0], candidateAnsi[1]
+			codeStart, codeEnd := int(candidateAnsi[0]), int(candidateAnsi[1])
 			originalIdx := truncByteOffset + i + lenAnsiAdded
 			if codeStart <= originalIdx {
 				code := original[codeStart:codeEnd]
@@ -339,7 +362,28 @@ func highlightLine(line, highlight string, highlightStyle lipgloss.Style, start,
 }
 
 func stripAnsi(input string) string {
-	return constants.AnsiRegex.ReplaceAllString(input, "")
+	ranges := findAnsiRanges(input)
+	if len(ranges) == 0 {
+		return input
+	}
+
+	totalAnsiLen := 0
+	for _, r := range ranges {
+		totalAnsiLen += int(r[1] - r[0])
+	}
+
+	finalLen := len(input) - totalAnsiLen
+	var builder strings.Builder
+	builder.Grow(finalLen)
+
+	lastPos := 0
+	for _, r := range ranges {
+		builder.WriteString(input[lastPos:int(r[0])])
+		lastPos = int(r[1])
+	}
+
+	builder.WriteString(input[lastPos:])
+	return builder.String()
 }
 
 func simplifyAnsiCodes(ansis []string) []string {
@@ -564,4 +608,42 @@ func replaceRuneWithRunes(rs []rune, idxToReplace int, replaceWith []rune) []run
 	copy(result[idxToReplace:], replaceWith)
 	copy(result[idxToReplace+len(replaceWith):], rs[idxToReplace+1:])
 	return result
+}
+
+func findAnsiRanges(s string) [][]uint32 {
+	// pre-count to allocate exact size
+	count := strings.Count(s, "\x1b[")
+	if count == 0 {
+		return nil
+	}
+
+	allRanges := make([]uint32, count*2)
+	ranges := make([][]uint32, count)
+
+	for i := 0; i < count; i++ {
+		ranges[i] = allRanges[i*2 : i*2+2]
+	}
+
+	rangeIdx := 0
+	for i := 0; i < len(s); {
+		if i+1 < len(s) && s[i] == '\x1b' && s[i+1] == '[' {
+			start := i
+			i += 2 // skip \x1b[
+
+			// find the 'm' that ends this sequence
+			for i < len(s) && s[i] != 'm' {
+				i++
+			}
+
+			if i < len(s) && s[i] == 'm' {
+				allRanges[rangeIdx*2] = uint32(start)
+				allRanges[rangeIdx*2+1] = uint32(i + 1)
+				rangeIdx++
+				i++
+				continue
+			}
+		}
+		i++
+	}
+	return ranges[:rangeIdx]
 }
