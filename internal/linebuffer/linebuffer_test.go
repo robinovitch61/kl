@@ -2,8 +2,8 @@ package linebuffer
 
 import (
 	"github.com/charmbracelet/lipgloss/v2"
-	"github.com/robinovitch61/kl/internal/constants"
 	"github.com/robinovitch61/kl/internal/util"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -1059,25 +1059,25 @@ func TestLineBuffer_getLeftRuneIdx(t *testing.T) {
 	tests := []struct {
 		name     string
 		w        int
-		vals     []int
+		vals     []uint32
 		expected int
 	}{
 		{
 			name:     "empty",
 			w:        0,
-			vals:     []int{},
+			vals:     []uint32{},
 			expected: 0,
 		},
 		{
 			name:     "step by 1",
 			w:        2,
-			vals:     []int{1, 2, 3},
+			vals:     []uint32{1, 2, 3},
 			expected: 2,
 		},
 		{
 			name:     "step by 2",
 			w:        2,
-			vals:     []int{1, 3, 5},
+			vals:     []uint32{1, 3, 5},
 			expected: 2,
 		},
 	}
@@ -1311,9 +1311,19 @@ func TestLineBuffer_reapplyAnsi(t *testing.T) {
 		},
 	}
 
+	ansiRegex := regexp.MustCompile("\x1b\\[[0-9;]*m")
+
+	toUInt32 := func(indexes [][]int) [][]uint32 {
+		uint32Indexes := make([][]uint32, len(indexes))
+		for i, idx := range indexes {
+			uint32Indexes[i] = []uint32{uint32(idx[0]), uint32(idx[1])}
+		}
+		return uint32Indexes
+	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ansiCodeIndexes := constants.AnsiRegex.FindAllStringIndex(tt.original, -1)
+			ansiCodeIndexes := toUInt32(ansiRegex.FindAllStringIndex(tt.original, -1))
 			actual := reapplyAnsi(tt.original, tt.truncated, tt.truncByteOffset, ansiCodeIndexes)
 			util.CmpStr(t, tt.expected, actual)
 		})
