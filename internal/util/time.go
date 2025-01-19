@@ -2,6 +2,8 @@ package util
 
 import (
 	"fmt"
+	"runtime"
+	"sort"
 	"testing"
 	"time"
 )
@@ -84,18 +86,53 @@ func DurationTilNext(start time.Time, now time.Time, between time.Duration) time
 }
 
 func RunWithTimeout(t *testing.T, runTest func(t *testing.T), timeout time.Duration) {
-	done := make(chan bool)
-	start := time.Now()
-	go func() {
-		runTest(t)
-		done <- true
-	}()
+	t.Helper()
 
-	select {
-	case <-done:
-		break
-	case <-time.After(timeout):
-		elapsed := time.Since(start)
-		t.Fatalf("Test took too long: %v", elapsed)
+	// warmup runs
+	for i := 0; i < 3; i++ {
+		runTest(t)
 	}
+
+	// actual measured runs
+	var durations []time.Duration
+	for i := 0; i < 3; i++ {
+		done := make(chan struct{})
+		var testErr error
+		start := time.Now()
+
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					testErr = fmt.Errorf("test panicked: %v", r)
+				}
+				close(done)
+			}()
+
+			subT := &testing.T{}
+			runTest(subT)
+			if subT.Failed() {
+				testErr = fmt.Errorf("test failed in goroutine")
+			}
+		}()
+
+		select {
+		case <-done:
+			if testErr != nil {
+				t.Fatal(testErr)
+			}
+			durations = append(durations, time.Since(start))
+		case <-time.After(timeout):
+			t.Fatalf("Test took too long: %v", timeout)
+		}
+
+		runtime.GC()
+		time.Sleep(time.Millisecond * 10)
+	}
+
+	sort.Slice(durations, func(i, j int) bool {
+		return durations[i] < durations[j]
+	})
+	median := durations[len(durations)/2]
+	t.Logf("Test timing: median=%v min=%v max=%v",
+		median, durations[0], durations[len(durations)-1])
 }

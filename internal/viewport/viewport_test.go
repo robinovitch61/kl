@@ -775,7 +775,7 @@ func TestViewport_SelectionOff_WrapOff_StringToHighlightManyMatches(t *testing.T
 		})
 		util.CmpStr(t, expectedView, vp.View())
 	}
-	util.RunWithTimeout(t, runTest, 600*time.Millisecond)
+	util.RunWithTimeout(t, runTest, 5*time.Millisecond)
 }
 
 func TestViewport_SelectionOff_WrapOff_StringToHighlightAnsi(t *testing.T) {
@@ -2144,7 +2144,7 @@ func TestViewport_SelectionOn_WrapOff_StringToHighlightManyMatches(t *testing.T)
 		})
 		util.CmpStr(t, expectedView, vp.View())
 	}
-	util.RunWithTimeout(t, runTest, 1200*time.Millisecond)
+	util.RunWithTimeout(t, runTest, 5*time.Millisecond)
 }
 
 func TestViewport_SelectionOn_WrapOff_AnsiOnSelection(t *testing.T) {
@@ -2994,7 +2994,7 @@ func TestViewport_SelectionOff_WrapOn_StringToHighlightManyMatches(t *testing.T)
 		})
 		util.CmpStr(t, expectedView, vp.View())
 	}
-	util.RunWithTimeout(t, runTest, 1600*time.Millisecond)
+	util.RunWithTimeout(t, runTest, 10*time.Millisecond)
 }
 
 func TestViewport_SelectionOff_WrapOn_StringToHighlightAnsi(t *testing.T) {
@@ -3025,53 +3025,56 @@ func TestViewport_SelectionOff_WrapOn_StringToHighlightAnsi(t *testing.T) {
 }
 
 func TestViewport_SelectionOff_WrapOn_SuperLongWrappedLine(t *testing.T) {
-	w, h := 10, 5
-	vp := newViewport(w, h)
-	vp.SetHeader([]string{"header"})
-	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{Content: "smol"},
-		{Content: strings.Repeat("12345678", 1000000)},
-		{Content: "smol"},
-	})
-	expectedView := pad(vp.width, vp.height, []string{
-		"header",
-		"smol",
-		"1234567812",
-		"3456781234",
-		"66% (2/3)",
-	})
-	util.CmpStr(t, expectedView, vp.View())
+	runTest := func(t *testing.T) {
+		w, h := 10, 5
+		vp := newViewport(w, h)
+		vp.SetHeader([]string{"header"})
+		vp.SetWrapText(true)
+		vp.SetContent([]RenderableString{
+			{Content: "smol"},
+			{Content: strings.Repeat("12345678", 1000000)},
+			{Content: "smol"},
+		})
+		expectedView := pad(vp.width, vp.height, []string{
+			"header",
+			"smol",
+			"1234567812",
+			"3456781234",
+			"66% (2/3)",
+		})
+		util.CmpStr(t, expectedView, vp.View())
 
-	vp, _ = vp.Update(downKeyMsg)
-	expectedView = pad(vp.width, vp.height, []string{
-		"header",
-		"1234567812",
-		"3456781234",
-		"5678123456",
-		"66% (2/3)",
-	})
-	util.CmpStr(t, expectedView, vp.View())
+		vp, _ = vp.Update(downKeyMsg)
+		expectedView = pad(vp.width, vp.height, []string{
+			"header",
+			"1234567812",
+			"3456781234",
+			"5678123456",
+			"66% (2/3)",
+		})
+		util.CmpStr(t, expectedView, vp.View())
 
-	vp, _ = vp.Update(downKeyMsg)
-	expectedView = pad(vp.width, vp.height, []string{
-		"header",
-		"3456781234",
-		"5678123456",
-		"7812345678",
-		"66% (2/3)",
-	})
-	util.CmpStr(t, expectedView, vp.View())
+		vp, _ = vp.Update(downKeyMsg)
+		expectedView = pad(vp.width, vp.height, []string{
+			"header",
+			"3456781234",
+			"5678123456",
+			"7812345678",
+			"66% (2/3)",
+		})
+		util.CmpStr(t, expectedView, vp.View())
 
-	vp, _ = vp.Update(goToBottomKeyMsg)
-	expectedView = pad(vp.width, vp.height, []string{
-		"header",
-		"5678123456",
-		"7812345678",
-		"smol",
-		"100% (3/3)",
-	})
-	util.CmpStr(t, expectedView, vp.View())
+		vp, _ = vp.Update(goToBottomKeyMsg)
+		expectedView = pad(vp.width, vp.height, []string{
+			"header",
+			"5678123456",
+			"7812345678",
+			"smol",
+			"100% (3/3)",
+		})
+		util.CmpStr(t, expectedView, vp.View())
+	}
+	util.RunWithTimeout(t, runTest, 500*time.Millisecond)
 }
 
 func TestViewport_SelectionOff_WrapOn_StringToHighlightAnsiUnicode(t *testing.T) {
@@ -4488,7 +4491,7 @@ func TestViewport_SelectionOn_WrapOn_StringToHighlightManyMatches(t *testing.T) 
 		})
 		util.CmpStr(t, expectedView, vp.View())
 	}
-	util.RunWithTimeout(t, runTest, 1200*time.Millisecond)
+	util.RunWithTimeout(t, runTest, 5*time.Millisecond)
 }
 
 func TestViewport_SelectionOn_WrapOn_AnsiOnSelection(t *testing.T) {
@@ -4546,44 +4549,47 @@ func TestViewport_SelectionOn_WrapOn_ExtraSlash(t *testing.T) {
 }
 
 func TestViewport_SelectionOn_WrapOn_SuperLongWrappedLine(t *testing.T) {
-	w, h := 10, 5
-	vp := newViewport(w, h)
-	vp.SetHeader([]string{"header"})
-	vp.SetSelectionEnabled(true)
-	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{Content: "smol"},
-		{Content: strings.Repeat("12345678", 1000000)},
-		{Content: "smol"},
-	})
-	expectedView := pad(vp.width, vp.height, []string{
-		"header",
-		"\x1b[38;2;0;0;255msmol\x1b[m",
-		"1234567812",
-		"3456781234",
-		"33% (1/3)",
-	})
-	util.CmpStr(t, expectedView, vp.View())
+	runTest := func(t *testing.T) {
+		w, h := 10, 5
+		vp := newViewport(w, h)
+		vp.SetHeader([]string{"header"})
+		vp.SetSelectionEnabled(true)
+		vp.SetWrapText(true)
+		vp.SetContent([]RenderableString{
+			{Content: "smol"},
+			{Content: strings.Repeat("12345678", 1000000)},
+			{Content: "smol"},
+		})
+		expectedView := pad(vp.width, vp.height, []string{
+			"header",
+			"\x1b[38;2;0;0;255msmol\x1b[m",
+			"1234567812",
+			"3456781234",
+			"33% (1/3)",
+		})
+		util.CmpStr(t, expectedView, vp.View())
 
-	vp, _ = vp.Update(downKeyMsg)
-	expectedView = pad(vp.width, vp.height, []string{
-		"header",
-		"\x1b[38;2;0;0;255m1234567812\x1b[m",
-		"\x1b[38;2;0;0;255m3456781234\x1b[m",
-		"\x1b[38;2;0;0;255m5678123456\x1b[m",
-		"66% (2/3)",
-	})
-	util.CmpStr(t, expectedView, vp.View())
+		vp, _ = vp.Update(downKeyMsg)
+		expectedView = pad(vp.width, vp.height, []string{
+			"header",
+			"\x1b[38;2;0;0;255m1234567812\x1b[m",
+			"\x1b[38;2;0;0;255m3456781234\x1b[m",
+			"\x1b[38;2;0;0;255m5678123456\x1b[m",
+			"66% (2/3)",
+		})
+		util.CmpStr(t, expectedView, vp.View())
 
-	vp, _ = vp.Update(downKeyMsg)
-	expectedView = pad(vp.width, vp.height, []string{
-		"header",
-		"5678123456",
-		"7812345678",
-		"\x1b[38;2;0;0;255msmol\x1b[m",
-		"100% (3/3)",
-	})
-	util.CmpStr(t, expectedView, vp.View())
+		vp, _ = vp.Update(downKeyMsg)
+		expectedView = pad(vp.width, vp.height, []string{
+			"header",
+			"5678123456",
+			"7812345678",
+			"\x1b[38;2;0;0;255msmol\x1b[m",
+			"100% (3/3)",
+		})
+		util.CmpStr(t, expectedView, vp.View())
+	}
+	util.RunWithTimeout(t, runTest, 400*time.Millisecond)
 }
 
 func TestViewport_SelectionOn_WrapOn_StringToHighlightAnsiUnicode(t *testing.T) {
