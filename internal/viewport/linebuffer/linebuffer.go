@@ -75,6 +75,22 @@ func New(line string) LineBuffer {
 	return lb
 }
 
+func ToStrings(lbs []LineBuffer) []string {
+	res := make([]string, len(lbs))
+	for i, lb := range lbs {
+		res[i] = lb.Content
+	}
+	return res
+}
+
+func ToLineBuffers(lines []string) []LineBuffer {
+	res := make([]LineBuffer, len(lines))
+	for i, line := range lines {
+		res[i] = New(line)
+	}
+	return res
+}
+
 func (l LineBuffer) TotalLines(width int) int {
 	if width == 0 {
 		return 0

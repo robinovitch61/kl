@@ -214,9 +214,9 @@ func (m Model[T]) View() string {
 	truncatedVisibleContentLines := make([]string, len(visibleContentLines.lines))
 	for i := range visibleContentLines.lines {
 		if m.wrapText {
-			truncated = visibleContentLines.lines[i]
+			truncated = visibleContentLines.lines[i].Content
 		} else {
-			lineBuffer := linebuffer.New(visibleContentLines.lines[i])
+			lineBuffer := visibleContentLines.lines[i]
 			lineBuffer.SeekToWidth(m.xOffset)
 			truncated = lineBuffer.PopLeft(
 				m.width,
@@ -231,7 +231,7 @@ func (m Model[T]) View() string {
 			truncated = m.styleSelection(truncated)
 		}
 
-		if !m.wrapText && m.xOffset > 0 && lipgloss.Width(truncated) == 0 && lipgloss.Width(visibleContentLines.lines[i]) > 0 {
+		if !m.wrapText && m.xOffset > 0 && lipgloss.Width(truncated) == 0 && lipgloss.Width(visibleContentLines.lines[i].Content) > 0 {
 			// if panned right past where line ends, show continuation indicator
 			lineBuffer := linebuffer.New(m.getLineContinuationIndicator())
 			truncated = lineBuffer.PopLeft(m.width, "", "", lipgloss.NewStyle())
@@ -470,7 +470,8 @@ func (m Model[T]) maxLineWidth() int {
 	maxLineWidth := 0
 	headerLines := m.getVisibleHeaderLines()
 	visibleContentLines := m.getVisibleContentLines()
-	allVisibleLines := append(headerLines, visibleContentLines.lines...)
+	// TODO LEO: put Width as attr on linebuffer and use that directly
+	allVisibleLines := append(headerLines, linebuffer.ToStrings(visibleContentLines.lines)...)
 	if visibleContentLines.showFooter {
 		allVisibleLines = append(allVisibleLines, m.getTruncatedFooterLine(visibleContentLines))
 	}
@@ -661,7 +662,7 @@ func (m Model[T]) getVisibleHeaderLines() []string {
 
 type visibleContentLinesResult struct {
 	// lines is the untruncated visible lines, each corresponding to one terminal row
-	lines []string
+	lines []linebuffer.LineBuffer
 	// itemIndexes is the index of the item in allItems that corresponds to each line. len(itemIndexes) == len(lines)
 	itemIndexes []int
 	// showFooter is true if the footer should be shown due to the num visible lines exceeding the vertical space
@@ -678,17 +679,17 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 		return visibleContentLinesResult{lines: nil, itemIndexes: nil, showFooter: false}
 	}
 
-	var contentLines []string
+	var contentLines []linebuffer.LineBuffer
 	var itemIndexes []int
 
 	numLinesAfterHeader := max(0, m.height-len(m.getVisibleHeaderLines()))
 
-	addLine := func(l string, itemIndex int) bool {
+	addLine := func(l linebuffer.LineBuffer, itemIndex int) bool {
 		contentLines = append(contentLines, l)
 		itemIndexes = append(itemIndexes, itemIndex)
 		return len(contentLines) == numLinesAfterHeader
 	}
-	addLines := func(ls []string, itemIndex int) bool {
+	addLines := func(ls []linebuffer.LineBuffer, itemIndex int) bool {
 		for i := range ls {
 			if addLine(ls[i], itemIndex) {
 				return true
@@ -709,7 +710,7 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 		lb := currItem.Render() // TODO LEO: strings.TrimRightFunc(currItem.String(), unicode.IsSpace), m.width
 		itemLines := lb.WrappedLines(m.width, m.height, m.stringToHighlight, m.highlightStyle(currItemIdx))
 		offsetLines := safeSliceFromIdx(itemLines, m.topItemLineOffset)
-		done = addLines(offsetLines, currItemIdx)
+		done = addLines(linebuffer.ToLineBuffers(offsetLines), currItemIdx)
 
 		for !done {
 			currItemIdx += 1
@@ -719,18 +720,18 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 				currItem = m.allItems[currItemIdx]
 				lb = currItem.Render() // TODO LEO: strings.TrimRightFunc(currItem.String(), unicode.IsSpace), m.width
 				itemLines = lb.WrappedLines(m.width, m.height, m.stringToHighlight, m.highlightStyle(currItemIdx))
-				done = addLines(itemLines, currItemIdx)
+				done = addLines(linebuffer.ToLineBuffers(itemLines), currItemIdx)
 			}
 		}
 	} else {
-		done = addLine(currItem.Render().Content, m.width)
+		done = addLine(currItem.Render(), m.width)
 		for !done {
 			currItemIdx += 1
 			if currItemIdx >= len(m.allItems) {
 				done = true
 			} else {
 				currItem = m.allItems[currItemIdx]
-				done = addLine(currItem.Render().Content, currItemIdx)
+				done = addLine(currItem.Render(), currItemIdx)
 			}
 		}
 	}
