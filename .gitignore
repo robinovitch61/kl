@@ -3,3 +3,4 @@ kl
 .DS_Store
 *.log
 *.txt
+cpu.prof
