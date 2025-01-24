@@ -12,6 +12,7 @@ import (
 // for the ansi escape codes styling the line.
 type LineBuffer struct {
 	Content             string     // underlying string with ansi codes. utf-8 bytes
+	Width               int        // terminal cell width of Content
 	leftRuneIdx         uint32     // left plaintext rune idx to start next PopLeft result from
 	lineNoAnsi          string     // line without ansi codes. utf-8 bytes
 	lineNoAnsiRunes     []rune     // runes of lineNoAnsi. len(lineNoAnsiRunes) == len(lineNoAnsiWidths)
@@ -71,16 +72,11 @@ func New(line string) LineBuffer {
 		i++
 	}
 	lb.runeIdxToByteOffset[n] = currentOffset
+	if len(lb.lineNoAnsiCumWidths) > 0 {
+		lb.Width = int(lb.lineNoAnsiCumWidths[len(lb.lineNoAnsiCumWidths)-1])
+	}
 
 	return lb
-}
-
-func ToStrings(lbs []LineBuffer) []string {
-	res := make([]string, len(lbs))
-	for i, lb := range lbs {
-		res[i] = lb.Content
-	}
-	return res
 }
 
 func ToLineBuffers(lines []string) []LineBuffer {
