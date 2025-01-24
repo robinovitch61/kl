@@ -7,6 +7,7 @@ import (
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/style"
 	"github.com/robinovitch61/kl/internal/util"
+	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
 	"regexp"
 	"strings"
 	"testing"
@@ -28,6 +29,10 @@ func makeKeyPressMsg(key rune) tea.Msg {
 // TestItem implements RenderableComparable for testing
 type TestItem struct {
 	content string
+}
+
+func (t TestItem) Render() linebuffer.LineBuffer {
+	return linebuffer.New(t.content)
 }
 
 func (t TestItem) String() string {

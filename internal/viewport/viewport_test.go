@@ -90,7 +90,7 @@ func TestViewport_SelectionOff_WrapOff_SmolDimensions(t *testing.T) {
 	w, h := 0, 0
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
-	vp.SetContent([]RenderableString{{LineBuffer: "hi"}})
+	setContent(&vp, []string{"hi"})
 	expectedView := pad(vp.width, vp.height, []string{""})
 	util.CmpStr(t, expectedView, vp.View())
 
@@ -114,11 +114,11 @@ func TestViewport_SelectionOff_WrapOff_Basic(t *testing.T) {
 	w, h := 15, 6
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first line"},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("second") + " line"},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("a really really long line")},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line"},
+	setContent(&vp, []string{
+		"first line",
+		lipgloss.NewStyle().Foreground(red).Render("second") + " line",
+		lipgloss.NewStyle().Foreground(red).Render("a really really long line"),
+		lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -135,9 +135,9 @@ func TestViewport_SelectionOff_WrapOff_GetConfigs(t *testing.T) {
 	w, h := 15, 6
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
-		{LineBuffer: "second"},
+	setContent(&vp, []string{
+		"first",
+		"second",
 	})
 	if selectionEnabled := vp.GetSelectionEnabled(); selectionEnabled {
 		t.Errorf("expected selection to be disabled, got %v", selectionEnabled)
@@ -157,11 +157,11 @@ func TestViewport_SelectionOff_WrapOff_ShowFooter(t *testing.T) {
 	w, h := 15, 5
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first line"},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("second") + " line"},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("a really really long line")},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line"},
+	setContent(&vp, []string{
+		"first line",
+		lipgloss.NewStyle().Foreground(red).Render("second") + " line",
+		lipgloss.NewStyle().Foreground(red).Render("a really really long line"),
+		lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -199,11 +199,11 @@ func TestViewport_SelectionOff_WrapOff_FooterStyle(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.FooterStyle = lipgloss.NewStyle().Foreground(red)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "1"},
-		{LineBuffer: "2"},
-		{LineBuffer: "3"},
-		{LineBuffer: "4"},
+	setContent(&vp, []string{
+		"1",
+		"2",
+		"3",
+		"4",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -219,11 +219,11 @@ func TestViewport_SelectionOff_WrapOff_FooterDisabled(t *testing.T) {
 	w, h := 15, 5
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first line"},
-		{LineBuffer: "second line"},
-		{LineBuffer: "third line"},
-		{LineBuffer: "fourth line"},
+	setContent(&vp, []string{
+		"first line",
+		"second line",
+		"third line",
+		"fourth line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -249,10 +249,10 @@ func TestViewport_SelectionOff_WrapOff_SpaceAround(t *testing.T) {
 	w, h := 15, 5
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "    first line     "},
-		{LineBuffer: "          first line          "},
-		{LineBuffer: "               first line               "},
+	setContent(&vp, []string{
+		"    first line     ",
+		"          first line          ",
+		"               first line               ",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -268,9 +268,9 @@ func TestViewport_SelectionOff_WrapOff_MultiHeader(t *testing.T) {
 	w, h := 15, 2
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header1", "header2"})
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "line1"},
-		{LineBuffer: "line2"},
+	setContent(&vp, []string{
+		"line1",
+		"line2",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header1",
@@ -327,9 +327,9 @@ func TestViewport_SelectionOff_WrapOff_OverflowLine(t *testing.T) {
 	w, h := 15, 5
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"long header overflows"})
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "123456789012345"},
-		{LineBuffer: "1234567890123456"},
+	setContent(&vp, []string{
+		"123456789012345",
+		"1234567890123456",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"long header ...",
@@ -343,13 +343,13 @@ func TestViewport_SelectionOff_WrapOff_OverflowHeight(t *testing.T) {
 	w, h := 15, 6
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "123456789012345"},
-		{LineBuffer: "1234567890123456"},
-		{LineBuffer: "1234567890123456"},
-		{LineBuffer: "1234567890123456"},
-		{LineBuffer: "1234567890123456"},
-		{LineBuffer: "1234567890123456"},
+	setContent(&vp, []string{
+		"123456789012345",
+		"1234567890123456",
+		"1234567890123456",
+		"1234567890123456",
+		"1234567890123456",
+		"1234567890123456",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -366,23 +366,23 @@ func TestViewport_SelectionOff_WrapOff_Scrolling(t *testing.T) {
 	w, h := 15, 6
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
-	setContent := func() {
-		vp.SetContent([]RenderableString{
-			{LineBuffer: "first"},
-			{LineBuffer: "second"},
-			{LineBuffer: "third"},
-			{LineBuffer: "fourth"},
-			{LineBuffer: "fifth"},
-			{LineBuffer: "sixth"},
+	doSetContent := func() {
+		setContent(&vp, []string{
+			"first",
+			"second",
+			"third",
+			"fourth",
+			"fifth",
+			"sixth",
 		})
 	}
 	validate := func(expectedView string) {
 		// set content multiple times to confirm no side effects of doing it
 		util.CmpStr(t, expectedView, vp.View())
-		setContent()
+		doSetContent()
 		util.CmpStr(t, expectedView, vp.View())
 	}
-	setContent()
+	doSetContent()
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
 		"first",
@@ -430,13 +430,13 @@ func TestViewport_SelectionOff_WrapOff_ScrollToItem(t *testing.T) {
 	w, h := 15, 4
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
-		{LineBuffer: "second"},
-		{LineBuffer: "third"},
-		{LineBuffer: "fourth"},
-		{LineBuffer: "fifth"},
-		{LineBuffer: "sixth"},
+	setContent(&vp, []string{
+		"first",
+		"second",
+		"third",
+		"fourth",
+		"fifth",
+		"sixth",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -471,13 +471,13 @@ func TestViewport_SelectionOff_WrapOff_BulkScrolling(t *testing.T) {
 	w, h := 15, 4
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
-		{LineBuffer: "second"},
-		{LineBuffer: "third"},
-		{LineBuffer: "fourth"},
-		{LineBuffer: "fifth"},
-		{LineBuffer: "sixth"},
+	setContent(&vp, []string{
+		"first",
+		"second",
+		"third",
+		"fourth",
+		"fifth",
+		"sixth",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -572,23 +572,23 @@ func TestViewport_SelectionOff_WrapOff_Panning(t *testing.T) {
 	w, h := 10, 6
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header long"})
-	setContent := func() {
-		vp.SetContent([]RenderableString{
-			{LineBuffer: "first line that is fairly long"},
-			{LineBuffer: "second line that is even much longer than the first"},
-			{LineBuffer: "third line that is fairly long"},
-			{LineBuffer: "fourth"},
-			{LineBuffer: "fifth line that is fairly long"},
-			{LineBuffer: "sixth"},
+	doSetContent := func() {
+		setContent(&vp, []string{
+			"first line that is fairly long",
+			"second line that is even much longer than the first",
+			"third line that is fairly long",
+			"fourth",
+			"fifth line that is fairly long",
+			"sixth",
 		})
 	}
 	validate := func(expectedView string) {
 		// set content multiple times to confirm no side effects of doing it
 		util.CmpStr(t, expectedView, vp.View())
-		setContent()
+		doSetContent()
 		util.CmpStr(t, expectedView, vp.View())
 	}
-	setContent()
+	doSetContent()
 	expectedView := pad(vp.width, vp.height, []string{
 		"header ...",
 		"first l...",
@@ -648,8 +648,8 @@ func TestViewport_SelectionOff_WrapOff_Panning(t *testing.T) {
 	validate(expectedView)
 
 	// set shorter content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the first one"},
+	setContent(&vp, []string{
+		"the first one",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header ...",
@@ -662,13 +662,13 @@ func TestViewport_SelectionOff_WrapOff_ChangeHeight(t *testing.T) {
 	w, h := 10, 3
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
-		{LineBuffer: "second"},
-		{LineBuffer: "third"},
-		{LineBuffer: "fourth"},
-		{LineBuffer: "fifth"},
-		{LineBuffer: "sixth"},
+	setContent(&vp, []string{
+		"first",
+		"second",
+		"third",
+		"fourth",
+		"fifth",
+		"sixth",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -730,13 +730,13 @@ func TestViewport_SelectionOff_WrapOff_ChangeContent(t *testing.T) {
 	w, h := 10, 5
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
-		{LineBuffer: "second"},
-		{LineBuffer: "third"},
-		{LineBuffer: "fourth"},
-		{LineBuffer: "fifth"},
-		{LineBuffer: "sixth"},
+	setContent(&vp, []string{
+		"first",
+		"second",
+		"third",
+		"fourth",
+		"fifth",
+		"sixth",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -761,16 +761,16 @@ func TestViewport_SelectionOff_WrapOff_ChangeContent(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// remove content
-	vp.SetContent([]RenderableString{})
+	setContent(&vp, []string{})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 	})
 	util.CmpStr(t, expectedView, vp.View())
 
 	// re-add content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
-		{LineBuffer: "second"},
+	setContent(&vp, []string{
+		"first",
+		"second",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -786,11 +786,11 @@ func TestViewport_SelectionOff_WrapOff_StringToHighlight(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetStringToHighlight("second")
 	vp.HighlightStyle = lipgloss.NewStyle().Foreground(red)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
-		{LineBuffer: "second"},
-		{LineBuffer: "second"},
-		{LineBuffer: "third"},
+	setContent(&vp, []string{
+		"first",
+		"second",
+		"second",
+		"third",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -807,8 +807,8 @@ func TestViewport_SelectionOff_WrapOff_StringToHighlightManyMatches(t *testing.T
 		w, h := 10, 5
 		vp := newViewport(w, h)
 		vp.SetHeader([]string{"header"})
-		vp.SetContent([]RenderableString{
-			{LineBuffer: strings.Repeat("r", 100000)},
+		setContent(&vp, []string{
+			strings.Repeat("r", 100000),
 		})
 		vp.SetStringToHighlight("r")
 		vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
@@ -826,8 +826,8 @@ func TestViewport_SelectionOff_WrapOff_StringToHighlightAnsi(t *testing.T) {
 	w, h := 20, 5
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "line \x1b[38;2;255;0;0mred\x1b[m e again"},
+	setContent(&vp, []string{
+		"line \x1b[38;2;255;0;0mred\x1b[m e again",
 	})
 	vp.SetStringToHighlight("e")
 	vp.HighlightStyle = selectionStyle
@@ -851,9 +851,9 @@ func TestViewport_SelectionOff_WrapOff_StringToHighlightAnsiUnicode(t *testing.T
 	vp := newViewport(w, h)
 	// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
 	vp.SetHeader([]string{"A💖中e\u0301"})
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "A💖中e\u0301"},
-		{LineBuffer: "A💖中e\u0301A💖中e\u0301"},
+	setContent(&vp, []string{
+		"A💖中e\u0301",
+		"A💖中e\u0301A💖中e\u0301",
 	})
 	vp.SetStringToHighlight("中e\u0301")
 	vp.HighlightStyle = selectionStyle
@@ -883,7 +883,7 @@ func TestViewport_SelectionOn_WrapOff_SmolDimensions(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetSelectionEnabled(true)
 	vp.SetHeader([]string{"header"})
-	vp.SetContent([]RenderableString{{LineBuffer: "hi"}})
+	setContent(&vp, []string{"hi"})
 	expectedView := pad(vp.width, vp.height, []string{""})
 	util.CmpStr(t, expectedView, vp.View())
 
@@ -912,11 +912,11 @@ func TestViewport_SelectionOn_WrapOff_Basic(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first line"},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("second") + " line"},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("a really really long line")},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line"},
+	setContent(&vp, []string{
+		"first line",
+		lipgloss.NewStyle().Foreground(red).Render("second") + " line",
+		lipgloss.NewStyle().Foreground(red).Render("a really really long line"),
+		lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -934,9 +934,9 @@ func TestViewport_SelectionOn_WrapOff_GetConfigs(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
-		{LineBuffer: "second"},
+	setContent(&vp, []string{
+		"first",
+		"second",
 	})
 	if selectionEnabled := vp.GetSelectionEnabled(); !selectionEnabled {
 		t.Errorf("expected selection to be enabled, got %v", selectionEnabled)
@@ -951,7 +951,7 @@ func TestViewport_SelectionOn_WrapOff_GetConfigs(t *testing.T) {
 	if selectedItemIdx := vp.GetSelectedItemIdx(); selectedItemIdx != 1 {
 		t.Errorf("expected selected item index to be 1, got %v", selectedItemIdx)
 	}
-	if selectedItem := vp.GetSelectedItem(); selectedItem.Render() != "second" {
+	if selectedItem := vp.GetSelectedItem(); selectedItem.Render().Content != "second" {
 		t.Errorf("got unexpected selected item: %v", selectedItem)
 	}
 }
@@ -961,11 +961,11 @@ func TestViewport_SelectionOn_WrapOff_ShowFooter(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first line"},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("second") + " line"},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("a really really long line")},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line"},
+	setContent(&vp, []string{
+		"first line",
+		lipgloss.NewStyle().Foreground(red).Render("second") + " line",
+		lipgloss.NewStyle().Foreground(red).Render("a really really long line"),
+		lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -1004,11 +1004,11 @@ func TestViewport_SelectionOn_WrapOff_FooterStyle(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
 	vp.FooterStyle = lipgloss.NewStyle().Foreground(red)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "1"},
-		{LineBuffer: "2"},
-		{LineBuffer: "3"},
-		{LineBuffer: "4"},
+	setContent(&vp, []string{
+		"1",
+		"2",
+		"3",
+		"4",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -1025,11 +1025,11 @@ func TestViewport_SelectionOn_WrapOff_FooterDisabled(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first line"},
-		{LineBuffer: "second line"},
-		{LineBuffer: "third line"},
-		{LineBuffer: "fourth line"},
+	setContent(&vp, []string{
+		"first line",
+		"second line",
+		"third line",
+		"fourth line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -1056,10 +1056,10 @@ func TestViewport_SelectionOn_WrapOff_SpaceAround(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "    first line     "},
-		{LineBuffer: "          first line          "},
-		{LineBuffer: "               first line               "},
+	setContent(&vp, []string{
+		"    first line     ",
+		"          first line          ",
+		"               first line               ",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -1076,9 +1076,9 @@ func TestViewport_SelectionOn_WrapOff_MultiHeader(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header1", "header2"})
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "line1"},
-		{LineBuffer: "line2"},
+	setContent(&vp, []string{
+		"line1",
+		"line2",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header1",
@@ -1136,9 +1136,9 @@ func TestViewport_SelectionOn_WrapOff_OverflowLine(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"long header overflows"})
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "123456789012345"},
-		{LineBuffer: "1234567890123456"},
+	setContent(&vp, []string{
+		"123456789012345",
+		"1234567890123456",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"long header ...",
@@ -1153,13 +1153,13 @@ func TestViewport_SelectionOn_WrapOff_OverflowHeight(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "123456789012345"},
-		{LineBuffer: "1234567890123456"},
-		{LineBuffer: "1234567890123456"},
-		{LineBuffer: "1234567890123456"},
-		{LineBuffer: "1234567890123456"},
-		{LineBuffer: "1234567890123456"},
+	setContent(&vp, []string{
+		"123456789012345",
+		"1234567890123456",
+		"1234567890123456",
+		"1234567890123456",
+		"1234567890123456",
+		"1234567890123456",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -1177,23 +1177,23 @@ func TestViewport_SelectionOn_WrapOff_Scrolling(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
-	setContent := func() {
-		vp.SetContent([]RenderableString{
-			{LineBuffer: "first"},
-			{LineBuffer: "second"},
-			{LineBuffer: "third"},
-			{LineBuffer: "fourth"},
-			{LineBuffer: "fifth"},
-			{LineBuffer: "sixth"},
+	doSetContent := func() {
+		setContent(&vp, []string{
+			"first",
+			"second",
+			"third",
+			"fourth",
+			"fifth",
+			"sixth",
 		})
 	}
 	validate := func(expectedView string) {
 		// set content multiple times to confirm no side effects of doing it
 		util.CmpStr(t, expectedView, vp.View())
-		setContent()
+		doSetContent()
 		util.CmpStr(t, expectedView, vp.View())
 	}
-	setContent()
+	doSetContent()
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
 		"\x1b[38;2;0;0;255mfirst\x1b[m",
@@ -1245,13 +1245,13 @@ func TestViewport_SelectionOn_WrapOff_ScrollToItem(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
-		{LineBuffer: "second"},
-		{LineBuffer: "third"},
-		{LineBuffer: "fourth"},
-		{LineBuffer: "fifth"},
-		{LineBuffer: "sixth"},
+	setContent(&vp, []string{
+		"first",
+		"second",
+		"third",
+		"fourth",
+		"fifth",
+		"sixth",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -1297,13 +1297,13 @@ func TestViewport_SelectionOn_WrapOff_BulkScrolling(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
-		{LineBuffer: "second"},
-		{LineBuffer: "third"},
-		{LineBuffer: "fourth"},
-		{LineBuffer: "fifth"},
-		{LineBuffer: "sixth"},
+	setContent(&vp, []string{
+		"first",
+		"second",
+		"third",
+		"fourth",
+		"fifth",
+		"sixth",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -1409,23 +1409,23 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header long"})
 	vp.SetSelectionEnabled(true)
-	setContent := func() {
-		vp.SetContent([]RenderableString{
-			{LineBuffer: "first line that is fairly long"},
-			{LineBuffer: "second line that is even much longer than the first"},
-			{LineBuffer: "third line that is fairly long"},
-			{LineBuffer: "fourth"},
-			{LineBuffer: "fifth line that is fairly long"},
-			{LineBuffer: "sixth"},
+	doSetContent := func() {
+		setContent(&vp, []string{
+			"first line that is fairly long",
+			"second line that is even much longer than the first",
+			"third line that is fairly long",
+			"fourth",
+			"fifth line that is fairly long",
+			"sixth",
 		})
 	}
 	validate := func(expectedView string) {
 		// set content multiple times to confirm no side effects of doing it
 		util.CmpStr(t, expectedView, vp.View())
-		setContent()
+		doSetContent()
 		util.CmpStr(t, expectedView, vp.View())
 	}
-	setContent()
+	doSetContent()
 	expectedView := pad(vp.width, vp.height, []string{
 		"header ...",
 		"\x1b[38;2;0;0;255mfirst l...\x1b[m",
@@ -1581,8 +1581,8 @@ func TestViewport_SelectionOn_WrapOff_Panning(t *testing.T) {
 	validate(expectedView)
 
 	// set shorter content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the first one"},
+	setContent(&vp, []string{
+		"the first one",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header ...",
@@ -1597,13 +1597,13 @@ func TestViewport_SelectionOn_WrapOff_MaintainSelection(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
 	vp.SetMaintainSelection(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "sixth"},
-		{LineBuffer: "seventh"},
-		{LineBuffer: "eighth"},
-		{LineBuffer: "ninth"},
-		{LineBuffer: "tenth"},
-		{LineBuffer: "eleventh"},
+	setContent(&vp, []string{
+		"sixth",
+		"seventh",
+		"eighth",
+		"ninth",
+		"tenth",
+		"eleventh",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -1626,18 +1626,18 @@ func TestViewport_SelectionOn_WrapOff_MaintainSelection(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add content above
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
-		{LineBuffer: "second"},
-		{LineBuffer: "third"},
-		{LineBuffer: "fourth"},
-		{LineBuffer: "fifth"},
-		{LineBuffer: "sixth"},
-		{LineBuffer: "seventh"},
-		{LineBuffer: "eighth"},
-		{LineBuffer: "ninth"},
-		{LineBuffer: "tenth"},
-		{LineBuffer: "eleventh"},
+	setContent(&vp, []string{
+		"first",
+		"second",
+		"third",
+		"fourth",
+		"fifth",
+		"sixth",
+		"seventh",
+		"eighth",
+		"ninth",
+		"tenth",
+		"eleventh",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -1649,23 +1649,23 @@ func TestViewport_SelectionOn_WrapOff_MaintainSelection(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add content below
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
-		{LineBuffer: "second"},
-		{LineBuffer: "third"},
-		{LineBuffer: "fourth"},
-		{LineBuffer: "fifth"},
-		{LineBuffer: "sixth"},
-		{LineBuffer: "seventh"},
-		{LineBuffer: "eighth"},
-		{LineBuffer: "ninth"},
-		{LineBuffer: "tenth"},
-		{LineBuffer: "eleventh"},
-		{LineBuffer: "twelfth"},
-		{LineBuffer: "thirteenth"},
-		{LineBuffer: "fourteenth"},
-		{LineBuffer: "fifteenth"},
-		{LineBuffer: "sixteenth"},
+	setContent(&vp, []string{
+		"first",
+		"second",
+		"third",
+		"fourth",
+		"fifth",
+		"sixth",
+		"seventh",
+		"eighth",
+		"ninth",
+		"tenth",
+		"eleventh",
+		"twelfth",
+		"thirteenth",
+		"fourteenth",
+		"fifteenth",
+		"sixteenth",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -1685,8 +1685,8 @@ func TestViewport_SelectionOn_WrapOff_StickyTop(t *testing.T) {
 	// stickyness should override maintain selection
 	vp.SetMaintainSelection(true)
 	vp.SetTopSticky(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
+	setContent(&vp, []string{
+		"first",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -1695,9 +1695,9 @@ func TestViewport_SelectionOn_WrapOff_StickyTop(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "second"},
-		{LineBuffer: "first"},
+	setContent(&vp, []string{
+		"second",
+		"first",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -1718,10 +1718,10 @@ func TestViewport_SelectionOn_WrapOff_StickyTop(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "second"},
-		{LineBuffer: "first"},
-		{LineBuffer: "third"},
+	setContent(&vp, []string{
+		"second",
+		"first",
+		"third",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -1740,8 +1740,8 @@ func TestViewport_SelectionOn_WrapOff_StickyBottom(t *testing.T) {
 	// stickyness should override maintain selection
 	vp.SetMaintainSelection(true)
 	vp.SetBottomSticky(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
+	setContent(&vp, []string{
+		"first",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -1750,9 +1750,9 @@ func TestViewport_SelectionOn_WrapOff_StickyBottom(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "second"},
-		{LineBuffer: "first"},
+	setContent(&vp, []string{
+		"second",
+		"first",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -1773,10 +1773,10 @@ func TestViewport_SelectionOn_WrapOff_StickyBottom(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "second"},
-		{LineBuffer: "first"},
-		{LineBuffer: "third"},
+	setContent(&vp, []string{
+		"second",
+		"first",
+		"third",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -1797,16 +1797,16 @@ func TestViewport_SelectionOn_WrapOff_StickyBottomOverflowHeight(t *testing.T) {
 	vp.SetBottomSticky(true)
 
 	// test covers case where first set content to empty, then overflow height
-	vp.SetContent([]RenderableString{})
+	setContent(&vp, []string{})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
 	})
 	util.CmpStr(t, expectedView, vp.View())
 
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "second"},
-		{LineBuffer: "first"},
-		{LineBuffer: "third"},
+	setContent(&vp, []string{
+		"second",
+		"first",
+		"third",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -1826,8 +1826,8 @@ func TestViewport_SelectionOn_WrapOff_StickyTopBottom(t *testing.T) {
 	vp.SetMaintainSelection(true)
 	vp.SetTopSticky(true)
 	vp.SetBottomSticky(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
+	setContent(&vp, []string{
+		"first",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -1836,9 +1836,9 @@ func TestViewport_SelectionOn_WrapOff_StickyTopBottom(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add content, top sticky wins out arbitrarily when both set
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "second"},
-		{LineBuffer: "first"},
+	setContent(&vp, []string{
+		"second",
+		"first",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -1859,10 +1859,10 @@ func TestViewport_SelectionOn_WrapOff_StickyTopBottom(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "second"},
-		{LineBuffer: "first"},
-		{LineBuffer: "third"},
+	setContent(&vp, []string{
+		"second",
+		"first",
+		"third",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -1883,11 +1883,11 @@ func TestViewport_SelectionOn_WrapOff_StickyTopBottom(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "second"},
-		{LineBuffer: "first"},
-		{LineBuffer: "third"},
-		{LineBuffer: "fourth"},
+	setContent(&vp, []string{
+		"second",
+		"first",
+		"third",
+		"fourth",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -1905,11 +1905,11 @@ func TestViewport_SelectionOn_WrapOff_RemoveLogsWhenSelectionBottom(t *testing.T
 	vp.SetSelectionEnabled(true)
 
 	// add content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "second"},
-		{LineBuffer: "first"},
-		{LineBuffer: "third"},
-		{LineBuffer: "fourth"},
+	setContent(&vp, []string{
+		"second",
+		"first",
+		"third",
+		"fourth",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -1928,9 +1928,9 @@ func TestViewport_SelectionOn_WrapOff_RemoveLogsWhenSelectionBottom(t *testing.T
 	util.CmpStr(t, expectedView, vp.View())
 
 	// remove content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "second"},
-		{LineBuffer: "first"},
+	setContent(&vp, []string{
+		"second",
+		"first",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -1945,13 +1945,13 @@ func TestViewport_SelectionOn_WrapOff_ChangeHeight(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
-		{LineBuffer: "second"},
-		{LineBuffer: "third"},
-		{LineBuffer: "fourth"},
-		{LineBuffer: "fifth"},
-		{LineBuffer: "sixth"},
+	setContent(&vp, []string{
+		"first",
+		"second",
+		"third",
+		"fourth",
+		"fifth",
+		"sixth",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -2057,13 +2057,13 @@ func TestViewport_SelectionOn_WrapOff_ChangeContent(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
-		{LineBuffer: "second"},
-		{LineBuffer: "third"},
-		{LineBuffer: "fourth"},
-		{LineBuffer: "fifth"},
-		{LineBuffer: "sixth"},
+	setContent(&vp, []string{
+		"first",
+		"second",
+		"third",
+		"fourth",
+		"fifth",
+		"sixth",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -2086,8 +2086,8 @@ func TestViewport_SelectionOn_WrapOff_ChangeContent(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// remove content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "second"},
+	setContent(&vp, []string{
+		"second",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -2096,20 +2096,20 @@ func TestViewport_SelectionOn_WrapOff_ChangeContent(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// remove all content
-	vp.SetContent([]RenderableString{})
+	setContent(&vp, []string{})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 	})
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add content (maintain selection off)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
-		{LineBuffer: "second"},
-		{LineBuffer: "third"},
-		{LineBuffer: "fourth"},
-		{LineBuffer: "fifth"},
-		{LineBuffer: "sixth"},
+	setContent(&vp, []string{
+		"first",
+		"second",
+		"third",
+		"fourth",
+		"fifth",
+		"sixth",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -2129,11 +2129,11 @@ func TestViewport_SelectionOn_WrapOff_StringToHighlight(t *testing.T) {
 	vp.SetStringToHighlight("second")
 	vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
 	vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the first line"},
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the fourth line"},
+	setContent(&vp, []string{
+		"the first line",
+		"the second line",
+		"the second line",
+		"the fourth line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -2154,11 +2154,11 @@ func TestViewport_SelectionOn_WrapOff_StringToHighlight(t *testing.T) {
 	})
 	util.CmpStr(t, expectedView, vp.View())
 
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first line"},
-		{LineBuffer: "second line"},
-		{LineBuffer: "second line"},
-		{LineBuffer: "fourth line"},
+	setContent(&vp, []string{
+		"first line",
+		"second line",
+		"second line",
+		"fourth line",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -2176,8 +2176,8 @@ func TestViewport_SelectionOn_WrapOff_StringToHighlightManyMatches(t *testing.T)
 		vp := newViewport(w, h)
 		vp.SetHeader([]string{"header"})
 		vp.SetSelectionEnabled(true)
-		vp.SetContent([]RenderableString{
-			{LineBuffer: strings.Repeat("r", 100000)},
+		setContent(&vp, []string{
+			strings.Repeat("r", 100000),
 		})
 		vp.SetStringToHighlight("r")
 		vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
@@ -2196,8 +2196,8 @@ func TestViewport_SelectionOn_WrapOff_AnsiOnSelection(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "line with \x1b[38;2;255;0;0mred\x1b[m text"},
+	setContent(&vp, []string{
+		"line with \x1b[38;2;255;0;0mred\x1b[m text",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -2211,8 +2211,8 @@ func TestViewport_SelectionOn_WrapOff_SelectionEmpty(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: ""},
+	setContent(&vp, []string{
+		"",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -2226,8 +2226,8 @@ func TestViewport_SelectionOn_WrapOff_ExtraSlash(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "|2024|\x1b[38;2;0mfl..lq\x1b[m/\x1b[38;2;0mflask-3\x1b[m|"},
+	setContent(&vp, []string{
+		"|2024|\x1b[38;2;0mfl..lq\x1b[m/\x1b[38;2;0mflask-3\x1b[m|",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -2242,9 +2242,9 @@ func TestViewport_SelectionOn_WrapOff_StringToHighlightAnsiUnicode(t *testing.T)
 	// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
 	vp.SetHeader([]string{"A💖中e\u0301"})
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "A💖中e\u0301"},
-		{LineBuffer: "A💖中e\u0301A💖中e\u0301"},
+	setContent(&vp, []string{
+		"A💖中e\u0301",
+		"A💖中e\u0301A💖中e\u0301",
 	})
 	vp.SetStringToHighlight("中e\u0301")
 	vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
@@ -2275,7 +2275,7 @@ func TestViewport_SelectionOff_WrapOn_SmolDimensions(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetWrapText(true)
 	vp.SetHeader([]string{"header"})
-	vp.SetContent([]RenderableString{{LineBuffer: "hi"}})
+	setContent(&vp, []string{"hi"})
 	expectedView := pad(vp.width, vp.height, []string{""})
 	util.CmpStr(t, expectedView, vp.View())
 
@@ -2305,11 +2305,11 @@ func TestViewport_SelectionOff_WrapOn_Basic(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first line"},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("second") + " line"},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("a really really long line")},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line"},
+	setContent(&vp, []string{
+		"first line",
+		lipgloss.NewStyle().Foreground(red).Render("second") + " line",
+		lipgloss.NewStyle().Foreground(red).Render("a really really long line"),
+		lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -2327,9 +2327,9 @@ func TestViewport_SelectionOff_WrapOn_GetConfigs(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
-		{LineBuffer: "second"},
+	setContent(&vp, []string{
+		"first",
+		"second",
 	})
 	if selectionEnabled := vp.GetSelectionEnabled(); selectionEnabled {
 		t.Errorf("expected selection to be disabled, got %v", selectionEnabled)
@@ -2350,11 +2350,11 @@ func TestViewport_SelectionOff_WrapOn_ShowFooter(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first line"},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("second") + " line"},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("a really really long line")},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line"},
+	setContent(&vp, []string{
+		"first line",
+		lipgloss.NewStyle().Foreground(red).Render("second") + " line",
+		lipgloss.NewStyle().Foreground(red).Render("a really really long line"),
+		lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -2399,11 +2399,11 @@ func TestViewport_SelectionOff_WrapOn_FooterStyle(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
 	vp.FooterStyle = lipgloss.NewStyle().Foreground(red)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "1"},
-		{LineBuffer: "2"},
-		{LineBuffer: "3"},
-		{LineBuffer: "4"},
+	setContent(&vp, []string{
+		"1",
+		"2",
+		"3",
+		"4",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -2420,11 +2420,11 @@ func TestViewport_SelectionOff_WrapOn_FooterDisabled(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first line"},
-		{LineBuffer: "second line"},
-		{LineBuffer: "third line"},
-		{LineBuffer: "fourth line"},
+	setContent(&vp, []string{
+		"first line",
+		"second line",
+		"third line",
+		"fourth line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -2451,10 +2451,10 @@ func TestViewport_SelectionOff_WrapOn_SpaceAround(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "    first line     "},
-		{LineBuffer: "          first line          "},
-		{LineBuffer: "               first line               "},
+	setContent(&vp, []string{
+		"    first line     ",
+		"          first line          ",
+		"               first line               ",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -2471,9 +2471,9 @@ func TestViewport_SelectionOff_WrapOn_MultiHeader(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header1", "header2"})
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "line1"},
-		{LineBuffer: "line2"},
+	setContent(&vp, []string{
+		"line1",
+		"line2",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header1",
@@ -2531,9 +2531,9 @@ func TestViewport_SelectionOff_WrapOn_OverflowLine(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"long header overflows"})
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "123456789012345"},
-		{LineBuffer: "1234567890123456"},
+	setContent(&vp, []string{
+		"123456789012345",
+		"1234567890123456",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"long header ove",
@@ -2551,13 +2551,13 @@ func TestViewport_SelectionOff_WrapOn_OverflowHeight(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "123456789012345"},
-		{LineBuffer: "1234567890123456"},
-		{LineBuffer: "1234567890123456"},
-		{LineBuffer: "1234567890123456"},
-		{LineBuffer: "1234567890123456"},
-		{LineBuffer: "1234567890123456"},
+	setContent(&vp, []string{
+		"123456789012345",
+		"1234567890123456",
+		"1234567890123456",
+		"1234567890123456",
+		"1234567890123456",
+		"1234567890123456",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -2575,23 +2575,23 @@ func TestViewport_SelectionOff_WrapOn_Scrolling(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
-	setContent := func() {
-		vp.SetContent([]RenderableString{
-			{LineBuffer: "first"},
-			{LineBuffer: "second"},
-			{LineBuffer: "third"},
-			{LineBuffer: "fourth"},
-			{LineBuffer: "fifth"},
-			{LineBuffer: "sixth"},
+	doSetContent := func() {
+		setContent(&vp, []string{
+			"first",
+			"second",
+			"third",
+			"fourth",
+			"fifth",
+			"sixth",
 		})
 	}
 	validate := func(expectedView string) {
 		// set content multiple times to confirm no side effects of doing it
 		util.CmpStr(t, expectedView, vp.View())
-		setContent()
+		doSetContent()
 		util.CmpStr(t, expectedView, vp.View())
 	}
-	setContent()
+	doSetContent()
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
 		"first",
@@ -2640,10 +2640,10 @@ func TestViewport_SelectionOff_WrapOn_ScrollToItem(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the first line"},
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the third line"},
+	setContent(&vp, []string{
+		"the first line",
+		"the second line",
+		"the third line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -2679,10 +2679,10 @@ func TestViewport_SelectionOff_WrapOn_BulkScrolling(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the first line"},
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the third line"},
+	setContent(&vp, []string{
+		"the first line",
+		"the second line",
+		"the third line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -2778,23 +2778,23 @@ func TestViewport_SelectionOff_WrapOn_Panning(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header long"})
 	vp.SetWrapText(true)
-	setContent := func() {
-		vp.SetContent([]RenderableString{
-			{LineBuffer: "first line that is fairly long"},
-			{LineBuffer: "second line that is even much longer than the first"},
-			{LineBuffer: "third line that is fairly long"},
-			{LineBuffer: "fourth"},
-			{LineBuffer: "fifth line that is fairly long"},
-			{LineBuffer: "sixth"},
+	doSetContent := func() {
+		setContent(&vp, []string{
+			"first line that is fairly long",
+			"second line that is even much longer than the first",
+			"third line that is fairly long",
+			"fourth",
+			"fifth line that is fairly long",
+			"sixth",
 		})
 	}
 	validate := func(expectedView string) {
 		// set content multiple times to confirm no side effects of doing it
 		util.CmpStr(t, expectedView, vp.View())
-		setContent()
+		doSetContent()
 		util.CmpStr(t, expectedView, vp.View())
 	}
-	setContent()
+	doSetContent()
 	expectedView := pad(vp.width, vp.height, []string{
 		"header lon",
 		"g",
@@ -2859,10 +2859,10 @@ func TestViewport_SelectionOff_WrapOn_ChangeHeight(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the first line"},
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the third line"},
+	setContent(&vp, []string{
+		"the first line",
+		"the second line",
+		"the third line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -2921,10 +2921,10 @@ func TestViewport_SelectionOff_WrapOn_ChangeContent(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the first line"},
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the third line"},
+	setContent(&vp, []string{
+		"the first line",
+		"the second line",
+		"the third line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -2946,9 +2946,9 @@ func TestViewport_SelectionOff_WrapOn_ChangeContent(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// remove content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the first line"},
-		{LineBuffer: "the second line"},
+	setContent(&vp, []string{
+		"the first line",
+		"the second line",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -2959,11 +2959,11 @@ func TestViewport_SelectionOff_WrapOn_ChangeContent(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the first line"},
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the third line"},
-		{LineBuffer: "the fourth line"},
+	setContent(&vp, []string{
+		"the first line",
+		"the second line",
+		"the third line",
+		"the fourth line",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -2974,7 +2974,7 @@ func TestViewport_SelectionOff_WrapOn_ChangeContent(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// remove all content
-	vp.SetContent([]RenderableString{})
+	setContent(&vp, []string{})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 	})
@@ -2988,11 +2988,11 @@ func TestViewport_SelectionOff_WrapOn_StringToHighlight(t *testing.T) {
 	vp.SetWrapText(true)
 	vp.SetStringToHighlight("second")
 	vp.HighlightStyle = lipgloss.NewStyle().Foreground(red)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
-		{LineBuffer: "second"},
-		{LineBuffer: "second"},
-		{LineBuffer: "third"},
+	setContent(&vp, []string{
+		"first",
+		"second",
+		"second",
+		"third",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -3003,8 +3003,8 @@ func TestViewport_SelectionOff_WrapOn_StringToHighlight(t *testing.T) {
 	})
 	util.CmpStr(t, expectedView, vp.View())
 
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "averylongwordthatwraps"},
+	setContent(&vp, []string{
+		"averylongwordthatwraps",
 	})
 	vp.SetStringToHighlight("wraps")
 	expectedView = pad(vp.width, vp.height, []string{
@@ -3023,8 +3023,8 @@ func TestViewport_SelectionOff_WrapOn_StringToHighlightManyMatches(t *testing.T)
 		vp := newViewport(w, h)
 		vp.SetHeader([]string{"header"})
 		vp.SetWrapText(true)
-		vp.SetContent([]RenderableString{
-			{LineBuffer: strings.Repeat("r", 100000)},
+		setContent(&vp, []string{
+			strings.Repeat("r", 100000),
 		})
 		vp.SetStringToHighlight("r")
 		vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
@@ -3046,8 +3046,8 @@ func TestViewport_SelectionOff_WrapOn_StringToHighlightAnsi(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "line \x1b[38;2;255;0;0mred\x1b[m e again"},
+	setContent(&vp, []string{
+		"line \x1b[38;2;255;0;0mred\x1b[m e again",
 	})
 	vp.SetStringToHighlight("e")
 	vp.HighlightStyle = selectionStyle
@@ -3074,10 +3074,10 @@ func TestViewport_SelectionOff_WrapOn_SuperLongWrappedLine(t *testing.T) {
 		vp := newViewport(w, h)
 		vp.SetHeader([]string{"header"})
 		vp.SetWrapText(true)
-		vp.SetContent([]RenderableString{
-			{LineBuffer: "smol"},
-			{LineBuffer: strings.Repeat("12345678", 1000000)},
-			{LineBuffer: "smol"},
+		setContent(&vp, []string{
+			"smol",
+			strings.Repeat("12345678", 1000000),
+			"smol",
 		})
 		expectedView := pad(vp.width, vp.height, []string{
 			"header",
@@ -3127,9 +3127,9 @@ func TestViewport_SelectionOff_WrapOn_StringToHighlightAnsiUnicode(t *testing.T)
 	// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
 	vp.SetHeader([]string{"A💖中e\u0301"})
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "A💖中e\u0301"},
-		{LineBuffer: "A💖中e\u0301A💖中e\u0301"},
+	setContent(&vp, []string{
+		"A💖中e\u0301",
+		"A💖中e\u0301A💖中e\u0301",
 	})
 	vp.SetStringToHighlight("中e\u0301")
 	vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
@@ -3164,7 +3164,7 @@ func TestViewport_SelectionOn_WrapOn_SmolDimensions(t *testing.T) {
 	vp.SetWrapText(true)
 	vp.SetSelectionEnabled(true)
 	vp.SetHeader([]string{"header"})
-	vp.SetContent([]RenderableString{{LineBuffer: "hi"}})
+	setContent(&vp, []string{"hi"})
 	expectedView := pad(vp.width, vp.height, []string{""})
 	util.CmpStr(t, expectedView, vp.View())
 
@@ -3201,11 +3201,11 @@ func TestViewport_SelectionOn_WrapOn_Basic(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first line"},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("second") + " line"},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("a really really long line")},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line"},
+	setContent(&vp, []string{
+		"first line",
+		lipgloss.NewStyle().Foreground(red).Render("second") + " line",
+		lipgloss.NewStyle().Foreground(red).Render("a really really long line"),
+		lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -3224,9 +3224,9 @@ func TestViewport_SelectionOn_WrapOn_GetConfigs(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
-		{LineBuffer: "second"},
+	setContent(&vp, []string{
+		"first",
+		"second",
 	})
 	if selectionEnabled := vp.GetSelectionEnabled(); !selectionEnabled {
 		t.Errorf("expected selection to be enabled, got %v", selectionEnabled)
@@ -3241,7 +3241,7 @@ func TestViewport_SelectionOn_WrapOn_GetConfigs(t *testing.T) {
 	if selectedItemIdx := vp.GetSelectedItemIdx(); selectedItemIdx != 1 {
 		t.Errorf("expected selected item index to be 1, got %v", selectedItemIdx)
 	}
-	if selectedItem := vp.GetSelectedItem(); selectedItem.Render() != "second" {
+	if selectedItem := vp.GetSelectedItem(); selectedItem.Render().Content != "second" {
 		t.Errorf("got unexpected selected item: %v", selectedItem)
 	}
 }
@@ -3252,11 +3252,11 @@ func TestViewport_SelectionOn_WrapOn_ShowFooter(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first line"},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("second") + " line"},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("a really really long line")},
-		{LineBuffer: lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line"},
+	setContent(&vp, []string{
+		"first line",
+		lipgloss.NewStyle().Foreground(red).Render("second") + " line",
+		lipgloss.NewStyle().Foreground(red).Render("a really really long line"),
+		lipgloss.NewStyle().Foreground(red).Render("a") + " really really long line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -3302,11 +3302,11 @@ func TestViewport_SelectionOn_WrapOn_FooterStyle(t *testing.T) {
 	vp.SetWrapText(true)
 	vp.SetSelectionEnabled(true)
 	vp.FooterStyle = lipgloss.NewStyle().Foreground(red)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "1"},
-		{LineBuffer: "2"},
-		{LineBuffer: "3"},
-		{LineBuffer: "4"},
+	setContent(&vp, []string{
+		"1",
+		"2",
+		"3",
+		"4",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -3324,11 +3324,11 @@ func TestViewport_SelectionOn_WrapOn_FooterDisabled(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first line"},
-		{LineBuffer: "second line"},
-		{LineBuffer: "third line"},
-		{LineBuffer: "fourth line"},
+	setContent(&vp, []string{
+		"first line",
+		"second line",
+		"third line",
+		"fourth line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -3356,10 +3356,10 @@ func TestViewport_SelectionOn_WrapOn_SpaceAround(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "    first line     "},
-		{LineBuffer: "          first line          "},
-		{LineBuffer: "               first line               "},
+	setContent(&vp, []string{
+		"    first line     ",
+		"          first line          ",
+		"               first line               ",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -3377,9 +3377,9 @@ func TestViewport_SelectionOn_WrapOn_MultiHeader(t *testing.T) {
 	vp.SetHeader([]string{"header1", "header2"})
 	vp.SetSelectionEnabled(true)
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "line1"},
-		{LineBuffer: "line2"},
+	setContent(&vp, []string{
+		"line1",
+		"line2",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header1",
@@ -3438,9 +3438,9 @@ func TestViewport_SelectionOn_WrapOn_OverflowLine(t *testing.T) {
 	vp.SetHeader([]string{"long header overflows"})
 	vp.SetWrapText(true)
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "123456789012345"},
-		{LineBuffer: "1234567890123456"},
+	setContent(&vp, []string{
+		"123456789012345",
+		"1234567890123456",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"long header ove",
@@ -3459,13 +3459,13 @@ func TestViewport_SelectionOn_WrapOn_OverflowHeight(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "123456789012345"},
-		{LineBuffer: "1234567890123456"},
-		{LineBuffer: "1234567890123456"},
-		{LineBuffer: "1234567890123456"},
-		{LineBuffer: "1234567890123456"},
-		{LineBuffer: "1234567890123456"},
+	setContent(&vp, []string{
+		"123456789012345",
+		"1234567890123456",
+		"1234567890123456",
+		"1234567890123456",
+		"1234567890123456",
+		"1234567890123456",
 	})
 	vp.SetSelectedItemIdx(1)
 	expectedView := pad(vp.width, vp.height, []string{
@@ -3485,23 +3485,23 @@ func TestViewport_SelectionOn_WrapOn_Scrolling(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
 	vp.SetSelectionEnabled(true)
-	setContent := func() {
-		vp.SetContent([]RenderableString{
-			{LineBuffer: "first"},
-			{LineBuffer: "second"},
-			{LineBuffer: "third"},
-			{LineBuffer: "fourth"},
-			{LineBuffer: "fifth"},
-			{LineBuffer: "sixth"},
+	doSetContent := func() {
+		setContent(&vp, []string{
+			"first",
+			"second",
+			"third",
+			"fourth",
+			"fifth",
+			"sixth",
 		})
 	}
 	validate := func(expectedView string) {
 		// set content multiple times to confirm no side effects of doing it
 		util.CmpStr(t, expectedView, vp.View())
-		setContent()
+		doSetContent()
 		util.CmpStr(t, expectedView, vp.View())
 	}
-	setContent()
+	doSetContent()
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
 		"\x1b[38;2;0;0;255mfirst\x1b[m",
@@ -3565,10 +3565,10 @@ func TestViewport_SelectionOn_WrapOn_ScrollToItem(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the first line"},
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the third line"},
+	setContent(&vp, []string{
+		"the first line",
+		"the second line",
+		"the third line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -3623,10 +3623,10 @@ func TestViewport_SelectionOn_WrapOn_BulkScrolling(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the first line"},
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the third line"},
+	setContent(&vp, []string{
+		"the first line",
+		"the second line",
+		"the third line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -3711,23 +3711,23 @@ func TestViewport_SelectionOn_WrapOn_Panning(t *testing.T) {
 	vp.SetHeader([]string{"header long"})
 	vp.SetWrapText(true)
 	vp.SetSelectionEnabled(true)
-	setContent := func() {
-		vp.SetContent([]RenderableString{
-			{LineBuffer: "first line that is fairly long"},
-			{LineBuffer: "second line that is even much longer than the first"},
-			{LineBuffer: "third line that is fairly long as well"},
-			{LineBuffer: "fourth kinda long"},
-			{LineBuffer: "fifth kinda long too"},
-			{LineBuffer: "sixth"},
+	doSetContent := func() {
+		setContent(&vp, []string{
+			"first line that is fairly long",
+			"second line that is even much longer than the first",
+			"third line that is fairly long as well",
+			"fourth kinda long",
+			"fifth kinda long too",
+			"sixth",
 		})
 	}
 	validate := func(expectedView string) {
 		// set content multiple times to confirm no side effects of doing it
 		util.CmpStr(t, expectedView, vp.View())
-		setContent()
+		doSetContent()
 		util.CmpStr(t, expectedView, vp.View())
 	}
-	setContent()
+	doSetContent()
 	expectedView := pad(vp.width, vp.height, []string{
 		"header lon",
 		"g",
@@ -3885,13 +3885,13 @@ func TestViewport_SelectionOn_WrapOn_MaintainSelection(t *testing.T) {
 	vp.SetWrapText(true)
 	vp.SetSelectionEnabled(true)
 	vp.SetMaintainSelection(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "sixth item"},
-		{LineBuffer: "seventh item"},
-		{LineBuffer: "eighth item"},
-		{LineBuffer: "ninth item"},
-		{LineBuffer: "tenth item"},
-		{LineBuffer: "eleventh item"},
+	setContent(&vp, []string{
+		"sixth item",
+		"seventh item",
+		"eighth item",
+		"ninth item",
+		"tenth item",
+		"eleventh item",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -3916,18 +3916,18 @@ func TestViewport_SelectionOn_WrapOn_MaintainSelection(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add content above
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first item"},
-		{LineBuffer: "second item"},
-		{LineBuffer: "third item"},
-		{LineBuffer: "fourth item"},
-		{LineBuffer: "fifth item"},
-		{LineBuffer: "sixth item"},
-		{LineBuffer: "seventh item"},
-		{LineBuffer: "eighth item"},
-		{LineBuffer: "ninth item"},
-		{LineBuffer: "tenth item"},
-		{LineBuffer: "eleventh item"},
+	setContent(&vp, []string{
+		"first item",
+		"second item",
+		"third item",
+		"fourth item",
+		"fifth item",
+		"sixth item",
+		"seventh item",
+		"eighth item",
+		"ninth item",
+		"tenth item",
+		"eleventh item",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -3940,23 +3940,23 @@ func TestViewport_SelectionOn_WrapOn_MaintainSelection(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add content below
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first item"},
-		{LineBuffer: "second item"},
-		{LineBuffer: "third item"},
-		{LineBuffer: "fourth item"},
-		{LineBuffer: "fifth item"},
-		{LineBuffer: "sixth item"},
-		{LineBuffer: "seventh item"},
-		{LineBuffer: "eighth item"},
-		{LineBuffer: "ninth item"},
-		{LineBuffer: "tenth item"},
-		{LineBuffer: "eleventh item"},
-		{LineBuffer: "twelfth item"},
-		{LineBuffer: "thirteenth item"},
-		{LineBuffer: "fourteenth item"},
-		{LineBuffer: "fifteenth item"},
-		{LineBuffer: "sixteenth item"},
+	setContent(&vp, []string{
+		"first item",
+		"second item",
+		"third item",
+		"fourth item",
+		"fifth item",
+		"sixth item",
+		"seventh item",
+		"eighth item",
+		"ninth item",
+		"tenth item",
+		"eleventh item",
+		"twelfth item",
+		"thirteenth item",
+		"fourteenth item",
+		"fifteenth item",
+		"sixteenth item",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -3978,8 +3978,8 @@ func TestViewport_SelectionOn_WrapOn_StickyTop(t *testing.T) {
 	// stickyness should override maintain selection
 	vp.SetMaintainSelection(true)
 	vp.SetTopSticky(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the first line"},
+	setContent(&vp, []string{
+		"the first line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -3990,9 +3990,9 @@ func TestViewport_SelectionOn_WrapOn_StickyTop(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the first line"},
+	setContent(&vp, []string{
+		"the second line",
+		"the first line",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -4013,10 +4013,10 @@ func TestViewport_SelectionOn_WrapOn_StickyTop(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the first line"},
-		{LineBuffer: "the third line"},
+	setContent(&vp, []string{
+		"the second line",
+		"the first line",
+		"the third line",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -4036,8 +4036,8 @@ func TestViewport_SelectionOn_WrapOn_StickyBottom(t *testing.T) {
 	// stickyness should override maintain selection
 	vp.SetMaintainSelection(true)
 	vp.SetBottomSticky(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the first line"},
+	setContent(&vp, []string{
+		"the first line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -4047,9 +4047,9 @@ func TestViewport_SelectionOn_WrapOn_StickyBottom(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the first line"},
+	setContent(&vp, []string{
+		"the second line",
+		"the first line",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -4062,10 +4062,10 @@ func TestViewport_SelectionOn_WrapOn_StickyBottom(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add longer content at bottom
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the first line"},
-		{LineBuffer: "a very long line that wraps a lot"},
+	setContent(&vp, []string{
+		"the second line",
+		"the first line",
+		"a very long line that wraps a lot",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -4090,11 +4090,11 @@ func TestViewport_SelectionOn_WrapOn_StickyBottom(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the first line"},
-		{LineBuffer: "a very long line that wraps a lot"},
-		{LineBuffer: "the third line"},
+	setContent(&vp, []string{
+		"the second line",
+		"the first line",
+		"a very long line that wraps a lot",
+		"the third line",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -4118,16 +4118,16 @@ func TestViewport_SelectionOn_WrapOn_StickyBottomOverflowHeight(t *testing.T) {
 	vp.SetBottomSticky(true)
 
 	// test covers case where first set content to empty, then overflow height
-	vp.SetContent([]RenderableString{})
+	setContent(&vp, []string{})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
 	})
 	util.CmpStr(t, expectedView, vp.View())
 
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the first line"},
-		{LineBuffer: "the third line"},
+	setContent(&vp, []string{
+		"the second line",
+		"the first line",
+		"the third line",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -4148,8 +4148,8 @@ func TestViewport_SelectionOn_WrapOn_StickyTopBottom(t *testing.T) {
 	vp.SetMaintainSelection(true)
 	vp.SetTopSticky(true)
 	vp.SetBottomSticky(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the first line"},
+	setContent(&vp, []string{
+		"the first line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -4160,9 +4160,9 @@ func TestViewport_SelectionOn_WrapOn_StickyTopBottom(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add content, top sticky wins out arbitrarily when both set
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the first line"},
+	setContent(&vp, []string{
+		"the second line",
+		"the first line",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -4183,10 +4183,10 @@ func TestViewport_SelectionOn_WrapOn_StickyTopBottom(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the first line"},
-		{LineBuffer: "the third line"},
+	setContent(&vp, []string{
+		"the second line",
+		"the first line",
+		"the third line",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -4207,11 +4207,11 @@ func TestViewport_SelectionOn_WrapOn_StickyTopBottom(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the first line"},
-		{LineBuffer: "the third line"},
-		{LineBuffer: "the fourth line"},
+	setContent(&vp, []string{
+		"the second line",
+		"the first line",
+		"the third line",
+		"the fourth line",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -4231,9 +4231,9 @@ func TestViewport_SelectionOn_WrapOn_StickyBottomLongLine(t *testing.T) {
 	// stickyness should override maintain selection
 	vp.SetMaintainSelection(true)
 	vp.SetBottomSticky(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first line"},
-		{LineBuffer: "next line"},
+	setContent(&vp, []string{
+		"first line",
+		"next line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -4242,10 +4242,10 @@ func TestViewport_SelectionOn_WrapOn_StickyBottomLongLine(t *testing.T) {
 	})
 	util.CmpStr(t, expectedView, vp.View())
 
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first line"},
-		{LineBuffer: "next line"},
-		{LineBuffer: "a very long line at the bottom that wraps many times"},
+	setContent(&vp, []string{
+		"first line",
+		"next line",
+		"a very long line at the bottom that wraps many times",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -4270,11 +4270,11 @@ func TestViewport_SelectionOn_WrapOn_RemoveLogsWhenSelectionBottom(t *testing.T)
 	vp.SetSelectionEnabled(true)
 
 	// add content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the first line"},
-		{LineBuffer: "the third line"},
-		{LineBuffer: "the fourth line"},
+	setContent(&vp, []string{
+		"the second line",
+		"the first line",
+		"the third line",
+		"the fourth line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -4293,9 +4293,9 @@ func TestViewport_SelectionOn_WrapOn_RemoveLogsWhenSelectionBottom(t *testing.T)
 	util.CmpStr(t, expectedView, vp.View())
 
 	// remove content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the first line"},
+	setContent(&vp, []string{
+		"the second line",
+		"the first line",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -4311,13 +4311,13 @@ func TestViewport_SelectionOn_WrapOn_ChangeHeight(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the first line"},
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the third line"},
-		{LineBuffer: "the fourth line"},
-		{LineBuffer: "the fifth line"},
-		{LineBuffer: "the sixth line"},
+	setContent(&vp, []string{
+		"the first line",
+		"the second line",
+		"the third line",
+		"the fourth line",
+		"the fifth line",
+		"the sixth line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -4406,13 +4406,13 @@ func TestViewport_SelectionOn_WrapOn_ChangeContent(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the first line"},
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the third line"},
-		{LineBuffer: "the fourth line"},
-		{LineBuffer: "the fifth line"},
-		{LineBuffer: "the sixth line"},
+	setContent(&vp, []string{
+		"the first line",
+		"the second line",
+		"the third line",
+		"the fourth line",
+		"the fifth line",
+		"the sixth line",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -4435,9 +4435,9 @@ func TestViewport_SelectionOn_WrapOn_ChangeContent(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// remove content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the third line"},
+	setContent(&vp, []string{
+		"the second line",
+		"the third line",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -4449,20 +4449,20 @@ func TestViewport_SelectionOn_WrapOn_ChangeContent(t *testing.T) {
 	util.CmpStr(t, expectedView, vp.View())
 
 	// remove all content
-	vp.SetContent([]RenderableString{})
+	setContent(&vp, []string{})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
 	})
 	util.CmpStr(t, expectedView, vp.View())
 
 	// add content
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the first line"},
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the third line"},
-		{LineBuffer: "the fourth line"},
-		{LineBuffer: "the fifth line"},
-		{LineBuffer: "the sixth line"},
+	setContent(&vp, []string{
+		"the first line",
+		"the second line",
+		"the third line",
+		"the fourth line",
+		"the fifth line",
+		"the sixth line",
 	})
 	expectedView = pad(vp.width, vp.height, []string{
 		"header",
@@ -4483,11 +4483,11 @@ func TestViewport_SelectionOn_WrapOn_StringToHighlight(t *testing.T) {
 	vp.SetStringToHighlight("second")
 	vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
 	vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first"},
-		{LineBuffer: "second"},
-		{LineBuffer: "second"},
-		{LineBuffer: "third"},
+	setContent(&vp, []string{
+		"first",
+		"second",
+		"second",
+		"third",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -4508,8 +4508,8 @@ func TestViewport_SelectionOn_WrapOn_StringToHighlight(t *testing.T) {
 	})
 	util.CmpStr(t, expectedView, vp.View())
 
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "averylongwordthatwrapsover"},
+	setContent(&vp, []string{
+		"averylongwordthatwrapsover",
 	})
 	vp.SetStringToHighlight("wraps")
 	expectedView = pad(vp.width, vp.height, []string{
@@ -4521,8 +4521,8 @@ func TestViewport_SelectionOn_WrapOn_StringToHighlight(t *testing.T) {
 	})
 	util.CmpStr(t, expectedView, vp.View())
 
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line "},
+	setContent(&vp, []string{
+		"a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line a super long line ",
 	})
 	vp.SetStringToHighlight("l")
 	expectedView = pad(vp.width, vp.height, []string{
@@ -4542,8 +4542,8 @@ func TestViewport_SelectionOn_WrapOn_StringToHighlightManyMatches(t *testing.T) 
 		vp.SetHeader([]string{"header"})
 		vp.SetSelectionEnabled(true)
 		vp.SetWrapText(true)
-		vp.SetContent([]RenderableString{
-			{LineBuffer: strings.Repeat("r", 100000)},
+		setContent(&vp, []string{
+			strings.Repeat("r", 100000),
 		})
 		vp.SetStringToHighlight("r")
 		vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
@@ -4566,8 +4566,8 @@ func TestViewport_SelectionOn_WrapOn_AnsiOnSelection(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "line with some \x1b[38;2;255;0;0mred\x1b[m text"},
+	setContent(&vp, []string{
+		"line with some \x1b[38;2;255;0;0mred\x1b[m text",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -4585,8 +4585,8 @@ func TestViewport_SelectionOn_WrapOn_SelectionEmpty(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: ""},
+	setContent(&vp, []string{
+		"",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -4601,8 +4601,8 @@ func TestViewport_SelectionOn_WrapOn_ExtraSlash(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "|2024|\x1b[38;2;0mfl..lq\x1b[m/\x1b[38;2;0mflask-3\x1b[m|"},
+	setContent(&vp, []string{
+		"|2024|\x1b[38;2;0mfl..lq\x1b[m/\x1b[38;2;0mflask-3\x1b[m|",
 	})
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
@@ -4621,10 +4621,10 @@ func TestViewport_SelectionOn_WrapOn_SuperLongWrappedLine(t *testing.T) {
 		vp.SetHeader([]string{"header"})
 		vp.SetSelectionEnabled(true)
 		vp.SetWrapText(true)
-		vp.SetContent([]RenderableString{
-			{LineBuffer: "smol"},
-			{LineBuffer: strings.Repeat("12345678", 1000000)},
-			{LineBuffer: "smol"},
+		setContent(&vp, []string{
+			"smol",
+			strings.Repeat("12345678", 1000000),
+			"smol",
 		})
 		expectedView := pad(vp.width, vp.height, []string{
 			"header",
@@ -4665,9 +4665,9 @@ func TestViewport_SelectionOn_WrapOn_StringToHighlightAnsiUnicode(t *testing.T) 
 	vp.SetHeader([]string{"A💖中e\u0301"})
 	vp.SetSelectionEnabled(true)
 	vp.SetWrapText(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "A💖中e\u0301"},
-		{LineBuffer: "A💖中e\u0301A💖中e\u0301"},
+	setContent(&vp, []string{
+		"A💖中e\u0301",
+		"A💖中e\u0301A💖中e\u0301",
 	})
 	vp.SetStringToHighlight("中e\u0301")
 	vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
@@ -4689,13 +4689,13 @@ func TestViewport_SelectionOn_ToggleWrap_PreserveSelection(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "first line that is fairly long"},
-		{LineBuffer: "second line that is even much longer than the first"},
-		{LineBuffer: "third line that is fairly long"},
-		{LineBuffer: "fourth"},
-		{LineBuffer: "fifth line that is fairly long"},
-		{LineBuffer: "sixth"},
+	setContent(&vp, []string{
+		"first line that is fairly long",
+		"second line that is even much longer than the first",
+		"third line that is fairly long",
+		"fourth",
+		"fifth line that is fairly long",
+		"sixth",
 	})
 
 	// wrap off, selection on first line
@@ -4790,11 +4790,11 @@ func TestViewport_SelectionOn_ToggleWrap_PreserveSelectionInView(t *testing.T) {
 	vp := newViewport(w, h)
 	vp.SetHeader([]string{"header"})
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "a really really really really really really really really really really really really long preamble"},
-		{LineBuffer: "first line that is fairly long"},
-		{LineBuffer: "second line that is even much longer than the first"},
-		{LineBuffer: "third line that is fairly long"},
+	setContent(&vp, []string{
+		"a really really really really really really really really really really really really long preamble",
+		"first line that is fairly long",
+		"second line that is even much longer than the first",
+		"third line that is fairly long",
 	})
 	vp.SetSelectedItemIdx(3)
 	expectedView := pad(vp.width, vp.height, []string{
@@ -4838,13 +4838,13 @@ func TestViewport_SelectionOn_ToggleWrap_ScrollInBounds(t *testing.T) {
 	vp.SetHeader([]string{"header"})
 	vp.SetWrapText(true)
 	vp.SetSelectionEnabled(true)
-	vp.SetContent([]RenderableString{
-		{LineBuffer: "the first line"},
-		{LineBuffer: "the second line"},
-		{LineBuffer: "the third line"},
-		{LineBuffer: "the fourth line"},
-		{LineBuffer: "the fifth line"},
-		{LineBuffer: "the sixth line"},
+	setContent(&vp, []string{
+		"the first line",
+		"the second line",
+		"the third line",
+		"the fourth line",
+		"the fifth line",
+		"the sixth line",
 	})
 
 	// scroll to bottom with selection at top of that view

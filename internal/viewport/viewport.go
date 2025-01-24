@@ -724,7 +724,7 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 			}
 		}
 	} else {
-		done = addLine(currItem.Render(), m.width)
+		done = addLine(currItem.Render(), currItemIdx)
 		for !done {
 			currItemIdx += 1
 			if currItemIdx >= len(m.allItems) {
@@ -794,7 +794,8 @@ func (m Model[T]) getTruncatedFooterLine(visibleContentLines visibleContentLines
 	footerBuffer := linebuffer.New(footerString)
 	return m.FooterStyle.Render(
 		footerBuffer.PopLeft(m.width, m.continuationIndicator, "", lipgloss.NewStyle()),
-	)}
+	)
+}
 
 func (m Model[T]) getLineContinuationIndicator() string {
 	if m.wrapText {

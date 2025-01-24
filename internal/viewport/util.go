@@ -2,6 +2,7 @@ package viewport
 
 import (
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
 	"strings"
 )
 
@@ -55,4 +56,12 @@ func safeSliceFromIdx(s []string, i int) []string {
 
 func clampValMinMax(v, minimum, maximum int) int {
 	return max(minimum, min(maximum, v))
+}
+
+func setContent(vp *Model[RenderableString], content []string) {
+	renderableStrings := make([]RenderableString, len(content))
+	for i := range content {
+		renderableStrings[i] = RenderableString{LineBuffer: linebuffer.New(content[i])}
+	}
+	vp.SetContent(renderableStrings)
 }
