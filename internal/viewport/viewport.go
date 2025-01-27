@@ -231,7 +231,7 @@ func (m Model[T]) View() string {
 			truncated = m.styleSelection(truncated)
 		}
 
-		if !m.wrapText && m.xOffset > 0 && lipgloss.Width(truncated) == 0 && visibleContentLines.lines[i].Width > 0 {
+		if !m.wrapText && m.xOffset > 0 && lipgloss.Width(truncated) == 0 && visibleContentLines.lines[i].Width() > 0 {
 			// if panned right past where line ends, show continuation indicator
 			lineBuffer := linebuffer.New(m.getLineContinuationIndicator())
 			truncated = lineBuffer.PopLeft(m.width, "", "", lipgloss.NewStyle())
@@ -468,11 +468,9 @@ func (m *Model[T]) ScrollSoItemIdxInView(itemIdx int) {
 
 func (m Model[T]) maxLineWidth() int {
 	maxLineWidth := 0
-	var allVisibleLines []string
 
 	headerLines := m.getVisibleHeaderLines()
 	for i := range headerLines {
-		allVisibleLines = append(allVisibleLines, headerLines[i])
 		if w := lipgloss.Width(headerLines[i]); w > maxLineWidth {
 			maxLineWidth = w
 		}
@@ -480,15 +478,13 @@ func (m Model[T]) maxLineWidth() int {
 
 	visibleContentLines := m.getVisibleContentLines()
 	for i := range visibleContentLines.lines {
-		allVisibleLines = append(allVisibleLines, visibleContentLines.lines[i].Content)
-		if w := visibleContentLines.lines[i].Width; w > maxLineWidth {
+		if w := visibleContentLines.lines[i].Width(); w > maxLineWidth {
 			maxLineWidth = w
 		}
 	}
 
 	if visibleContentLines.showFooter {
 		footerLine := m.getTruncatedFooterLine(visibleContentLines)
-		allVisibleLines = append(allVisibleLines, footerLine)
 		if w := lipgloss.Width(footerLine); w > maxLineWidth {
 			maxLineWidth = w
 		}

@@ -8,11 +8,10 @@ import (
 	"unicode/utf8"
 )
 
-// LineBuffer provides functionality to get sequential strings of a specified terminal width, accounting
+// LineBuffer provides functionality to get sequential strings of a specified terminal cell width, accounting
 // for the ansi escape codes styling the line.
 type LineBuffer struct {
 	Content             string     // underlying string with ansi codes. utf-8 bytes
-	Width               int        // terminal cell width of Content
 	leftRuneIdx         uint32     // left plaintext rune idx to start next PopLeft result from
 	lineNoAnsi          string     // line without ansi codes. utf-8 bytes
 	lineNoAnsiRunes     []rune     // runes of lineNoAnsi. len(lineNoAnsiRunes) == len(lineNoAnsiWidths)
@@ -21,6 +20,9 @@ type LineBuffer struct {
 	lineNoAnsiCumWidths []uint32   // cumulative lineNoAnsiWidths
 	ansiCodeIndexes     [][]uint32 // slice of startByte, endByte indexes of ansi codes in the line
 }
+
+// type assertion that *LineBuffer implements LineBufferer
+var _ LineBufferer = (*LineBuffer)(nil)
 
 func New(line string) LineBuffer {
 	lb := LineBuffer{
@@ -72,82 +74,30 @@ func New(line string) LineBuffer {
 		i++
 	}
 	lb.runeIdxToByteOffset[n] = currentOffset
-	if len(lb.lineNoAnsiCumWidths) > 0 {
-		lb.Width = int(lb.lineNoAnsiCumWidths[len(lb.lineNoAnsiCumWidths)-1])
-	}
-
 	return lb
 }
 
-func ToLineBuffers(lines []string) []LineBuffer {
-	res := make([]LineBuffer, len(lines))
-	for i, line := range lines {
-		res[i] = New(line)
+func (l LineBuffer) Width() int {
+	if len(l.lineNoAnsiCumWidths) > 0 {
+		return int(l.lineNoAnsiCumWidths[len(l.lineNoAnsiCumWidths)-1])
 	}
-	return res
-}
-
-func (l LineBuffer) TotalLines(width int) int {
-	if width == 0 {
-		return 0
-	}
-	return (int(l.fullWidth()) + width - 1) / width
-}
-
-func (l *LineBuffer) SeekToLine(n, width int) {
-	if n <= 0 {
-		l.leftRuneIdx = 0
-		return
-	}
-	l.leftRuneIdx = uint32(getLeftRuneIdx(n*width, l.lineNoAnsiCumWidths))
+	return 0
 }
 
 func (l *LineBuffer) SeekToWidth(width int) {
 	// width can go past end, in which case PopLeft() returns "". Required when e.g. panning past line's end.
 	if width <= 0 {
 		l.leftRuneIdx = 0
-		return
 	}
 	l.leftRuneIdx = uint32(getLeftRuneIdx(width, l.lineNoAnsiCumWidths))
 }
 
-func (l LineBuffer) fullWidth() uint32 {
-	if len(l.lineNoAnsiCumWidths) == 0 {
-		return 0
-	}
-	return l.lineNoAnsiCumWidths[len(l.lineNoAnsiCumWidths)-1]
-}
-
-// getLeftRuneIdx does a binary search to find the first index at which vals[index-1] >= w
-func getLeftRuneIdx(w int, vals []uint32) int {
-	if w == 0 {
-		return 0
-	}
-	if len(vals) == 0 {
-		return 0
-	}
-
-	left, right := 0, len(vals)-1
-
-	if vals[right] < uint32(w) {
-		return len(vals)
-	}
-
-	for left < right {
-		mid := left + (right-left)/2
-
-		if vals[mid] >= uint32(w) {
-			right = mid
-		} else {
-			left = mid + 1
-		}
-	}
-
-	return left + 1
-}
-
 // PopLeft returns a string of the buffer's width from its current left offset, scrolling the left offset to the right
-func (l *LineBuffer) PopLeft(width int, continuation, toHighlight string, highlightStyle lipgloss.Style) string {
+func (l *LineBuffer) PopLeft(
+	width int,
+	continuation, toHighlight string,
+	highlightStyle lipgloss.Style,
+) string {
 	if int(l.leftRuneIdx) >= len(l.lineNoAnsiRunes) || width == 0 {
 		return ""
 	}
@@ -201,7 +151,7 @@ func (l *LineBuffer) PopLeft(width int, continuation, toHighlight string, highli
 	return res
 }
 
-func (l *LineBuffer) WrappedLines(
+func (l LineBuffer) WrappedLines(
 	width int,
 	maxLinesEachEnd int,
 	toHighlight string,
@@ -221,7 +171,7 @@ func (l *LineBuffer) WrappedLines(
 	}
 
 	var res []string
-	totalLines := l.TotalLines(width)
+	totalLines := l.totalLines(width)
 
 	l.SeekToWidth(0)
 	if maxLinesEachEnd > 0 && totalLines > maxLinesEachEnd*2 {
@@ -229,7 +179,7 @@ func (l *LineBuffer) WrappedLines(
 			res = append(res, l.PopLeft(width, "", toHighlight, toHighlightStyle))
 		}
 
-		l.SeekToLine(totalLines-maxLinesEachEnd, width)
+		l.seekToLine(totalLines-maxLinesEachEnd, width)
 		for nLines := 0; nLines < maxLinesEachEnd; nLines++ {
 			res = append(res, l.PopLeft(width, "", toHighlight, toHighlightStyle))
 		}
@@ -658,4 +608,63 @@ func findAnsiRanges(s string) [][]uint32 {
 		i++
 	}
 	return ranges[:rangeIdx]
+}
+
+func (l LineBuffer) totalLines(width int) int {
+	if width == 0 {
+		return 0
+	}
+	return (int(l.fullWidth()) + width - 1) / width
+}
+
+func (l *LineBuffer) seekToLine(n, width int) {
+	if n <= 0 {
+		l.leftRuneIdx = 0
+		return
+	}
+	l.leftRuneIdx = uint32(getLeftRuneIdx(n*width, l.lineNoAnsiCumWidths))
+}
+
+func (l LineBuffer) fullWidth() uint32 {
+	if len(l.lineNoAnsiCumWidths) == 0 {
+		return 0
+	}
+	return l.lineNoAnsiCumWidths[len(l.lineNoAnsiCumWidths)-1]
+}
+
+// getLeftRuneIdx does a binary search to find the first index at which vals[index-1] >= w
+func getLeftRuneIdx(w int, vals []uint32) int {
+	if w == 0 {
+		return 0
+	}
+	if len(vals) == 0 {
+		return 0
+	}
+
+	left, right := 0, len(vals)-1
+
+	if vals[right] < uint32(w) {
+		return len(vals)
+	}
+
+	for left < right {
+		mid := left + (right-left)/2
+
+		if vals[mid] >= uint32(w) {
+			right = mid
+		} else {
+			left = mid + 1
+		}
+	}
+
+	return left + 1
+}
+
+// TODO LEO: inline this where it's used
+func ToLineBuffers(lines []string) []LineBuffer {
+	res := make([]LineBuffer, len(lines))
+	for i, line := range lines {
+		res[i] = New(line)
+	}
+	return res
 }

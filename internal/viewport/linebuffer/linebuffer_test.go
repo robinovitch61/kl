@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestLineBuffer_TotalLines(t *testing.T) {
+func TestLineBuffer_totalLines(t *testing.T) {
 	tests := []struct {
 		name         string
 		s            string
@@ -56,7 +56,7 @@ func TestLineBuffer_TotalLines(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			lb := New(tt.s)
-			if lines := lb.TotalLines(tt.width); lines != tt.expected {
+			if lines := lb.totalLines(tt.width); lines != tt.expected {
 				t.Fatalf("expected %d, got %d", tt.expected, lines)
 			}
 		})
@@ -206,7 +206,7 @@ func TestLineBuffer_SeekToWidth(t *testing.T) {
 	}
 }
 
-func TestLineBuffer_SeekToLine(t *testing.T) {
+func TestLineBuffer_seekToLine(t *testing.T) {
 	tests := []struct {
 		name            string
 		s               string
@@ -292,7 +292,7 @@ func TestLineBuffer_SeekToLine(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			lb := New(tt.s)
-			lb.SeekToLine(tt.seekToLine, tt.width)
+			lb.seekToLine(tt.seekToLine, tt.width)
 			// highlight tested in PopLeft tests
 			actual := lb.PopLeft(tt.width, tt.continuation, "", lipgloss.NewStyle())
 			util.CmpStr(t, tt.expectedPopLeft, actual)

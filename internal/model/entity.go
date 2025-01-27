@@ -18,6 +18,7 @@ type Entity struct {
 	State                                     EntityState
 }
 
+// TODO LEO: make this return a string and take in the required args to linebuffer.PopLeft
 func (e Entity) Render() linebuffer.LineBuffer {
 	if e.IsCluster {
 		return linebuffer.New(e.Prefix + e.Container.Cluster)
