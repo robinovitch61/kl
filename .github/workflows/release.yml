@@ -35,10 +35,6 @@ jobs:
         run: |
           sudo apt-get --quiet update
           sudo apt-get --no-install-suggests --no-install-recommends --quiet --yes install musl-tools snapcraft
-          # https://github.com/goreleaser/goreleaser/issues/1715
-          # https://bugs.launchpad.net/snapcraft/+bug/1889741
-          mkdir -p "${HOME}/.cache/snapcraft/download"
-          mkdir -p "${HOME}/.cache/snapcraft/stage-packages"
           mkdir -p /opt/chocolatey
           wget -q -O - "https://github.com/chocolatey/choco/releases/download/${CHOCOLATEY_VERSION}/chocolatey.v${CHOCOLATEY_VERSION}.tar.gz" | tar -xz -C "/opt/chocolatey"
           echo '#!/bin/bash' >> /usr/local/bin/choco
