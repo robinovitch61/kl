@@ -13,6 +13,7 @@ import (
 	"strings"
 )
 
+// TODO LEO: eliminate this by having callers reference .Render().Content or equivalent directly
 type Stringer interface {
 	String() string
 }
