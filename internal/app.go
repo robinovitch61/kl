@@ -81,13 +81,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds []tea.Cmd
 	)
 
+	// handle these regardless of m.err
 	switch msg := msg.(type) {
 	case message.CleanupCompleteMsg:
 		return m, tea.Quit
 
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)
+	}
 
+	if m.err != nil {
+		return m, nil
+	}
+
+	// only handle these if m.err is nil
+	switch msg := msg.(type) {
 	case message.ErrMsg:
 		m.err = msg.Err
 
@@ -109,7 +117,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		if !m.initialized {
-			m, cmd = initializedModel(m)
+			var err error
+			m, cmd, err = initializedModel(m)
+			if err != nil {
+				m.err = err
+				return m, nil
+			}
 			cmds = append(cmds, cmd)
 		}
 		m.syncDimensions()
