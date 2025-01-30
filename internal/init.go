@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-func initializedModel(m Model) (Model, tea.Cmd) {
+func initializedModel(m Model) (Model, tea.Cmd, error) {
 	dev.Debug("initializing")
 	defer dev.Debug("done initializing")
 	dev.Debug("------------")
@@ -42,15 +42,14 @@ func initializedModel(m Model) (Model, tea.Cmd) {
 
 	m, err := initializeKubeConfig(m)
 	if err != nil {
-		m.err = err
-		return m, nil
+		return m, nil, err
 	}
 
 	m = initializePages(m)
 
 	cmds := createInitialCommands(m)
 
-	return m, tea.Batch(cmds...)
+	return m, tea.Batch(cmds...), nil
 }
 
 func initializeKubeConfig(m Model) (Model, error) {
