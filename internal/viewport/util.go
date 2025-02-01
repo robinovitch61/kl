@@ -61,7 +61,8 @@ func clampValMinMax(v, minimum, maximum int) int {
 func setContent(vp *Model[RenderableString], content []string) {
 	renderableStrings := make([]RenderableString, len(content))
 	for i := range content {
-		renderableStrings[i] = RenderableString{LineBuffer: linebuffer.New(content[i])}
+		lb := linebuffer.New(content[i])
+		renderableStrings[i] = RenderableString{LineBuffer: &lb}
 	}
 	vp.SetContent(renderableStrings)
 }

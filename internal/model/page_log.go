@@ -34,26 +34,27 @@ type PageLog struct {
 	Styles           *style.Styles
 }
 
-func (l PageLog) Render() linebuffer.LineBuffer {
-	//ts := ""
-	//if l.CurrentTimestamp != "" {
-	//	ts = l.Styles.Green.Render(l.CurrentTimestamp)
-	//}
-	//label := ""
-	//if l.CurrentName.ContainerName != "" {
-	//	if ts != "" {
-	//		label += " "
-	//	}
-	//	label += l.RenderName(l.CurrentName, true)
-	//}
-	//
-	//prefix := ts + label
-	//if len(prefix) > 0 {
-	//	if l.Log.LineBuffer.Content != "" {
-	//		prefix = prefix + " "
-	//	}
-	//}
-	return l.Log.LineBuffer // TODO LEO: figure out how to combine prefix and linebuffer
+func (l PageLog) Render() linebuffer.LineBufferer {
+	ts := ""
+	if l.CurrentTimestamp != "" {
+		ts = l.Styles.Green.Render(l.CurrentTimestamp)
+	}
+	label := ""
+	if l.CurrentName.ContainerName != "" {
+		if ts != "" {
+			label += " "
+		}
+		label += l.RenderName(l.CurrentName, true)
+	}
+
+	prefix := ts + label
+	if len(prefix) > 0 {
+		if l.Log.LineBuffer.Content() != "" {
+			prefix = prefix + " "
+		}
+	}
+	return linebuffer.NewMulti(linebuffer.New(prefix), l.Log.LineBuffer)
+	//return l.Log.LineBuffer // TODO LEO: figure out how to combine prefix and linebuffer
 }
 
 func (l PageLog) Equals(other interface{}) bool {

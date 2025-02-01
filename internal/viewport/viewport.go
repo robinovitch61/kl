@@ -672,7 +672,7 @@ func (m Model[T]) getVisibleHeaderLines() []string {
 
 type visibleContentLinesResult struct {
 	// lines is the untruncated visible lines, each corresponding to one terminal row
-	lines []linebuffer.LineBuffer
+	lines []linebuffer.LineBufferer
 	// itemIndexes is the index of the item in allItems that corresponds to each line. len(itemIndexes) == len(lines)
 	itemIndexes []int
 	// showFooter is true if the footer should be shown due to the num visible lines exceeding the vertical space
@@ -689,17 +689,17 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 		return visibleContentLinesResult{lines: nil, itemIndexes: nil, showFooter: false}
 	}
 
-	var contentLines []linebuffer.LineBuffer
+	var contentLines []linebuffer.LineBufferer
 	var itemIndexes []int
 
 	numLinesAfterHeader := max(0, m.height-len(m.getVisibleHeaderLines()))
 
-	addLine := func(l linebuffer.LineBuffer, itemIndex int) bool {
+	addLine := func(l linebuffer.LineBufferer, itemIndex int) bool {
 		contentLines = append(contentLines, l)
 		itemIndexes = append(itemIndexes, itemIndex)
 		return len(contentLines) == numLinesAfterHeader
 	}
-	addLines := func(ls []linebuffer.LineBuffer, itemIndex int) bool {
+	addLines := func(ls []linebuffer.LineBufferer, itemIndex int) bool {
 		for i := range ls {
 			if addLine(ls[i], itemIndex) {
 				return true
@@ -720,7 +720,7 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 		lb := currItem.Render()
 		itemLines := lb.WrappedLines(m.width, m.height, m.stringToHighlight, m.highlightStyle(currItemIdx))
 		offsetLines := safeSliceFromIdx(itemLines, m.topItemLineOffset)
-		done = addLines(linebuffer.ToLineBuffers(offsetLines), currItemIdx)
+		done = addLines(toLineBuffers(offsetLines), currItemIdx)
 
 		for !done {
 			currItemIdx += 1
@@ -730,7 +730,7 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 				currItem = m.allItems[currItemIdx]
 				lb = currItem.Render()
 				itemLines = lb.WrappedLines(m.width, m.height, m.stringToHighlight, m.highlightStyle(currItemIdx))
-				done = addLines(linebuffer.ToLineBuffers(itemLines), currItemIdx)
+				done = addLines(toLineBuffers(itemLines), currItemIdx)
 			}
 		}
 	} else {
@@ -923,4 +923,13 @@ func (m Model[T]) styleSelection(s string) string {
 		}
 	}
 	return builder.String()
+}
+
+func toLineBuffers(lines []string) []linebuffer.LineBufferer {
+	res := make([]linebuffer.LineBufferer, len(lines))
+	for i, line := range lines {
+		lb := linebuffer.New(line)
+		res[i] = &lb
+	}
+	return res
 }

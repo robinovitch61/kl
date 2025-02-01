@@ -665,12 +665,3 @@ func getLeftRuneIdx(w int, vals []uint32) int {
 
 	return left + 1
 }
-
-// TODO LEO: inline this where it's used
-func ToLineBuffers(lines []string) []LineBuffer {
-	res := make([]LineBuffer, len(lines))
-	for i, line := range lines {
-		res[i] = New(line)
-	}
-	return res
-}

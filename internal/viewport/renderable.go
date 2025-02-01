@@ -3,15 +3,15 @@ package viewport
 import "github.com/robinovitch61/kl/internal/viewport/linebuffer"
 
 type RenderableComparable interface {
-	Render() linebuffer.LineBuffer
+	Render() linebuffer.LineBufferer
 	Equals(other interface{}) bool
 }
 
 type RenderableString struct {
-	LineBuffer linebuffer.LineBuffer
+	LineBuffer linebuffer.LineBufferer
 }
 
-func (r RenderableString) Render() linebuffer.LineBuffer {
+func (r RenderableString) Render() linebuffer.LineBufferer {
 	return r.LineBuffer
 }
 
