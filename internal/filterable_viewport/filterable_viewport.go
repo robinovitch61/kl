@@ -122,7 +122,7 @@ func (fv FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.
 				fv.Filter.Focus()
 				fv.updateViewportStyles()
 
-				// if the filter type has changed, update the visible rows
+				// if the filter type (plaintext/regex) has changed, update the visible rows
 				if prevIsRegex != newIsRegex {
 					fv.updateVisibleRows()
 				}

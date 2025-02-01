@@ -17,7 +17,6 @@ func NewMulti(buffers ...LineBuffer) *MultiLineBuffer {
 		return &MultiLineBuffer{}
 	}
 
-	// calculate total width
 	totalWidth := 0
 	for _, buf := range buffers {
 		totalWidth += buf.Width()

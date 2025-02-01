@@ -84,6 +84,7 @@ func (l LineBuffer) Width() int {
 	return 0
 }
 
+// TODO LEO: don't use this for e.g. search, instead inject filter into a Matches() bool method here
 func (l LineBuffer) Content() string {
 	return l.content
 }
@@ -198,7 +199,6 @@ func (l LineBuffer) WrappedLines(
 	return res
 }
 
-// TODO LEO: make this not a method
 func (l LineBuffer) highlightString(
 	s string,
 	startByteOffset int,

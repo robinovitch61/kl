@@ -54,7 +54,6 @@ func (l PageLog) Render() linebuffer.LineBufferer {
 		}
 	}
 	return linebuffer.NewMulti(linebuffer.New(prefix), l.Log.LineBuffer)
-	//return l.Log.LineBuffer // TODO LEO: figure out how to combine prefix and linebuffer
 }
 
 func (l PageLog) Equals(other interface{}) bool {
