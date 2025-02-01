@@ -20,6 +20,9 @@ func (r RenderableString) Equals(other interface{}) bool {
 	if !ok {
 		return false
 	}
+	if r.LineBuffer == nil || otherStr.LineBuffer == nil {
+		return false
+	}
 	return r.LineBuffer.Content() == otherStr.LineBuffer.Content()
 }
 

@@ -31,8 +31,9 @@ type TestItem struct {
 	content string
 }
 
-func (t TestItem) Render() linebuffer.LineBuffer {
-	return linebuffer.New(t.content)
+func (t TestItem) Render() linebuffer.LineBufferer {
+	lb := linebuffer.New(t.content)
+	return &lb
 }
 
 func (t TestItem) String() string {
