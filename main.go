@@ -1,23 +1,21 @@
 package main
 
 import (
+	"fmt"
 	"github.com/robinovitch61/kl/cmd"
-	"log"
+	"net/http"
+	_ "net/http/pprof" // register pprof endpoints
 	"os"
-	"runtime/pprof"
 )
 
 func main() {
-	if cpuProfile := os.Getenv("KL_CPU_PROFILE"); cpuProfile != "" {
-		f, err := os.Create("cpu.prof")
-		if err != nil {
-			log.Fatal("could not create CPU profile: ", err)
-		}
-		defer f.Close()
-		if err := pprof.StartCPUProfile(f); err != nil {
-			log.Fatal("could not start CPU profile: ", err)
-		}
-		defer pprof.StopCPUProfile()
+	if pprofServer := os.Getenv("KL_PPROF_SERVER"); pprofServer != "" {
+		port := "6060"
+		go func() {
+			if err := http.ListenAndServe(":"+port, nil); err != nil {
+				panic(fmt.Errorf("pprof server failed: %v", err))
+			}
+		}()
 	}
 
 	err := cmd.Execute()
