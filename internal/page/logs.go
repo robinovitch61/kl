@@ -48,7 +48,7 @@ func NewLogsPage(
 			Height:               height,
 			AllRows:              lc.GetOrderedLogs(),
 			MatchesFilter: func(log model.PageLog, filter filter.Model) bool {
-				return filter.Matches(log)
+				return filter.Matches(log.Log.LineBuffer.Content())
 			},
 			ViewWhenEmpty: "No logs yet",
 			Styles:        styles,
@@ -100,9 +100,9 @@ func (p LogsPage) ContentForFile() []string {
 	var content []string
 	for _, l := range p.logContainer.GetOrderedLogs() {
 		if p.filterableViewport.Filter.ShowContext {
-			content = append(content, l.String())
-		} else if p.filterableViewport.Filter.Matches(l) {
-			content = append(content, l.String())
+			content = append(content, l.Render().Content())
+		} else if p.filterableViewport.Filter.Matches(l.Log.LineBuffer.Content()) {
+			content = append(content, l.Render().Content())
 		}
 	}
 	return content

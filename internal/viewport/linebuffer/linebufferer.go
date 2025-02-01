@@ -4,6 +4,7 @@ import "github.com/charmbracelet/lipgloss/v2"
 
 type LineBufferer interface {
 	Width() int
+	Content() string
 	SeekToWidth(width int)
 	PopLeft(
 		width int,

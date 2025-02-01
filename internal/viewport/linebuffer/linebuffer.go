@@ -11,7 +11,7 @@ import (
 // LineBuffer provides functionality to get sequential strings of a specified terminal cell width, accounting
 // for the ansi escape codes styling the line.
 type LineBuffer struct {
-	Content             string     // underlying string with ansi codes. utf-8 bytes
+	content             string     // underlying string with ansi codes. utf-8 bytes
 	leftRuneIdx         uint32     // left plaintext rune idx to start next PopLeft result from
 	lineNoAnsi          string     // line without ansi codes. utf-8 bytes
 	lineNoAnsiRunes     []rune     // runes of lineNoAnsi. len(lineNoAnsiRunes) == len(lineNoAnsiWidths)
@@ -26,7 +26,7 @@ var _ LineBufferer = (*LineBuffer)(nil)
 
 func New(line string) LineBuffer {
 	lb := LineBuffer{
-		Content:     line,
+		content:     line,
 		leftRuneIdx: 0,
 	}
 
@@ -82,6 +82,10 @@ func (l LineBuffer) Width() int {
 		return int(l.lineNoAnsiCumWidths[len(l.lineNoAnsiCumWidths)-1])
 	}
 	return 0
+}
+
+func (l LineBuffer) Content() string {
+	return l.content
 }
 
 func (l *LineBuffer) SeekToWidth(width int) {
@@ -140,7 +144,7 @@ func (l *LineBuffer) PopLeft(
 
 	// reapply original styling
 	if len(l.ansiCodeIndexes) > 0 {
-		res = reapplyAnsi(l.Content, res, int(startByteOffset), l.ansiCodeIndexes)
+		res = reapplyAnsi(l.content, res, int(startByteOffset), l.ansiCodeIndexes)
 	}
 
 	// highlight the desired string
@@ -167,8 +171,8 @@ func (l LineBuffer) WrappedLines(
 	}
 
 	// preserve empty lines
-	if l.Content == "" {
-		return []string{l.Content}
+	if l.content == "" {
+		return []string{l.content}
 	}
 
 	var res []string
@@ -194,6 +198,7 @@ func (l LineBuffer) WrappedLines(
 	return res
 }
 
+// TODO LEO: make this not a method
 func (l LineBuffer) highlightString(
 	s string,
 	startByteOffset int,

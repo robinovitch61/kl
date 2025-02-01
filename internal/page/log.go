@@ -43,7 +43,7 @@ func NewSingleLogPage(
 			Height:               height,
 			AllRows:              []viewport.RenderableString{},
 			MatchesFilter: func(s viewport.RenderableString, filter filter.Model) bool {
-				return filter.Matches(s)
+				return filter.Matches(s.LineBuffer.Content())
 			},
 			ViewWhenEmpty: "",
 			Styles:        styles,
@@ -139,7 +139,7 @@ func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
 
 func veryNicelyFormatThisLog(log model.PageLog, styleHeader bool) (string, []string) {
 	header := fmt.Sprintf("%s | %s", log.Timestamps.Full, log.RenderName(log.ContainerNames.Full, styleHeader))
-	return header, formatJSON(log.Log.LineBuffer.Content)
+	return header, formatJSON(log.Log.LineBuffer.Content())
 }
 
 func formatJSON(input string) []string {

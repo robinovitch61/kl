@@ -214,7 +214,7 @@ func (m Model[T]) View() string {
 	truncatedVisibleContentLines := make([]string, len(visibleContentLines.lines))
 	for i := range visibleContentLines.lines {
 		if m.wrapText {
-			truncated = visibleContentLines.lines[i].Content
+			truncated = visibleContentLines.lines[i].Content()
 		} else {
 			lineBuffer := visibleContentLines.lines[i]
 			lineBuffer.SeekToWidth(m.xOffset)

@@ -323,7 +323,7 @@ func (et *entityTreeImpl) IsVisibleGivenFilter(entity Entity, filter filter.Mode
 		et.isVisibleCache = newIsVisibleCache(filter)
 	}
 
-	if filter.Matches(entity) {
+	if filter.Matches(entity.Render().Content()) {
 		return et.isVisibleCache.SetAndReturn(entity, true)
 	}
 
@@ -338,13 +338,13 @@ func (et *entityTreeImpl) IsVisibleGivenFilter(entity Entity, filter filter.Mode
 
 	parent := et.getParentEntity(entity)
 	for !parent.EqualTo(Entity{}) {
-		if filter.Matches(parent) {
+		if filter.Matches(parent.Render().Content()) {
 			return et.isVisibleCache.SetAndReturn(entity, true)
 		}
 		parent = et.getParentEntity(parent)
 	}
 
-	return et.isVisibleCache.SetAndReturn(entity, filter.Matches(parent))
+	return et.isVisibleCache.SetAndReturn(entity, filter.Matches(parent.Render().Content()))
 }
 
 func (et *entityTreeImpl) GetContainerEntities() []Entity {

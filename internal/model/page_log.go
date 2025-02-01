@@ -56,16 +56,12 @@ func (l PageLog) Render() linebuffer.LineBuffer {
 	return l.Log.LineBuffer // TODO LEO: figure out how to combine prefix and linebuffer
 }
 
-func (l PageLog) String() string {
-	return l.Render().Content
-}
-
 func (l PageLog) Equals(other interface{}) bool {
 	otherLog, ok := other.(PageLog)
 	if !ok {
 		return false
 	}
-	return l.Log.LineBuffer.Content == otherLog.Log.LineBuffer.Content && l.Timestamps.Full == otherLog.Timestamps.Full
+	return l.Log.LineBuffer.Content() == otherLog.Log.LineBuffer.Content() && l.Timestamps.Full == otherLog.Timestamps.Full
 }
 
 func (l PageLog) RenderName(name PageLogContainerName, includeStyle bool) string {

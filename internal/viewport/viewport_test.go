@@ -951,7 +951,7 @@ func TestViewport_SelectionOn_WrapOff_GetConfigs(t *testing.T) {
 	if selectedItemIdx := vp.GetSelectedItemIdx(); selectedItemIdx != 1 {
 		t.Errorf("expected selected item index to be 1, got %v", selectedItemIdx)
 	}
-	if selectedItem := vp.GetSelectedItem(); selectedItem.Render().Content != "second" {
+	if selectedItem := vp.GetSelectedItem(); selectedItem.Render().Content() != "second" {
 		t.Errorf("got unexpected selected item: %v", selectedItem)
 	}
 }
@@ -3242,7 +3242,7 @@ func TestViewport_SelectionOn_WrapOn_GetConfigs(t *testing.T) {
 	if selectedItemIdx := vp.GetSelectedItemIdx(); selectedItemIdx != 1 {
 		t.Errorf("expected selected item index to be 1, got %v", selectedItemIdx)
 	}
-	if selectedItem := vp.GetSelectedItem(); selectedItem.Render().Content != "second" {
+	if selectedItem := vp.GetSelectedItem(); selectedItem.Render().Content() != "second" {
 		t.Errorf("got unexpected selected item: %v", selectedItem)
 	}
 }

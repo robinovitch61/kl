@@ -13,11 +13,6 @@ import (
 	"strings"
 )
 
-// TODO LEO: eliminate this by having callers reference .Render().Content or equivalent directly
-type Stringer interface {
-	String() string
-}
-
 type Model struct {
 	KeyMap                filterKeyMap
 	ShowContext           bool
@@ -123,15 +118,15 @@ func (m Model) View() string {
 	return filterStringStyle.Render(filterString)
 }
 
-func (m Model) Matches(stringer Stringer) bool {
+func (m Model) Matches(s string) bool {
 	if m.Value() == "" {
 		return true
 	}
 	// if invalid regexp, fallback to string matching
 	if m.isRegex && m.regexp != nil {
-		return m.regexp.MatchString(stringer.String())
+		return m.regexp.MatchString(s)
 	} else {
-		return strings.Contains(stringer.String(), m.Value())
+		return strings.Contains(s, m.Value())
 	}
 }
 
