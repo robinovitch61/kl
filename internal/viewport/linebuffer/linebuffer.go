@@ -88,8 +88,9 @@ func (l *LineBuffer) SeekToWidth(width int) {
 	// width can go past end, in which case PopLeft() returns "". Required when e.g. panning past line's end.
 	if width <= 0 {
 		l.leftRuneIdx = 0
+	} else {
+		l.leftRuneIdx = uint32(getLeftRuneIdx(width, l.lineNoAnsiCumWidths))
 	}
-	l.leftRuneIdx = uint32(getLeftRuneIdx(width, l.lineNoAnsiCumWidths))
 }
 
 // PopLeft returns a string of the buffer's width from its current left offset, scrolling the left offset to the right

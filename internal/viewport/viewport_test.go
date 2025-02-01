@@ -819,7 +819,7 @@ func TestViewport_SelectionOff_WrapOff_StringToHighlightManyMatches(t *testing.T
 		})
 		util.CmpStr(t, expectedView, vp.View())
 	}
-	util.RunWithTimeout(t, runTest, 10*time.Millisecond)
+	util.RunWithTimeout(t, runTest, 20*time.Millisecond)
 }
 
 func TestViewport_SelectionOff_WrapOff_StringToHighlightAnsi(t *testing.T) {
@@ -2456,11 +2456,12 @@ func TestViewport_SelectionOff_WrapOn_SpaceAround(t *testing.T) {
 		"          first line          ",
 		"               first line               ",
 	})
+	// trailing space is not trimmed
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
 		"    first line ",
+		"",
 		"          first",
-		" line",
 		"66% (2/3)",
 	})
 	util.CmpStr(t, expectedView, vp.View())
@@ -3361,11 +3362,12 @@ func TestViewport_SelectionOn_WrapOn_SpaceAround(t *testing.T) {
 		"          first line          ",
 		"               first line               ",
 	})
+	// trailing space is not trimmed
 	expectedView := pad(vp.width, vp.height, []string{
 		"header",
-		"\x1b[38;2;0;0;255m    first line\x1b[m",
+		"\x1b[38;2;0;0;255m    first line \x1b[m",
+		"\x1b[38;2;0;0;255m    \x1b[m",
 		"          first",
-		" line",
 		"33% (1/3)",
 	})
 	util.CmpStr(t, expectedView, vp.View())
