@@ -176,10 +176,26 @@ kubectl --context k3d-test2 port-forward services/flask-service 5000:5000
 curl http://localhost:5000/status
 ```
 
-To create a cpu profile, set the environment variable `KL_CPU_PROFILE=1`, run the app, then run e.g.
+To run with profiling available, set the environment variable `KL_PPROF_SERVER=1`, run the app, then run e.g.
 
 ```shell
-go tool pprof -http=:8080 cpu.prof
+# web ui for memory profile
+go tool pprof -http=:8080 "http://localhost:6060/debug/pprof/heap"
+
+# web ui for cpu profile
+go tool pprof -http=:8080 "http://localhost:6060/debug/pprof/profile?seconds=15"
+
+# explore memory profile in terminal
+go tool pprof "http://localhost:6060/debug/pprof/heap"
+> top
+> peek ...
+> traces ...
+
+# explore cpu profile in terminal
+go tool pprof "http://localhost:6060/debug/pprof/profile?seconds=15"
+> top
+> peek ...
+> traces ...
 ```
 
 ## Manually Specify the `kl` Version at Build Time
