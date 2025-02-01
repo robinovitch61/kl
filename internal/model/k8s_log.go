@@ -9,6 +9,7 @@ import (
 	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
 	"strings"
 	"time"
+	"unicode"
 )
 
 type Log struct {
@@ -58,6 +59,7 @@ func (ls LogScanner) StartReadingLogs() {
 
 			logContent := strings.Join(vals[1:], " ")
 			logContent = strings.ReplaceAll(logContent, "\t", "    ")
+			logContent = strings.TrimRightFunc(logContent, unicode.IsSpace)
 
 			// precompute LogData here as logs come in as logs are immutable. Having the LogData up front helps
 			// to minimize expensive/repeated re-computation later

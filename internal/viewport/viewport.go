@@ -717,7 +717,7 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 	}
 
 	if m.wrapText {
-		lb := currItem.Render() // TODO LEO: strings.TrimRightFunc(currItem.String(), unicode.IsSpace), m.width
+		lb := currItem.Render()
 		itemLines := lb.WrappedLines(m.width, m.height, m.stringToHighlight, m.highlightStyle(currItemIdx))
 		offsetLines := safeSliceFromIdx(itemLines, m.topItemLineOffset)
 		done = addLines(linebuffer.ToLineBuffers(offsetLines), currItemIdx)
@@ -728,7 +728,7 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 				done = true
 			} else {
 				currItem = m.allItems[currItemIdx]
-				lb = currItem.Render() // TODO LEO: strings.TrimRightFunc(currItem.String(), unicode.IsSpace), m.width
+				lb = currItem.Render()
 				itemLines = lb.WrappedLines(m.width, m.height, m.stringToHighlight, m.highlightStyle(currItemIdx))
 				done = addLines(linebuffer.ToLineBuffers(itemLines), currItemIdx)
 			}
