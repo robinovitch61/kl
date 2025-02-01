@@ -97,27 +97,84 @@ func (m *MultiLineBuffer) PopLeft(width int, continuation, toHighlight string, h
 	return result
 }
 
-func (m *MultiLineBuffer) WrappedLines(width int, maxLinesEachEnd int, toHighlight string, toHighlightStyle lipgloss.Style) []string {
+func (m MultiLineBuffer) WrappedLines(
+	width int,
+	maxLinesEachEnd int,
+	toHighlight string,
+	toHighlightStyle lipgloss.Style,
+) []string {
 	if width <= 0 {
-		return nil
+		return []string{}
 	}
 
-	// reset position
+	if maxLinesEachEnd <= 0 {
+		maxLinesEachEnd = -1
+	}
+
+	// preserve empty lines
+	if m.Content() == "" {
+		return []string{""}
+	}
+
+	var res []string
+	totalLines := m.totalLines(width)
+
 	m.SeekToWidth(0)
+	if maxLinesEachEnd > 0 && totalLines > maxLinesEachEnd*2 {
+		for nLines := 0; nLines < maxLinesEachEnd; nLines++ {
+			res = append(res, m.PopLeft(width, "", toHighlight, toHighlightStyle))
+		}
 
-	var result []string
-	currentLine := m.PopLeft(width, "", toHighlight, toHighlightStyle)
-	for currentLine != "" {
-		result = append(result, currentLine)
-		currentLine = m.PopLeft(width, "", toHighlight, toHighlightStyle)
+		m.seekToLine(totalLines-maxLinesEachEnd, width)
+		for nLines := 0; nLines < maxLinesEachEnd; nLines++ {
+			res = append(res, m.PopLeft(width, "", toHighlight, toHighlightStyle))
+		}
+	} else {
+		for nLines := 0; nLines < totalLines; nLines++ {
+			res = append(res, m.PopLeft(width, "", toHighlight, toHighlightStyle))
+		}
 	}
 
-	// handle maxLinesEachEnd if specified
-	if maxLinesEachEnd > 0 && len(result) > maxLinesEachEnd*2 {
-		firstN := result[:maxLinesEachEnd]
-		lastN := result[len(result)-maxLinesEachEnd:]
-		result = append(firstN, lastN...)
+	m.SeekToWidth(0)
+	return res
+}
+
+func (m MultiLineBuffer) totalLines(width int) int {
+	if width == 0 {
+		return 0
 	}
 
-	return result
+	total := 0
+	for _, buf := range m.buffers {
+		bufferWidth := int(buf.fullWidth())
+		if bufferWidth > 0 {
+			total += (bufferWidth + width - 1) / width
+		}
+	}
+	return total
+}
+
+func (m *MultiLineBuffer) seekToLine(line int, width int) {
+	if line <= 0 {
+		m.SeekToWidth(0)
+		return
+	}
+
+	// find which buffer contains our target line
+	remainingLines := line
+	for i, buf := range m.buffers {
+		bufferLines := (int(buf.fullWidth()) + width - 1) / width
+		if remainingLines < bufferLines {
+			m.currentBufferIdx = i
+			m.buffers[i].seekToLine(remainingLines, width)
+			return
+		}
+		remainingLines -= bufferLines
+	}
+
+	if len(m.buffers) > 0 {
+		m.currentBufferIdx = len(m.buffers) - 1
+		lastBuf := &m.buffers[m.currentBufferIdx]
+		lastBuf.seekToLine((int(lastBuf.fullWidth())+width-1)/width, width)
+	}
 }
