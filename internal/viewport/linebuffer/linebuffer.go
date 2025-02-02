@@ -24,7 +24,7 @@ type LineBuffer struct {
 // type assertion that *LineBuffer implements LineBufferer
 var _ LineBufferer = (*LineBuffer)(nil)
 
-func New(line string) LineBuffer {
+func New(line string) *LineBuffer {
 	lb := LineBuffer{
 		content:     line,
 		leftRuneIdx: 0,
@@ -74,7 +74,7 @@ func New(line string) LineBuffer {
 		i++
 	}
 	lb.runeIdxToByteOffset[n] = currentOffset
-	return lb
+	return &lb
 }
 
 func (l LineBuffer) Width() int {

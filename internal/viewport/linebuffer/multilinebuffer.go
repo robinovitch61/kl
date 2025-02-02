@@ -4,7 +4,7 @@ import "github.com/charmbracelet/lipgloss/v2"
 
 // MultiLineBuffer implements LineBufferer by wrapping multiple LineBuffers without extra memory allocation
 type MultiLineBuffer struct {
-	buffers          []LineBuffer
+	buffers          []*LineBuffer
 	currentBufferIdx int // tracks which buffer we're currently reading from
 	totalWidth       int // cached total width across all buffers
 }
@@ -12,7 +12,7 @@ type MultiLineBuffer struct {
 // type assertion that *MultiLineBuffer implements LineBufferer
 var _ LineBufferer = (*MultiLineBuffer)(nil)
 
-func NewMulti(buffers ...LineBuffer) *MultiLineBuffer {
+func NewMulti(buffers ...*LineBuffer) *MultiLineBuffer {
 	if len(buffers) == 0 {
 		return &MultiLineBuffer{}
 	}
@@ -173,7 +173,7 @@ func (m *MultiLineBuffer) seekToLine(line int, width int) {
 
 	if len(m.buffers) > 0 {
 		m.currentBufferIdx = len(m.buffers) - 1
-		lastBuf := &m.buffers[m.currentBufferIdx]
+		lastBuf := m.buffers[m.currentBufferIdx]
 		lastBuf.seekToLine((int(lastBuf.fullWidth())+width-1)/width, width)
 	}
 }

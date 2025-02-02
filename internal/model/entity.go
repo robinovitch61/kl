@@ -20,21 +20,17 @@ type Entity struct {
 
 func (e Entity) Render() linebuffer.LineBufferer {
 	if e.IsCluster {
-		lb := linebuffer.New(e.Prefix + e.Container.Cluster)
-		return &lb
+		return linebuffer.New(e.Prefix + e.Container.Cluster)
 	} else if e.IsNamespace {
-		lb := linebuffer.New(e.Prefix + e.Container.Namespace)
-		return &lb
+		return linebuffer.New(e.Prefix + e.Container.Namespace)
 	} else if e.IsPodOwner {
 		res := e.Prefix + e.Container.PodOwner
 		if e.Container.PodOwnerMetadata.OwnerType != "" {
 			res += " <" + e.Container.PodOwnerMetadata.OwnerType + ">"
 		}
-		lb := linebuffer.New(res)
-		return &lb
+		return linebuffer.New(res)
 	} else if e.IsPod {
-		lb := linebuffer.New(e.Prefix + e.Container.Pod)
-		return &lb
+		return linebuffer.New(e.Prefix + e.Container.Pod)
 	} else {
 		// for containers
 		res := e.Prefix + e.State.StatusIndicator() + " " + e.Container.Name + " (" + e.Container.Status.State.String()
@@ -70,8 +66,7 @@ func (e Entity) Render() linebuffer.LineBufferer {
 		}
 
 		res += ")"
-		lb := linebuffer.New(res)
-		return &lb
+		return linebuffer.New(res)
 	}
 }
 

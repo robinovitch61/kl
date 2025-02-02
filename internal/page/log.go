@@ -129,11 +129,9 @@ func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
 	}
 	p.log = log
 	header, content := veryNicelyFormatThisLog(log, true)
-	lb := linebuffer.New(header)
-	renderableStrings := []viewport.RenderableString{{LineBuffer: &lb}}
+	renderableStrings := []viewport.RenderableString{{LineBuffer: linebuffer.New(header)}}
 	for _, c := range content {
-		lb = linebuffer.New(c)
-		renderableStrings = append(renderableStrings, viewport.RenderableString{LineBuffer: &lb})
+		renderableStrings = append(renderableStrings, viewport.RenderableString{LineBuffer: linebuffer.New(c)})
 	}
 	p.filterableViewport.SetAllRows(renderableStrings)
 	return p

@@ -8,56 +8,72 @@ import (
 	"testing"
 )
 
-func TestLineBuffer_totalLines(t *testing.T) {
+func TestLineBuffer_Width(t *testing.T) {
 	tests := []struct {
-		name         string
-		s            string
-		width        int
-		continuation string
-		expected     int
+		name     string
+		s        string
+		expected int
 	}{
 		{
-			name:         "simple",
-			s:            "1234567890",
-			width:        10,
-			continuation: "",
-			expected:     1,
+			name:     "empty",
+			s:        "",
+			expected: 0,
 		},
 		{
-			name:         "simple small width",
-			s:            "1234567890",
-			width:        1,
-			continuation: "",
-			expected:     10,
+			name:     "simple",
+			s:        "1234567890",
+			expected: 10,
 		},
 		{
-			name:         "uneven number",
-			s:            "1234567890",
-			width:        3,
-			continuation: "",
-			expected:     4,
+			name:     "unicode",
+			s:        "世界🌟世界a",
+			expected: 11,
 		},
 		{
-			name:         "unicode even",
-			s:            "世界🌟世界",
-			width:        2,
-			continuation: "",
-			expected:     5,
-		},
-		{
-			name:         "unicode odd",
-			s:            "世界🌟世界",
-			width:        3,
-			continuation: "",
-			expected:     4,
+			name:     "ansi",
+			s:        "\x1b[38;2;255;0;0mhi\x1b[m",
+			expected: 2,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			lb := New(tt.s)
-			if lines := lb.totalLines(tt.width); lines != tt.expected {
-				t.Fatalf("expected %d, got %d", tt.expected, lines)
+			if actual := lb.Width(); actual != tt.expected {
+				t.Errorf("expected %d, got %d", tt.expected, actual)
+			}
+		})
+	}
+}
+
+func TestLineBuffer_Content(t *testing.T) {
+	tests := []struct {
+		name     string
+		s        string
+		expected string
+	}{
+		{
+			name:     "empty",
+			s:        "",
+			expected: "",
+		},
+		{
+			name:     "simple",
+			s:        "1234567890",
+			expected: "1234567890",
+		},
+		{
+			name:     "unicode",
+			s:        "世界🌟世界",
+			expected: "世界🌟世界",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lb := New(tt.s)
+			if actual := lb.Content(); actual != tt.expected {
+				t.Errorf("expected %s, got %s", tt.expected, actual)
 			}
 		})
 	}
@@ -202,100 +218,6 @@ func TestLineBuffer_SeekToWidth(t *testing.T) {
 			if actual := lb.PopLeft(tt.width, tt.continuation, "", lipgloss.NewStyle()); actual != tt.expectedPopLeft {
 				t.Errorf("expected %s, got %s", tt.expectedPopLeft, actual)
 			}
-		})
-	}
-}
-
-func TestLineBuffer_seekToLine(t *testing.T) {
-	tests := []struct {
-		name            string
-		s               string
-		width           int
-		continuation    string
-		seekToLine      int
-		expectedPopLeft string
-	}{
-		{
-			name:            "empty",
-			s:               "",
-			width:           0,
-			continuation:    "",
-			seekToLine:      0,
-			expectedPopLeft: "",
-		},
-		{
-			name:            "seek to negative line",
-			s:               "12345",
-			width:           2,
-			continuation:    "",
-			seekToLine:      -1,
-			expectedPopLeft: "12",
-		},
-		{
-			name:            "seek to zero'th line",
-			s:               "12345",
-			width:           2,
-			continuation:    "",
-			seekToLine:      0,
-			expectedPopLeft: "12",
-		},
-		{
-			name:            "seek to first line",
-			s:               "12345",
-			width:           2,
-			continuation:    "",
-			seekToLine:      1,
-			expectedPopLeft: "34",
-		},
-		{
-			name:            "seek to second line",
-			s:               "12345",
-			width:           2,
-			continuation:    "",
-			seekToLine:      2,
-			expectedPopLeft: "5",
-		},
-		{
-			name:            "seek past end",
-			s:               "12345",
-			width:           2,
-			continuation:    "",
-			seekToLine:      3,
-			expectedPopLeft: "",
-		},
-		{
-			name:            "unicode zero'th line",
-			s:               "世界🌟世界🌟",
-			width:           2,
-			continuation:    "",
-			seekToLine:      0,
-			expectedPopLeft: "世",
-		},
-		{
-			name:            "unicode first line",
-			s:               "世界🌟世界🌟",
-			width:           2,
-			continuation:    "",
-			seekToLine:      1,
-			expectedPopLeft: "界",
-		},
-		{
-			name:            "unicode insufficient width",
-			s:               "世界🌟世界🌟",
-			width:           1,
-			continuation:    "",
-			seekToLine:      1,
-			expectedPopLeft: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			lb := New(tt.s)
-			lb.seekToLine(tt.seekToLine, tt.width)
-			// highlight tested in PopLeft tests
-			actual := lb.PopLeft(tt.width, tt.continuation, "", lipgloss.NewStyle())
-			util.CmpStr(t, tt.expectedPopLeft, actual)
 		})
 	}
 }
@@ -1051,6 +973,100 @@ func TestLineBuffer_WrappedLines(t *testing.T) {
 					t.Errorf("wrap() line %d got %q, expected %q", i, got[i], tt.want[i])
 				}
 			}
+		})
+	}
+}
+
+func TestLineBuffer_seekToLine(t *testing.T) {
+	tests := []struct {
+		name            string
+		s               string
+		width           int
+		continuation    string
+		seekToLine      int
+		expectedPopLeft string
+	}{
+		{
+			name:            "empty",
+			s:               "",
+			width:           0,
+			continuation:    "",
+			seekToLine:      0,
+			expectedPopLeft: "",
+		},
+		{
+			name:            "seek to negative line",
+			s:               "12345",
+			width:           2,
+			continuation:    "",
+			seekToLine:      -1,
+			expectedPopLeft: "12",
+		},
+		{
+			name:            "seek to zero'th line",
+			s:               "12345",
+			width:           2,
+			continuation:    "",
+			seekToLine:      0,
+			expectedPopLeft: "12",
+		},
+		{
+			name:            "seek to first line",
+			s:               "12345",
+			width:           2,
+			continuation:    "",
+			seekToLine:      1,
+			expectedPopLeft: "34",
+		},
+		{
+			name:            "seek to second line",
+			s:               "12345",
+			width:           2,
+			continuation:    "",
+			seekToLine:      2,
+			expectedPopLeft: "5",
+		},
+		{
+			name:            "seek past end",
+			s:               "12345",
+			width:           2,
+			continuation:    "",
+			seekToLine:      3,
+			expectedPopLeft: "",
+		},
+		{
+			name:            "unicode zero'th line",
+			s:               "世界🌟世界🌟",
+			width:           2,
+			continuation:    "",
+			seekToLine:      0,
+			expectedPopLeft: "世",
+		},
+		{
+			name:            "unicode first line",
+			s:               "世界🌟世界🌟",
+			width:           2,
+			continuation:    "",
+			seekToLine:      1,
+			expectedPopLeft: "界",
+		},
+		{
+			name:            "unicode insufficient width",
+			s:               "世界🌟世界🌟",
+			width:           1,
+			continuation:    "",
+			seekToLine:      1,
+			expectedPopLeft: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lb := New(tt.s)
+			lb.seekToLine(tt.seekToLine, tt.width)
+			// highlight tested in PopLeft tests
+			actual := lb.PopLeft(tt.width, tt.continuation, "", lipgloss.NewStyle())
+			util.CmpStr(t, tt.expectedPopLeft, actual)
 		})
 	}
 }
@@ -1872,6 +1888,61 @@ func TestLineBuffer_replaceEndWithContinuation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if r := replaceEndWithContinuation(tt.s, []rune(tt.continuation)); r != tt.expected {
 				t.Errorf("expected %s, got %s", tt.expected, r)
+			}
+		})
+	}
+}
+
+func TestLineBuffer_totalLines(t *testing.T) {
+	tests := []struct {
+		name         string
+		s            string
+		width        int
+		continuation string
+		expected     int
+	}{
+		{
+			name:         "simple",
+			s:            "1234567890",
+			width:        10,
+			continuation: "",
+			expected:     1,
+		},
+		{
+			name:         "simple small width",
+			s:            "1234567890",
+			width:        1,
+			continuation: "",
+			expected:     10,
+		},
+		{
+			name:         "uneven number",
+			s:            "1234567890",
+			width:        3,
+			continuation: "",
+			expected:     4,
+		},
+		{
+			name:         "unicode even",
+			s:            "世界🌟世界",
+			width:        2,
+			continuation: "",
+			expected:     5,
+		},
+		{
+			name:         "unicode odd",
+			s:            "世界🌟世界",
+			width:        3,
+			continuation: "",
+			expected:     4,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lb := New(tt.s)
+			if lines := lb.totalLines(tt.width); lines != tt.expected {
+				t.Fatalf("expected %d, got %d", tt.expected, lines)
 			}
 		})
 	}

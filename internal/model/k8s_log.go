@@ -14,7 +14,7 @@ import (
 
 type Log struct {
 	Timestamp  time.Time
-	LineBuffer linebuffer.LineBuffer
+	LineBuffer *linebuffer.LineBuffer
 	Container  Container
 }
 

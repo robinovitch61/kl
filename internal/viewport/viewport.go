@@ -928,8 +928,7 @@ func (m Model[T]) styleSelection(s string) string {
 func toLineBuffers(lines []string) []linebuffer.LineBufferer {
 	res := make([]linebuffer.LineBufferer, len(lines))
 	for i, line := range lines {
-		lb := linebuffer.New(line)
-		res[i] = &lb
+		res[i] = linebuffer.New(line)
 	}
 	return res
 }
