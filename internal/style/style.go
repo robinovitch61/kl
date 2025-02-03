@@ -8,6 +8,12 @@ import (
 	"image/color"
 )
 
+var (
+	blue  = lipgloss.Color("6")
+	lilac = lipgloss.Color("189")
+	green = lipgloss.Color("46")
+)
+
 type TermStyleData struct {
 	ForegroundDetected bool
 	Foreground         color.Color
@@ -52,6 +58,21 @@ type Styles struct {
 	RightBorder      lipgloss.Style
 }
 
+var DefaultStyles = Styles{
+	Unset:            lipgloss.NewStyle(),
+	Alt:              lipgloss.NewStyle().Foreground(lipgloss.Color("#ffffff")),
+	Bold:             lipgloss.NewStyle().Bold(true),
+	Inverse:          lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
+	BoldUnderline:    lipgloss.NewStyle().Bold(true).Underline(true),
+	InverseUnderline: lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")).Underline(true),
+	AltInverse:       lipgloss.NewStyle().Foreground(lipgloss.Color("#141414")).Background(lipgloss.Color("#cbcbcb")),
+	Underline:        lipgloss.NewStyle().Underline(true),
+	Blue:             lipgloss.NewStyle().Background(blue).Foreground(lipgloss.Color("#000000")),
+	Lilac:            lipgloss.NewStyle().Background(lilac).Foreground(lipgloss.Color("#000000")),
+	Green:            lipgloss.NewStyle().Background(green).Foreground(lipgloss.Color("#000000")),
+	RightBorder:      lipgloss.NewStyle().Border(lipgloss.ThickBorder(), false, true, false, false).BorderForeground(lilac),
+}
+
 func NewStyles(data TermStyleData) Styles {
 	if !data.IsComplete() {
 		panic(fmt.Errorf("NewStyles called with incomplete TermStyleData"))
@@ -63,8 +84,6 @@ func NewStyles(data TermStyleData) Styles {
 
 	fgLightDark := lipgloss.LightDark(data.ForegroundIsDark)
 	bgLightDark := lipgloss.LightDark(data.BackgroundIsDark)
-
-	lilac := lipgloss.Color("189")
 
 	return Styles{
 		Unset: lipgloss.NewStyle().Foreground(data.Foreground).Background(data.Background),
@@ -85,11 +104,11 @@ func NewStyles(data TermStyleData) Styles {
 
 		Underline: lipgloss.NewStyle().Underline(true),
 
-		Blue: lipgloss.NewStyle().Background(lipgloss.Color("6")).Foreground(lipgloss.Color("#000000")),
+		Blue: lipgloss.NewStyle().Background(blue).Foreground(lipgloss.Color("#000000")),
 
 		Lilac: lipgloss.NewStyle().Background(lilac).Foreground(lipgloss.Color("#000000")),
 
-		Green: lipgloss.NewStyle().Background(lipgloss.Color("46")).Foreground(lipgloss.Color("#000000")),
+		Green: lipgloss.NewStyle().Background(green).Foreground(lipgloss.Color("#000000")),
 
 		RightBorder: lipgloss.NewStyle().Border(lipgloss.ThickBorder(), false, true, false, false).BorderForeground(lilac),
 	}
