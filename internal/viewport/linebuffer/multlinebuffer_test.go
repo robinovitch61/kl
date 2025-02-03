@@ -1,9 +1,12 @@
 package linebuffer
 
-import "testing"
+import (
+	"github.com/charmbracelet/lipgloss/v2"
+	"testing"
+)
 
-var equivalentLineBuffers = [][]LineBufferer{
-	{
+var equivalentLineBuffers = map[string][]LineBufferer{
+	"hello world": {
 		New("hello world"),
 		NewMulti(
 			New("hello"),
@@ -31,6 +34,16 @@ var equivalentLineBuffers = [][]LineBufferer{
 	},
 }
 
+func TestMultiLineBuffer_Width(t *testing.T) {
+	for _, eq := range equivalentLineBuffers {
+		for i, lb := range eq {
+			if lb.Width() != eq[0].Width() {
+				t.Errorf("expected %d, got %d for line buffer %d", eq[0].Width(), lb.Width(), i)
+			}
+		}
+	}
+}
+
 func TestMultiLineBuffer_Content(t *testing.T) {
 	for _, eq := range equivalentLineBuffers {
 		for i, lb := range eq {
@@ -38,6 +51,37 @@ func TestMultiLineBuffer_Content(t *testing.T) {
 				t.Errorf("expected %q, got %q for line buffer %d", eq[0].Content(), lb.Content(), i)
 			}
 		}
+	}
+}
+
+func TestMultiLineBuffer_SeekToWidth(t *testing.T) {
+	tests := []struct {
+		name            string
+		key             string
+		seekToWidth     int
+		takeWidth       int
+		continuation    string
+		expectedPopLeft string
+	}{
+		{
+			name:            "hello world 0",
+			key:             "hello world",
+			seekToWidth:     0,
+			takeWidth:       7,
+			continuation:    "",
+			expectedPopLeft: "hello w",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, eq := range equivalentLineBuffers[tt.key] {
+				eq.SeekToWidth(tt.seekToWidth)
+				if actual := eq.PopLeft(tt.takeWidth, tt.continuation, "", lipgloss.NewStyle()); actual != tt.expectedPopLeft {
+					t.Errorf("for %s, expected %q, got %q", eq.Repr(), tt.expectedPopLeft, actual)
+				}
+			}
+		})
 	}
 }
 

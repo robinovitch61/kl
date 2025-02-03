@@ -1,6 +1,7 @@
 package linebuffer
 
 import (
+	"fmt"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/mattn/go-runewidth"
 	"github.com/robinovitch61/kl/internal/constants"
@@ -75,6 +76,10 @@ func New(line string) *LineBuffer {
 	}
 	lb.runeIdxToByteOffset[n] = currentOffset
 	return &lb
+}
+
+func (l LineBuffer) Repr() string {
+	return fmt.Sprintf("LB(%q)", l.content)
 }
 
 func (l LineBuffer) Width() int {

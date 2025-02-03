@@ -1,6 +1,8 @@
 package linebuffer
 
-import "github.com/charmbracelet/lipgloss/v2"
+import (
+	"github.com/charmbracelet/lipgloss/v2"
+)
 
 // MultiLineBuffer implements LineBufferer by wrapping multiple LineBuffers without extra memory allocation
 type MultiLineBuffer struct {
@@ -28,11 +30,24 @@ func NewMulti(buffers ...*LineBuffer) *MultiLineBuffer {
 	}
 }
 
+func (m MultiLineBuffer) Repr() string {
+	v := "Multi("
+	for i := range m.buffers {
+		if i > 0 {
+			v += ", "
+		}
+		v += m.buffers[i].Repr()
+	}
+	v += ")"
+	return v
+}
+
 func (m *MultiLineBuffer) Width() int {
 	return m.totalWidth
 }
 
 // TODO LEO: don't use this for e.g. search, instead inject filter into a Matches() bool method here
+// TODO LEO: or store the concatenated string on init?
 func (m *MultiLineBuffer) Content() string {
 	totalLen := 0
 	for _, buf := range m.buffers {

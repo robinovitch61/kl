@@ -3,6 +3,7 @@ package linebuffer
 import "github.com/charmbracelet/lipgloss/v2"
 
 type LineBufferer interface {
+	Repr() string
 	Width() int
 	Content() string
 	SeekToWidth(width int)
