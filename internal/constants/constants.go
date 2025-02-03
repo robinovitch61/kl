@@ -20,6 +20,9 @@ var GetNextContainerDeltasDuration = 300 * time.Millisecond
 // the newly acquired logs from all the containers. In between updates, it accumulates logs from received messages
 var BatchUpdateLogsInterval = 200 * time.Millisecond
 
+// CheckStylesLoaded controls how long to wait before checking if terminal foreground/background colors have been detected
+var CheckStylesLoadedDuration = 200 * time.Millisecond
+
 // AttemptUpdateSinceTimeInterval controls the cadence at which a "since time" update is attempted
 var AttemptUpdateSinceTimeInterval = 500 * time.Millisecond
 

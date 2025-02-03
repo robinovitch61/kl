@@ -33,6 +33,7 @@ type Model struct {
 	allClusterNamespaces []model.ClusterNamespaces
 	width, height        int
 	initialized          bool
+	stylesLoaded         bool
 	gotFirstContainers   bool
 	seenFirstContainer   bool
 	toast                toast.Model
@@ -69,6 +70,7 @@ func InitialModel(c Config) Model {
 func (m Model) Init() (tea.Model, tea.Cmd) {
 	return m, tea.Batch(
 		tea.Tick(constants.BatchUpdateLogsInterval, func(t time.Time) tea.Msg { return message.BatchUpdateLogsMsg{} }),
+		tea.Tick(constants.CheckStylesLoadedDuration, func(t time.Time) tea.Msg { return message.CheckStylesLoadedMsg{} }),
 		tea.RequestForegroundColor,
 		tea.RequestBackgroundColor,
 	)
@@ -83,11 +85,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// handle these regardless of m.err
 	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if key.Matches(msg, m.keyMap.Quit) {
+			return m, m.cleanupCmd()
+		}
+
 	case message.CleanupCompleteMsg:
 		return m, tea.Quit
-
-	case tea.KeyMsg:
-		return m.handleKeyMsg(msg)
 	}
 
 	if m.err != nil {
@@ -98,6 +102,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case message.ErrMsg:
 		m.err = msg.Err
+		return m, nil
 
 	case tea.BackgroundColorMsg:
 		m.termStyleData.SetBackground(msg)
@@ -110,6 +115,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.termStyleData.SetForeground(msg)
 		if m.termStyleData.IsComplete() {
 			m.setStyles(style.NewStyles(m.termStyleData))
+		}
+		return m, nil
+
+	case message.CheckStylesLoadedMsg:
+		if !m.stylesLoaded {
+			m.setStyles(style.DefaultStyles)
 		}
 		return m, nil
 
@@ -127,6 +138,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.syncDimensions()
 		return m, tea.Batch(cmds...)
+
+	case tea.KeyMsg:
+		return m.handleKeyMsg(msg)
 
 	case message.AttemptUpdateSinceTimeMsg:
 		m, cmd = m.attemptUpdateSinceTime()
@@ -396,10 +410,6 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
-
-	if key.Matches(msg, m.keyMap.Quit) {
-		return m, m.cleanupCmd()
-	}
 
 	if !m.initialized {
 		return m, nil
@@ -1086,6 +1096,7 @@ func (m *Model) setFullscreen(fullscreen bool) {
 
 func (m *Model) setStyles(styles style.Styles) {
 	m.styles = styles
+	m.stylesLoaded = true
 	m.pages[page.EntitiesPageType] = m.pages[page.EntitiesPageType].WithStyles(styles)
 	m.pages[page.LogsPageType] = m.pages[page.LogsPageType].WithStyles(styles)
 	m.pages[page.SingleLogPageType] = m.pages[page.SingleLogPageType].WithStyles(styles)

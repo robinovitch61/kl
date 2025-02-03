@@ -8,6 +8,8 @@ type CleanupCompleteMsg struct{}
 
 type BatchUpdateLogsMsg struct{}
 
+type CheckStylesLoadedMsg struct{}
+
 type StartMaintainEntitySelectionMsg struct{}
 
 type AttemptUpdateSinceTimeMsg struct{}
