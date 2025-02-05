@@ -109,3 +109,7 @@ func TestMultiLineBuffer_SeekToWidth(t *testing.T) {
 		})
 	}
 }
+
+func TestMultiLineBuffer_PopLeft(t *testing.T) {
+	// TODO LEO
+}
