@@ -70,17 +70,24 @@ func (m *MultiLineBuffer) SeekToWidth(width int) {
 		return
 	}
 
+	// reset all buffers before seeking
+	for _, buf := range m.buffers {
+		buf.SeekToWidth(0)
+	}
+
 	// find which buffer contains the target width
 	remainingWidth := width
+	m.currentBufferIdx = 0
+
 	for i, buf := range m.buffers {
 		bufWidth := buf.Width()
 		if remainingWidth <= bufWidth {
-			// found the buffer containing our target
 			m.currentBufferIdx = i
-			m.buffers[i].SeekToWidth(remainingWidth)
+			buf.SeekToWidth(remainingWidth)
 			return
 		}
 		remainingWidth -= bufWidth
+		m.currentBufferIdx = i + 1
 	}
 
 	// if we get here, we're seeking past the end
@@ -95,17 +102,27 @@ func (m *MultiLineBuffer) PopLeft(width int, continuation, toHighlight string, h
 		return ""
 	}
 
-	// get content from current buffer
-	result := m.buffers[m.currentBufferIdx].PopLeft(width, continuation, toHighlight, highlightStyle)
+	var result string
+	remainingWidth := width
 
-	// if we got less than requested width and have more buffers, move to next buffer
-	if resultWidth := lipgloss.Width(result); resultWidth < width && m.currentBufferIdx < len(m.buffers)-1 {
-		m.currentBufferIdx++
-		m.buffers[m.currentBufferIdx].SeekToWidth(0)
-		// get remaining content from next buffer
-		remainingWidth := width - resultWidth
-		nextResult := m.buffers[m.currentBufferIdx].PopLeft(remainingWidth, continuation, toHighlight, highlightStyle)
-		result += nextResult
+	for remainingWidth > 0 && m.currentBufferIdx < len(m.buffers) {
+		currentBuffer := m.buffers[m.currentBufferIdx]
+		chunk := currentBuffer.PopLeft(remainingWidth, continuation, toHighlight, highlightStyle)
+
+		if chunk == "" {
+			if m.currentBufferIdx < len(m.buffers)-1 {
+				m.currentBufferIdx++
+				continue
+			}
+			break
+		}
+
+		result += chunk
+		remainingWidth -= lipgloss.Width(chunk)
+
+		if remainingWidth > 0 && m.currentBufferIdx < len(m.buffers)-1 {
+			m.currentBufferIdx++
+		}
 	}
 
 	return result

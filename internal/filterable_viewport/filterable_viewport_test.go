@@ -33,7 +33,7 @@ type TestItem struct {
 
 func (t TestItem) Render() linebuffer.LineBufferer {
 	lb := linebuffer.New(t.content)
-	return &lb
+	return lb
 }
 
 func (t TestItem) String() string {

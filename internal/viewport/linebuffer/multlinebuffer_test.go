@@ -6,6 +6,7 @@ import (
 )
 
 var equivalentLineBuffers = map[string][]LineBufferer{
+	// TODO LEO: add ansi, unicode
 	"hello world": {
 		New("hello world"),
 		NewMulti(
@@ -71,6 +72,30 @@ func TestMultiLineBuffer_SeekToWidth(t *testing.T) {
 			continuation:    "",
 			expectedPopLeft: "hello w",
 		},
+		{
+			name:            "hello world 1",
+			key:             "hello world",
+			seekToWidth:     1,
+			takeWidth:       7,
+			continuation:    "",
+			expectedPopLeft: "ello wo",
+		},
+		{
+			name:            "hello world end",
+			key:             "hello world",
+			seekToWidth:     10,
+			takeWidth:       3,
+			continuation:    "",
+			expectedPopLeft: "d",
+		},
+		{
+			name:            "hello world past end",
+			key:             "hello world",
+			seekToWidth:     11,
+			takeWidth:       3,
+			continuation:    "",
+			expectedPopLeft: "",
+		},
 	}
 
 	for _, tt := range tests {
@@ -84,5 +109,3 @@ func TestMultiLineBuffer_SeekToWidth(t *testing.T) {
 		})
 	}
 }
-
-//func TestMultiLin
