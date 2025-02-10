@@ -27,7 +27,7 @@ var _ LineBufferer = LineBuffer{}
 // type assertion that *LineBuffer implements LineBufferer
 var _ LineBufferer = (*LineBuffer)(nil)
 
-func New(line string) *LineBuffer {
+func New(line string) LineBuffer {
 	lb := LineBuffer{
 		content: line,
 	}
@@ -76,7 +76,7 @@ func New(line string) *LineBuffer {
 		i++
 	}
 	lb.runeIdxToByteOffset[n] = currentOffset
-	return &lb
+	return lb
 }
 
 func (l LineBuffer) Width() int {

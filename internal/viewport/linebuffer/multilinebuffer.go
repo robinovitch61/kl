@@ -6,8 +6,7 @@ import (
 
 // MultiLineBuffer implements LineBufferer by wrapping multiple LineBuffers without extra memory allocation
 type MultiLineBuffer struct {
-	buffers []*LineBuffer
-	//currentBufferIdx int // tracks which buffer we're currently reading from
+	buffers    []LineBuffer
 	totalWidth int // cached total width across all buffers
 }
 
@@ -17,9 +16,9 @@ var _ LineBufferer = MultiLineBuffer{}
 // type assertion that *MultiLineBuffer implements LineBufferer
 var _ LineBufferer = (*MultiLineBuffer)(nil)
 
-func NewMulti(buffers ...*LineBuffer) *MultiLineBuffer {
+func NewMulti(buffers ...LineBuffer) MultiLineBuffer {
 	if len(buffers) == 0 {
-		return &MultiLineBuffer{}
+		return MultiLineBuffer{}
 	}
 
 	totalWidth := 0
@@ -27,7 +26,7 @@ func NewMulti(buffers ...*LineBuffer) *MultiLineBuffer {
 		totalWidth += buf.Width()
 	}
 
-	return &MultiLineBuffer{
+	return MultiLineBuffer{
 		buffers:    buffers,
 		totalWidth: totalWidth,
 	}
