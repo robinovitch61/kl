@@ -204,7 +204,8 @@ func (m Model[T]) View() string {
 	visibleHeaderLines := m.getVisibleHeaderLines()
 	for i := range visibleHeaderLines {
 		lineBuffer := linebuffer.New(visibleHeaderLines[i])
-		viewString += lineBuffer.PopLeft(m.width, m.continuationIndicator, "", lipgloss.NewStyle()) + "\n"
+		line, _ := lineBuffer.Take(0, m.width, m.continuationIndicator, "", lipgloss.NewStyle())
+		viewString += line + "\n"
 	}
 
 	// get the lines to show based on the vertical scroll position (topItemIdx and topItemLineOffset)
@@ -217,8 +218,8 @@ func (m Model[T]) View() string {
 			truncated = visibleContentLines.lines[i].Content()
 		} else {
 			lineBuffer := visibleContentLines.lines[i]
-			lineBuffer.SeekToWidth(m.xOffset)
-			truncated = lineBuffer.PopLeft(
+			truncated, _ = lineBuffer.Take(
+				m.xOffset,
 				m.width,
 				m.continuationIndicator,
 				m.stringToHighlight,
@@ -234,7 +235,7 @@ func (m Model[T]) View() string {
 		if !m.wrapText && m.xOffset > 0 && lipgloss.Width(truncated) == 0 && visibleContentLines.lines[i].Width() > 0 {
 			// if panned right past where line ends, show continuation indicator
 			lineBuffer := linebuffer.New(m.getLineContinuationIndicator())
-			truncated = lineBuffer.PopLeft(m.width, "", "", lipgloss.NewStyle())
+			truncated, _ = lineBuffer.Take(0, m.width, "", "", lipgloss.NewStyle())
 			if isSelection {
 				truncated = m.styleSelection(truncated)
 			}
@@ -802,9 +803,8 @@ func (m Model[T]) getTruncatedFooterLine(visibleContentLines visibleContentLines
 	// use m.continuationIndicator regardless of wrapText
 
 	footerBuffer := linebuffer.New(footerString)
-	return m.FooterStyle.Render(
-		footerBuffer.PopLeft(m.width, m.continuationIndicator, "", lipgloss.NewStyle()),
-	)
+	f, _ := footerBuffer.Take(0, m.width, m.continuationIndicator, "", lipgloss.NewStyle())
+	return m.FooterStyle.Render(f)
 }
 
 func (m Model[T]) getLineContinuationIndicator() string {

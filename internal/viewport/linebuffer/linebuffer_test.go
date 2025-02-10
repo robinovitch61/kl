@@ -79,150 +79,151 @@ func TestLineBuffer_Content(t *testing.T) {
 	}
 }
 
-func TestLineBuffer_SeekToWidth(t *testing.T) {
-	tests := []struct {
-		name            string
-		s               string
-		width           int
-		seekWidth       int
-		continuation    string
-		expectedPopLeft string
-	}{
-		{
-			name:            "empty",
-			s:               "",
-			width:           10,
-			seekWidth:       0,
-			continuation:    "",
-			expectedPopLeft: "",
-		},
-		{
-			name:            "simple",
-			s:               "1234567890",
-			width:           10,
-			seekWidth:       0,
-			continuation:    "",
-			expectedPopLeft: "1234567890",
-		},
-		{
-			name:            "negative seekWidth",
-			s:               "1234567890",
-			width:           10,
-			seekWidth:       -1,
-			continuation:    "",
-			expectedPopLeft: "1234567890",
-		},
-		{
-			name:            "seek",
-			s:               "1234567890",
-			width:           10,
-			seekWidth:       3,
-			continuation:    "",
-			expectedPopLeft: "4567890",
-		},
-		{
-			name:            "seek to end",
-			s:               "1234567890",
-			width:           10,
-			seekWidth:       10,
-			continuation:    "",
-			expectedPopLeft: "",
-		},
-		{
-			name:            "seek past end",
-			s:               "1234567890",
-			width:           10,
-			seekWidth:       11,
-			continuation:    "",
-			expectedPopLeft: "",
-		},
-		{
-			name:            "continuation",
-			s:               "1234567890",
-			width:           7,
-			seekWidth:       2,
-			continuation:    "...",
-			expectedPopLeft: "...6...",
-		},
-		{
-			name:            "continuation past end",
-			s:               "1234567890",
-			width:           10,
-			seekWidth:       11,
-			continuation:    "...",
-			expectedPopLeft: "",
-		},
-		{
-			name:            "unicode",
-			s:               "世界🌟世界🌟",
-			width:           10,
-			seekWidth:       0,
-			continuation:    "",
-			expectedPopLeft: "世界🌟世界",
-		},
-		{
-			name:            "unicode seek past first rune",
-			s:               "世界🌟世界🌟",
-			width:           10,
-			seekWidth:       2,
-			continuation:    "",
-			expectedPopLeft: "界🌟世界🌟",
-		},
-		{
-			name:            "unicode seek past first 2 runes",
-			s:               "世界🌟世界🌟",
-			width:           10,
-			seekWidth:       3,
-			continuation:    "",
-			expectedPopLeft: "🌟世界🌟",
-		},
-		{
-			name:            "unicode seek past all but 1 rune",
-			s:               "世界🌟世界🌟",
-			width:           10,
-			seekWidth:       10,
-			continuation:    "",
-			expectedPopLeft: "🌟",
-		},
-		{
-			name:            "unicode seek almost to end",
-			s:               "世界🌟世界🌟",
-			width:           10,
-			seekWidth:       11,
-			continuation:    "",
-			expectedPopLeft: "",
-		},
-		{
-			name:            "unicode seek to end",
-			s:               "世界🌟世界🌟",
-			width:           10,
-			seekWidth:       12,
-			continuation:    "",
-			expectedPopLeft: "",
-		},
-		{
-			name:            "unicode insufficient width",
-			s:               "世界🌟世界🌟",
-			width:           1,
-			seekWidth:       2,
-			continuation:    "",
-			expectedPopLeft: "",
-		},
-	}
+//
+//func TestLineBuffer_SeekToWidth(t *testing.T) {
+//	tests := []struct {
+//		name            string
+//		s               string
+//		width           int
+//		seekWidth       int
+//		continuation    string
+//		expectedPopLeft string
+//	}{
+//		{
+//			name:            "empty",
+//			s:               "",
+//			width:           10,
+//			seekWidth:       0,
+//			continuation:    "",
+//			expectedPopLeft: "",
+//		},
+//		{
+//			name:            "simple",
+//			s:               "1234567890",
+//			width:           10,
+//			seekWidth:       0,
+//			continuation:    "",
+//			expectedPopLeft: "1234567890",
+//		},
+//		{
+//			name:            "negative seekWidth",
+//			s:               "1234567890",
+//			width:           10,
+//			seekWidth:       -1,
+//			continuation:    "",
+//			expectedPopLeft: "1234567890",
+//		},
+//		{
+//			name:            "seek",
+//			s:               "1234567890",
+//			width:           10,
+//			seekWidth:       3,
+//			continuation:    "",
+//			expectedPopLeft: "4567890",
+//		},
+//		{
+//			name:            "seek to end",
+//			s:               "1234567890",
+//			width:           10,
+//			seekWidth:       10,
+//			continuation:    "",
+//			expectedPopLeft: "",
+//		},
+//		{
+//			name:            "seek past end",
+//			s:               "1234567890",
+//			width:           10,
+//			seekWidth:       11,
+//			continuation:    "",
+//			expectedPopLeft: "",
+//		},
+//		{
+//			name:            "continuation",
+//			s:               "1234567890",
+//			width:           7,
+//			seekWidth:       2,
+//			continuation:    "...",
+//			expectedPopLeft: "...6...",
+//		},
+//		{
+//			name:            "continuation past end",
+//			s:               "1234567890",
+//			width:           10,
+//			seekWidth:       11,
+//			continuation:    "...",
+//			expectedPopLeft: "",
+//		},
+//		{
+//			name:            "unicode",
+//			s:               "世界🌟世界🌟",
+//			width:           10,
+//			seekWidth:       0,
+//			continuation:    "",
+//			expectedPopLeft: "世界🌟世界",
+//		},
+//		{
+//			name:            "unicode seek past first rune",
+//			s:               "世界🌟世界🌟",
+//			width:           10,
+//			seekWidth:       2,
+//			continuation:    "",
+//			expectedPopLeft: "界🌟世界🌟",
+//		},
+//		{
+//			name:            "unicode seek past first 2 runes",
+//			s:               "世界🌟世界🌟",
+//			width:           10,
+//			seekWidth:       3,
+//			continuation:    "",
+//			expectedPopLeft: "🌟世界🌟",
+//		},
+//		{
+//			name:            "unicode seek past all but 1 rune",
+//			s:               "世界🌟世界🌟",
+//			width:           10,
+//			seekWidth:       10,
+//			continuation:    "",
+//			expectedPopLeft: "🌟",
+//		},
+//		{
+//			name:            "unicode seek almost to end",
+//			s:               "世界🌟世界🌟",
+//			width:           10,
+//			seekWidth:       11,
+//			continuation:    "",
+//			expectedPopLeft: "",
+//		},
+//		{
+//			name:            "unicode seek to end",
+//			s:               "世界🌟世界🌟",
+//			width:           10,
+//			seekWidth:       12,
+//			continuation:    "",
+//			expectedPopLeft: "",
+//		},
+//		{
+//			name:            "unicode insufficient width",
+//			s:               "世界🌟世界🌟",
+//			width:           1,
+//			seekWidth:       2,
+//			continuation:    "",
+//			expectedPopLeft: "",
+//		},
+//	}
+//
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			lb := New(tt.s)
+//			lb.SeekToWidth(tt.seekWidth)
+//			// highlight tested in Take tests
+//			if actual := lb.Take(tt.width, tt.continuation, "", lipgloss.NewStyle()); actual != tt.expectedPopLeft {
+//				t.Errorf("expected %s, got %s", tt.expectedPopLeft, actual)
+//			}
+//		})
+//	}
+//}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			lb := New(tt.s)
-			lb.SeekToWidth(tt.seekWidth)
-			// highlight tested in PopLeft tests
-			if actual := lb.PopLeft(tt.width, tt.continuation, "", lipgloss.NewStyle()); actual != tt.expectedPopLeft {
-				t.Errorf("expected %s, got %s", tt.expectedPopLeft, actual)
-			}
-		})
-	}
-}
-
-func TestLineBuffer_PopLeft(t *testing.T) {
+func TestLineBuffer_Take(t *testing.T) {
 	highlightStyle := lipgloss.NewStyle().Background(lipgloss.Color("#FF0000"))
 	tests := []struct {
 		name         string
@@ -230,7 +231,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 		width        int
 		continuation string
 		toHighlight  string
-		numPopLefts  int
+		numTakes     int
 		expected     []string
 	}{
 		{
@@ -238,7 +239,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "12345678901234",
 			width:        0,
 			continuation: "",
-			numPopLefts:  3,
+			numTakes:     3,
 			expected: []string{
 				"",
 				"",
@@ -250,7 +251,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "12345678901234",
 			width:        0,
 			continuation: "...",
-			numPopLefts:  3,
+			numTakes:     3,
 			expected: []string{
 				"",
 				"",
@@ -262,7 +263,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "12345678901234",
 			width:        1,
 			continuation: "",
-			numPopLefts:  3,
+			numTakes:     3,
 			expected: []string{
 				"1",
 				"2",
@@ -274,7 +275,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "12345678901234",
 			width:        1,
 			continuation: "...",
-			numPopLefts:  3,
+			numTakes:     3,
 			expected: []string{
 				".",
 				".",
@@ -286,7 +287,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "12345678901234",
 			width:        5,
 			continuation: "",
-			numPopLefts:  4,
+			numTakes:     4,
 			expected: []string{
 				"12345",
 				"67890",
@@ -299,7 +300,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "12345678901234",
 			width:        5,
 			continuation: "...",
-			numPopLefts:  4,
+			numTakes:     4,
 			expected: []string{
 				"12...",
 				".....",
@@ -312,7 +313,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "12345678901234",
 			width:        5,
 			continuation: "",
-			numPopLefts:  4,
+			numTakes:     4,
 			expected: []string{
 				"12345",
 				"67890",
@@ -325,7 +326,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "12345678901234",
 			width:        5,
 			continuation: "...",
-			numPopLefts:  4,
+			numTakes:     4,
 			expected: []string{
 				"12...",
 				".....",
@@ -338,7 +339,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "世界🌟", // each of these takes up 2 terminal cells
 			width:        0,
 			continuation: "",
-			numPopLefts:  3,
+			numTakes:     3,
 			expected: []string{
 				"",
 				"",
@@ -350,7 +351,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "世界🌟", // each of these takes up 2 terminal cells
 			width:        0,
 			continuation: "...",
-			numPopLefts:  3,
+			numTakes:     3,
 			expected: []string{
 				"",
 				"",
@@ -362,7 +363,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "世界🌟", // each of these takes up 2 terminal cells
 			width:        1,
 			continuation: "",
-			numPopLefts:  3,
+			numTakes:     3,
 			expected: []string{
 				"",
 				"",
@@ -374,7 +375,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "世界🌟", // each of these takes up 2 terminal cells
 			width:        1,
 			continuation: "...",
-			numPopLefts:  3,
+			numTakes:     3,
 			expected: []string{
 				"",
 				"",
@@ -386,7 +387,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "世界🌟", // each of these takes up 2 terminal cells
 			width:        2,
 			continuation: "",
-			numPopLefts:  4,
+			numTakes:     4,
 			expected: []string{
 				"世",
 				"界",
@@ -399,7 +400,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "世界🌟", // each of these takes up 2 terminal cells
 			width:        2,
 			continuation: "...",
-			numPopLefts:  4,
+			numTakes:     4,
 			expected: []string{
 				"..",
 				"..",
@@ -412,7 +413,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "世界🌟", // each of these takes up 2 terminal cells
 			width:        3,
 			continuation: "",
-			numPopLefts:  4,
+			numTakes:     4,
 			expected: []string{
 				"世",
 				"界",
@@ -425,7 +426,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "世界🌟", // each of these takes up 2 terminal cells
 			width:        3,
 			continuation: "...",
-			numPopLefts:  4,
+			numTakes:     4,
 			expected: []string{
 				"..",
 				"..",
@@ -438,7 +439,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "世界🌟", // each of these takes up 2 terminal cells
 			width:        4,
 			continuation: "",
-			numPopLefts:  3,
+			numTakes:     3,
 			expected: []string{
 				"世界",
 				"🌟",
@@ -450,7 +451,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "世界🌟", // each of these takes up 2 terminal cells
 			width:        4,
 			continuation: "...",
-			numPopLefts:  3,
+			numTakes:     3,
 			expected: []string{
 				"世..",
 				"..",
@@ -462,7 +463,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "1234567890",
 			width:        3,
 			continuation: "...",
-			numPopLefts:  4,
+			numTakes:     4,
 			expected: []string{
 				"...",
 				"...",
@@ -475,7 +476,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "1234567890",
 			width:        4,
 			continuation: "...",
-			numPopLefts:  3,
+			numTakes:     3,
 			expected: []string{
 				"1...",
 				"....",
@@ -487,7 +488,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "123456789012345678",
 			width:        6,
 			continuation: "...",
-			numPopLefts:  3,
+			numTakes:     3,
 			expected: []string{
 				"123...",
 				"......",
@@ -499,7 +500,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "1234567890123456789",
 			width:        6,
 			continuation: "...",
-			numPopLefts:  4,
+			numTakes:     4,
 			expected: []string{
 				"123...",
 				"......",
@@ -512,7 +513,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "hi",
 			width:        3,
 			continuation: "...",
-			numPopLefts:  1,
+			numTakes:     1,
 			expected:     []string{"hi"},
 		},
 		{
@@ -520,7 +521,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "1234567890123456789012345",
 			width:        1,
 			continuation: "...",
-			numPopLefts:  1,
+			numTakes:     1,
 			expected:     []string{"."},
 		},
 		{
@@ -528,7 +529,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "1234567",
 			width:        5,
 			continuation: "...",
-			numPopLefts:  1,
+			numTakes:     1,
 			expected:     []string{"12..."},
 		},
 		{
@@ -536,7 +537,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "1234567890123456789012345",
 			width:        30,
 			continuation: "...",
-			numPopLefts:  1,
+			numTakes:     1,
 			expected:     []string{"1234567890123456789012345"},
 		},
 		{
@@ -544,7 +545,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "1234567890123456789012345     ",
 			width:        30,
 			continuation: "...",
-			numPopLefts:  1,
+			numTakes:     1,
 			expected:     []string{"1234567890123456789012345     "},
 		},
 		{
@@ -552,7 +553,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "1234567890123456789012345",
 			width:        15,
 			continuation: "...",
-			numPopLefts:  1,
+			numTakes:     1,
 			expected:     []string{"123456789012..."},
 		},
 		{
@@ -560,7 +561,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "123456789012345678901234567890123456789012345",
 			width:        15,
 			continuation: "...",
-			numPopLefts:  3,
+			numTakes:     3,
 			expected: []string{
 				"123456789012...",
 				"...901234567...",
@@ -572,7 +573,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "\x1b[38;2;255;0;0ma really really long line\x1b[m",
 			width:        15,
 			continuation: "",
-			numPopLefts:  2,
+			numTakes:     2,
 			expected: []string{
 				"\x1b[38;2;255;0;0ma really really\x1b[m",
 				"\x1b[38;2;255;0;0m long line\x1b[m",
@@ -583,7 +584,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "\x1b[38;2;255;0;0m12345678901234567890123456789012345\x1b[m",
 			width:        15,
 			continuation: "...",
-			numPopLefts:  3,
+			numTakes:     3,
 			expected: []string{
 				"\x1b[38;2;255;0;0m123456789012...\x1b[m",
 				"\x1b[38;2;255;0;0m...901234567...\x1b[m",
@@ -595,7 +596,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "\x1b[38;2;255;0;0ma\x1b[m really really long line",
 			width:        15,
 			continuation: "",
-			numPopLefts:  2,
+			numTakes:     2,
 			expected: []string{
 				"\x1b[38;2;255;0;0ma\x1b[m really really",
 				" long line",
@@ -606,7 +607,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "|\x1b[38;2;169;15;15mfl..-1\x1b[m| {\"timestamp\": \"now\"}",
 			width:        15,
 			continuation: "...",
-			numPopLefts:  3,
+			numTakes:     3,
 			expected: []string{
 				"|\x1b[38;2;169;15;15mfl..-1\x1b[m| {\"t...",
 				"...mp\": \"now\"}",
@@ -618,7 +619,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "\x1b[38;2;0;0;255mhi\x1b[m",
 			width:        3,
 			continuation: "...",
-			numPopLefts:  1,
+			numTakes:     1,
 			expected: []string{
 				"\x1b[38;2;0;0;255mhi\x1b[m",
 			},
@@ -628,7 +629,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "├─flask",
 			width:        6,
 			continuation: "...",
-			numPopLefts:  1,
+			numTakes:     1,
 			expected: []string{
 				"├─f...",
 			},
@@ -638,7 +639,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "\x1b[38;2;0;0;255m├─flask\x1b[m",
 			width:        6,
 			continuation: "...",
-			numPopLefts:  1,
+			numTakes:     1,
 			expected: []string{
 				"\x1b[38;2;0;0;255m├─f...\x1b[m",
 			},
@@ -648,7 +649,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "  │   └─[ ] local-path-provisioner (running for 11d)",
 			width:        53,
 			continuation: "",
-			numPopLefts:  1,
+			numTakes:     1,
 			expected: []string{
 				"  │   └─[ ] local-path-provisioner (running for 11d)",
 			},
@@ -659,7 +660,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			width:        15,
 			continuation: "",
 			toHighlight:  "very",
-			numPopLefts:  1,
+			numTakes:     1,
 			expected: []string{
 				"a " + highlightStyle.Render("very") + " normal l",
 			},
@@ -670,7 +671,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			width:        15,
 			continuation: "",
 			toHighlight:  "very",
-			numPopLefts:  1,
+			numTakes:     1,
 			expected: []string{
 				"a " + highlightStyle.Render("very") + " normal l",
 			},
@@ -681,7 +682,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			width:        15,
 			continuation: "...",
 			toHighlight:  "l l",
-			numPopLefts:  1,
+			numTakes:     1,
 			expected: []string{
 				"a very norma...", // does not highlight continuation, could in future
 			},
@@ -692,7 +693,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			width:        6,
 			continuation: "",
 			toHighlight:  "r",
-			numPopLefts:  2,
+			numTakes:     2,
 			expected: []string{
 				strings.Repeat("\x1b[48;2;255;0;0mr\x1b[m", 6),
 				strings.Repeat("\x1b[48;2;255;0;0mr\x1b[m", 4),
@@ -704,7 +705,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			width:        15,
 			continuation: "",
 			toHighlight:  "er",
-			numPopLefts:  1,
+			numTakes:     1,
 			expected: []string{
 				"\x1b[38;2;0;0;255mhi \x1b[48;2;0;255;0mth\x1b[m\x1b[48;2;255;0;0mer\x1b[m\x1b[38;2;0;0;255m\x1b[48;2;0;255;0me\x1b[m \x1b[48;2;255;0;0mer\x1b[m",
 			},
@@ -715,7 +716,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			width:        6,
 			continuation: "",
 			toHighlight:  "hi there",
-			numPopLefts:  2,
+			numTakes:     2,
 			expected: []string{
 				highlightStyle.Render("hi the"),
 				highlightStyle.Render("re") + " re",
@@ -727,7 +728,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			width:        6,
 			continuation: "",
 			toHighlight:  "hi there",
-			numPopLefts:  2,
+			numTakes:     2,
 			expected: []string{
 				"\x1b[48;2;255;0;0mhi the\x1b[m",
 				"\x1b[48;2;255;0;0mre\x1b[m\x1b[38;2;0;0;255m re\x1b[m",
@@ -739,7 +740,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			width:        7,
 			continuation: "",
 			toHighlight:  "hi there",
-			numPopLefts:  2,
+			numTakes:     2,
 			expected: []string{
 				highlightStyle.Render("hi ther"),
 				highlightStyle.Render("e") + " re",
@@ -751,7 +752,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			width:        7,
 			continuation: "",
 			toHighlight:  "世界",
-			numPopLefts:  2,
+			numTakes:     2,
 			expected: []string{
 				highlightStyle.Render("世界") + "🌟",
 				highlightStyle.Render("世界") + "🌟",
@@ -763,7 +764,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			width:        7,
 			continuation: "",
 			toHighlight:  "世界🌟世",
-			numPopLefts:  2,
+			numTakes:     2,
 			expected: []string{
 				highlightStyle.Render("世界🌟"),
 				highlightStyle.Render("世") + "界🌟",
@@ -775,7 +776,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			width:        7,
 			continuation: "",
 			toHighlight:  "世界🌟世",
-			numPopLefts:  2,
+			numTakes:     2,
 			expected: []string{
 				highlightStyle.Render("世界🌟"),
 				highlightStyle.Render("世") + "\x1b[38;2;0;0;255m界🌟\x1b[m",
@@ -787,7 +788,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			width:        7,
 			continuation: "...",
 			toHighlight:  "世界🌟世",
-			numPopLefts:  2,
+			numTakes:     2,
 			expected: []string{
 				"\x1b[38;2;0;0;255m世界..\x1b[m", // does not highlight continuation, could in future
 				"\x1b[38;2;0;0;255m..界🌟\x1b[m", // does not highlight continuation, could in future
@@ -799,7 +800,7 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 			s:            "A💖中e\u0301A💖中e\u0301", // 12w total
 			width:        10,
 			continuation: "",
-			numPopLefts:  2,
+			numTakes:     2,
 			expected: []string{
 				"A💖中e\u0301A💖",
 				"中e\u0301",
@@ -809,13 +810,15 @@ func TestLineBuffer_PopLeft(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if len(tt.expected) != tt.numPopLefts {
+			if len(tt.expected) != tt.numTakes {
 				t.Fatalf("num expected != num popLefts")
 			}
 			lb := New(tt.s)
-			for i := 0; i < tt.numPopLefts; i++ {
-				actual := lb.PopLeft(tt.width, tt.continuation, tt.toHighlight, highlightStyle)
+			startWidth := 0
+			for i := 0; i < tt.numTakes; i++ {
+				actual, actualWidth := lb.Take(startWidth, tt.width, tt.continuation, tt.toHighlight, highlightStyle)
 				util.CmpStr(t, tt.expected[i], actual)
+				startWidth += actualWidth
 			}
 		})
 	}
@@ -973,100 +976,6 @@ func TestLineBuffer_WrappedLines(t *testing.T) {
 					t.Errorf("wrap() line %d got %q, expected %q", i, got[i], tt.want[i])
 				}
 			}
-		})
-	}
-}
-
-func TestLineBuffer_seekToLine(t *testing.T) {
-	tests := []struct {
-		name            string
-		s               string
-		width           int
-		continuation    string
-		seekToLine      int
-		expectedPopLeft string
-	}{
-		{
-			name:            "empty",
-			s:               "",
-			width:           0,
-			continuation:    "",
-			seekToLine:      0,
-			expectedPopLeft: "",
-		},
-		{
-			name:            "seek to negative line",
-			s:               "12345",
-			width:           2,
-			continuation:    "",
-			seekToLine:      -1,
-			expectedPopLeft: "12",
-		},
-		{
-			name:            "seek to zero'th line",
-			s:               "12345",
-			width:           2,
-			continuation:    "",
-			seekToLine:      0,
-			expectedPopLeft: "12",
-		},
-		{
-			name:            "seek to first line",
-			s:               "12345",
-			width:           2,
-			continuation:    "",
-			seekToLine:      1,
-			expectedPopLeft: "34",
-		},
-		{
-			name:            "seek to second line",
-			s:               "12345",
-			width:           2,
-			continuation:    "",
-			seekToLine:      2,
-			expectedPopLeft: "5",
-		},
-		{
-			name:            "seek past end",
-			s:               "12345",
-			width:           2,
-			continuation:    "",
-			seekToLine:      3,
-			expectedPopLeft: "",
-		},
-		{
-			name:            "unicode zero'th line",
-			s:               "世界🌟世界🌟",
-			width:           2,
-			continuation:    "",
-			seekToLine:      0,
-			expectedPopLeft: "世",
-		},
-		{
-			name:            "unicode first line",
-			s:               "世界🌟世界🌟",
-			width:           2,
-			continuation:    "",
-			seekToLine:      1,
-			expectedPopLeft: "界",
-		},
-		{
-			name:            "unicode insufficient width",
-			s:               "世界🌟世界🌟",
-			width:           1,
-			continuation:    "",
-			seekToLine:      1,
-			expectedPopLeft: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			lb := New(tt.s)
-			lb.seekToLine(tt.seekToLine, tt.width)
-			// highlight tested in PopLeft tests
-			actual := lb.PopLeft(tt.width, tt.continuation, "", lipgloss.NewStyle())
-			util.CmpStr(t, tt.expectedPopLeft, actual)
 		})
 	}
 }

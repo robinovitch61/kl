@@ -13,7 +13,6 @@ import (
 // for the ansi escape codes styling the line.
 type LineBuffer struct {
 	content             string     // underlying string with ansi codes. utf-8 bytes
-	leftRuneIdx         uint32     // left plaintext rune idx to start next PopLeft result from
 	lineNoAnsi          string     // line without ansi codes. utf-8 bytes
 	lineNoAnsiRunes     []rune     // runes of lineNoAnsi. len(lineNoAnsiRunes) == len(lineNoAnsiWidths)
 	runeIdxToByteOffset []uint32   // idx of lineNoAnsiRunes to byte offset. len(runeIdxToByteOffset) == len(lineNoAnsiRunes)
@@ -22,13 +21,15 @@ type LineBuffer struct {
 	ansiCodeIndexes     [][]uint32 // slice of startByte, endByte indexes of ansi codes in the line
 }
 
+// type assertion that LineBuffer implements LineBufferer
+var _ LineBufferer = LineBuffer{}
+
 // type assertion that *LineBuffer implements LineBufferer
 var _ LineBufferer = (*LineBuffer)(nil)
 
 func New(line string) *LineBuffer {
 	lb := LineBuffer{
-		content:     line,
-		leftRuneIdx: 0,
+		content: line,
 	}
 
 	lb.ansiCodeIndexes = findAnsiRanges(line)
@@ -94,34 +95,27 @@ func (l LineBuffer) Content() string {
 	return l.content
 }
 
-func (l *LineBuffer) SeekToWidth(width int) {
-	// width can go past end, in which case PopLeft() returns "". Required when e.g. panning past line's end.
-	if width <= 0 {
-		l.leftRuneIdx = 0
-	} else {
-		l.leftRuneIdx = uint32(getLeftRuneIdx(width, l.lineNoAnsiCumWidths))
-	}
-}
-
-// PopLeft returns a string of the buffer's width from its current left offset, scrolling the left offset to the right
-func (l *LineBuffer) PopLeft(
-	width int,
+// Take returns a string of the buffer's width from its current left offset
+func (l LineBuffer) Take(
+	startWidth, takeWidth int,
 	continuation, toHighlight string,
 	highlightStyle lipgloss.Style,
-) string {
-	if int(l.leftRuneIdx) >= len(l.lineNoAnsiRunes) || width == 0 {
-		return ""
+) (string, int) {
+	startRuneIdx := getLeftRuneIdx(startWidth, l.lineNoAnsiCumWidths)
+
+	if startRuneIdx >= len(l.lineNoAnsiRunes) || takeWidth == 0 {
+		return "", 0
 	}
 
 	var result strings.Builder
-	remainingWidth := width
-	startRuneIdx := l.leftRuneIdx
+	remainingWidth := takeWidth
+	leftRuneIdx := startRuneIdx
 	startByteOffset := l.runeIdxToByteOffset[startRuneIdx]
 
 	runesWritten := 0
-	for ; remainingWidth > 0 && int(l.leftRuneIdx) < len(l.lineNoAnsiRunes); l.leftRuneIdx++ {
-		r := l.lineNoAnsiRunes[l.leftRuneIdx]
-		runeWidth := l.lineNoAnsiWidths[l.leftRuneIdx]
+	for ; remainingWidth > 0 && leftRuneIdx < len(l.lineNoAnsiRunes); leftRuneIdx++ {
+		r := l.lineNoAnsiRunes[leftRuneIdx]
+		runeWidth := l.lineNoAnsiWidths[leftRuneIdx]
 		if int(runeWidth) > remainingWidth {
 			break
 		}
@@ -134,7 +128,7 @@ func (l *LineBuffer) PopLeft(
 	res := result.String()
 
 	// apply left/right line continuation indicators
-	if len(continuation) > 0 && (startRuneIdx > 0 || int(l.leftRuneIdx) < len(l.lineNoAnsiRunes)) {
+	if len(continuation) > 0 && (startRuneIdx > 0 || leftRuneIdx < len(l.lineNoAnsiRunes)) {
 		continuationRunes := []rune(continuation)
 
 		// if more runes to the left of the result, replace start runes with continuation indicator, respecting width
@@ -143,7 +137,7 @@ func (l *LineBuffer) PopLeft(
 		}
 
 		// if more runes to the right, replace final runes in result with continuation indicator, respecting width
-		if int(l.leftRuneIdx) < len(l.lineNoAnsiRunes) {
+		if leftRuneIdx < len(l.lineNoAnsiRunes) {
 			res = replaceEndWithContinuation(res, continuationRunes)
 		}
 	}
@@ -154,12 +148,12 @@ func (l *LineBuffer) PopLeft(
 	}
 
 	// highlight the desired string
-	res = l.highlightString(res, int(startByteOffset), toHighlight, highlightStyle)
+	res = l.highlightString(res, int(startByteOffset), int(l.runeIdxToByteOffset[leftRuneIdx]), toHighlight, highlightStyle)
 
 	// remove empty sequences
 	res = constants.EmptySequenceRegex.ReplaceAllString(res, "")
 
-	return res
+	return res, takeWidth - remainingWidth
 }
 
 func (l LineBuffer) WrappedLines(
@@ -184,29 +178,35 @@ func (l LineBuffer) WrappedLines(
 	var res []string
 	totalLines := l.totalLines(width)
 
-	l.SeekToWidth(0)
+	startWidth := 0
 	if maxLinesEachEnd > 0 && totalLines > maxLinesEachEnd*2 {
 		for nLines := 0; nLines < maxLinesEachEnd; nLines++ {
-			res = append(res, l.PopLeft(width, "", toHighlight, toHighlightStyle))
+			line, lineWidth := l.Take(startWidth, width, "", toHighlight, toHighlightStyle)
+			res = append(res, line)
+			startWidth += lineWidth
 		}
 
-		l.seekToLine(totalLines-maxLinesEachEnd, width)
+		startWidth = (totalLines - maxLinesEachEnd) * width
 		for nLines := 0; nLines < maxLinesEachEnd; nLines++ {
-			res = append(res, l.PopLeft(width, "", toHighlight, toHighlightStyle))
+			line, lineWidth := l.Take(startWidth, width, "", toHighlight, toHighlightStyle)
+			res = append(res, line)
+			startWidth += lineWidth
 		}
 	} else {
 		for nLines := 0; nLines < totalLines; nLines++ {
-			res = append(res, l.PopLeft(width, "", toHighlight, toHighlightStyle))
+			line, lineWidth := l.Take(startWidth, width, "", toHighlight, toHighlightStyle)
+			res = append(res, line)
+			startWidth += lineWidth
 		}
 	}
 
-	l.SeekToWidth(0)
 	return res
 }
 
 func (l LineBuffer) highlightString(
 	s string,
 	startByteOffset int,
+	endByteOffset int,
 	toHighlight string,
 	highlightStyle lipgloss.Style,
 ) string {
@@ -218,7 +218,6 @@ func (l LineBuffer) highlightString(
 			highlightLeft := l.lineNoAnsi[startByteOffset:endIdx]
 			s = highlightLine(s, highlightLeft, highlightStyle, 0, len(highlightLeft))
 		}
-		endByteOffset := int(l.runeIdxToByteOffset[l.leftRuneIdx])
 		if right, startIdx := overflowsRight(l.lineNoAnsi, endByteOffset, toHighlight); right {
 			highlightRight := l.lineNoAnsi[startIdx:endByteOffset]
 			lenPlainTextRes := len(stripAnsi(s))
@@ -626,14 +625,6 @@ func (l LineBuffer) totalLines(width int) int {
 		return 0
 	}
 	return (int(l.fullWidth()) + width - 1) / width
-}
-
-func (l *LineBuffer) seekToLine(n, width int) {
-	if n <= 0 {
-		l.leftRuneIdx = 0
-		return
-	}
-	l.leftRuneIdx = uint32(getLeftRuneIdx(n*width, l.lineNoAnsiCumWidths))
 }
 
 func (l LineBuffer) fullWidth() uint32 {

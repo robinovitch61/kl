@@ -6,12 +6,11 @@ type LineBufferer interface {
 	Repr() string
 	Width() int
 	Content() string
-	SeekToWidth(width int)
-	PopLeft(
-		width int,
+	Take(
+		startRuneIdx, takeWidth int,
 		continuation, toHighlight string,
 		highlightStyle lipgloss.Style,
-	) string
+	) (string, int)
 	WrappedLines(
 		width int,
 		maxLinesEachEnd int,
