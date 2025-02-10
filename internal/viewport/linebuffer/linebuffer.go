@@ -101,6 +101,10 @@ func (l LineBuffer) Take(
 	continuation, toHighlight string,
 	highlightStyle lipgloss.Style,
 ) (string, int) {
+	if startWidth < 0 {
+		startWidth = 0
+	}
+
 	startRuneIdx := getLeftRuneIdx(startWidth, l.lineNoAnsiCumWidths)
 
 	if startRuneIdx >= len(l.lineNoAnsiRunes) || takeWidth == 0 {

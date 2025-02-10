@@ -79,150 +79,6 @@ func TestLineBuffer_Content(t *testing.T) {
 	}
 }
 
-//
-//func TestLineBuffer_SeekToWidth(t *testing.T) {
-//	tests := []struct {
-//		name            string
-//		s               string
-//		width           int
-//		seekWidth       int
-//		continuation    string
-//		expectedPopLeft string
-//	}{
-//		{
-//			name:            "empty",
-//			s:               "",
-//			width:           10,
-//			seekWidth:       0,
-//			continuation:    "",
-//			expectedPopLeft: "",
-//		},
-//		{
-//			name:            "simple",
-//			s:               "1234567890",
-//			width:           10,
-//			seekWidth:       0,
-//			continuation:    "",
-//			expectedPopLeft: "1234567890",
-//		},
-//		{
-//			name:            "negative seekWidth",
-//			s:               "1234567890",
-//			width:           10,
-//			seekWidth:       -1,
-//			continuation:    "",
-//			expectedPopLeft: "1234567890",
-//		},
-//		{
-//			name:            "seek",
-//			s:               "1234567890",
-//			width:           10,
-//			seekWidth:       3,
-//			continuation:    "",
-//			expectedPopLeft: "4567890",
-//		},
-//		{
-//			name:            "seek to end",
-//			s:               "1234567890",
-//			width:           10,
-//			seekWidth:       10,
-//			continuation:    "",
-//			expectedPopLeft: "",
-//		},
-//		{
-//			name:            "seek past end",
-//			s:               "1234567890",
-//			width:           10,
-//			seekWidth:       11,
-//			continuation:    "",
-//			expectedPopLeft: "",
-//		},
-//		{
-//			name:            "continuation",
-//			s:               "1234567890",
-//			width:           7,
-//			seekWidth:       2,
-//			continuation:    "...",
-//			expectedPopLeft: "...6...",
-//		},
-//		{
-//			name:            "continuation past end",
-//			s:               "1234567890",
-//			width:           10,
-//			seekWidth:       11,
-//			continuation:    "...",
-//			expectedPopLeft: "",
-//		},
-//		{
-//			name:            "unicode",
-//			s:               "世界🌟世界🌟",
-//			width:           10,
-//			seekWidth:       0,
-//			continuation:    "",
-//			expectedPopLeft: "世界🌟世界",
-//		},
-//		{
-//			name:            "unicode seek past first rune",
-//			s:               "世界🌟世界🌟",
-//			width:           10,
-//			seekWidth:       2,
-//			continuation:    "",
-//			expectedPopLeft: "界🌟世界🌟",
-//		},
-//		{
-//			name:            "unicode seek past first 2 runes",
-//			s:               "世界🌟世界🌟",
-//			width:           10,
-//			seekWidth:       3,
-//			continuation:    "",
-//			expectedPopLeft: "🌟世界🌟",
-//		},
-//		{
-//			name:            "unicode seek past all but 1 rune",
-//			s:               "世界🌟世界🌟",
-//			width:           10,
-//			seekWidth:       10,
-//			continuation:    "",
-//			expectedPopLeft: "🌟",
-//		},
-//		{
-//			name:            "unicode seek almost to end",
-//			s:               "世界🌟世界🌟",
-//			width:           10,
-//			seekWidth:       11,
-//			continuation:    "",
-//			expectedPopLeft: "",
-//		},
-//		{
-//			name:            "unicode seek to end",
-//			s:               "世界🌟世界🌟",
-//			width:           10,
-//			seekWidth:       12,
-//			continuation:    "",
-//			expectedPopLeft: "",
-//		},
-//		{
-//			name:            "unicode insufficient width",
-//			s:               "世界🌟世界🌟",
-//			width:           1,
-//			seekWidth:       2,
-//			continuation:    "",
-//			expectedPopLeft: "",
-//		},
-//	}
-//
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			lb := New(tt.s)
-//			lb.SeekToWidth(tt.seekWidth)
-//			// highlight tested in Take tests
-//			if actual := lb.Take(tt.width, tt.continuation, "", lipgloss.NewStyle()); actual != tt.expectedPopLeft {
-//				t.Errorf("expected %s, got %s", tt.expectedPopLeft, actual)
-//			}
-//		})
-//	}
-//}
-
 func TestLineBuffer_Take(t *testing.T) {
 	highlightStyle := lipgloss.NewStyle().Background(lipgloss.Color("#FF0000"))
 	tests := []struct {
@@ -231,9 +87,145 @@ func TestLineBuffer_Take(t *testing.T) {
 		width        int
 		continuation string
 		toHighlight  string
+		startWidth   int
 		numTakes     int
 		expected     []string
 	}{
+		{
+			name:         "empty",
+			s:            "",
+			width:        10,
+			continuation: "",
+			startWidth:   0,
+			numTakes:     1,
+			expected:     []string{""},
+		},
+		{
+			name:         "simple",
+			s:            "1234567890",
+			width:        10,
+			continuation: "",
+			startWidth:   0,
+			numTakes:     1,
+			expected:     []string{"1234567890"},
+		},
+		{
+			name:         "negative startWidth",
+			s:            "1234567890",
+			width:        10,
+			continuation: "",
+			startWidth:   -1,
+			numTakes:     1,
+			expected:     []string{"1234567890"},
+		},
+		{
+			name:         "seek",
+			s:            "1234567890",
+			width:        10,
+			continuation: "",
+			startWidth:   3,
+			numTakes:     1,
+			expected:     []string{"4567890"},
+		},
+		{
+			name:         "seek to end",
+			s:            "1234567890",
+			width:        10,
+			continuation: "",
+			startWidth:   10,
+			numTakes:     1,
+			expected:     []string{""},
+		},
+		{
+			name:         "seek past end",
+			s:            "1234567890",
+			width:        10,
+			continuation: "",
+			startWidth:   11,
+			numTakes:     1,
+			expected:     []string{""},
+		},
+		{
+			name:         "continuation",
+			s:            "1234567890",
+			width:        7,
+			continuation: "...",
+			startWidth:   2,
+			numTakes:     1,
+			expected:     []string{"...6..."},
+		},
+		{
+			name:         "continuation past end",
+			s:            "1234567890",
+			width:        10,
+			continuation: "...",
+			startWidth:   11,
+			numTakes:     1,
+			expected:     []string{""},
+		},
+		{
+			name:         "unicode",
+			s:            "世界🌟世界🌟",
+			width:        10,
+			continuation: "",
+			startWidth:   0,
+			numTakes:     1,
+			expected:     []string{"世界🌟世界"},
+		},
+		{
+			name:         "unicode seek past first rune",
+			s:            "世界🌟世界🌟",
+			width:        10,
+			continuation: "",
+			startWidth:   2,
+			numTakes:     1,
+			expected:     []string{"界🌟世界🌟"},
+		},
+		{
+			name:         "unicode seek past first 2 runes",
+			s:            "世界🌟世界🌟",
+			width:        10,
+			continuation: "",
+			startWidth:   3,
+			numTakes:     1,
+			expected:     []string{"🌟世界🌟"},
+		},
+		{
+			name:         "unicode seek past all but 1 rune",
+			s:            "世界🌟世界🌟",
+			width:        10,
+			continuation: "",
+			startWidth:   10,
+			numTakes:     1,
+			expected:     []string{"🌟"},
+		},
+		{
+			name:         "unicode seek almost to end",
+			s:            "世界🌟世界🌟",
+			width:        10,
+			continuation: "",
+			startWidth:   11,
+			numTakes:     1,
+			expected:     []string{""},
+		},
+		{
+			name:         "unicode seek to end",
+			s:            "世界🌟世界🌟",
+			width:        10,
+			continuation: "",
+			startWidth:   12,
+			numTakes:     1,
+			expected:     []string{""},
+		},
+		{
+			name:         "unicode insufficient width",
+			s:            "世界🌟世界🌟",
+			width:        1,
+			continuation: "",
+			startWidth:   2,
+			numTakes:     1,
+			expected:     []string{""},
+		},
 		{
 			name:         "no ansi, no continuation, no width",
 			s:            "12345678901234",
@@ -814,7 +806,7 @@ func TestLineBuffer_Take(t *testing.T) {
 				t.Fatalf("num expected != num popLefts")
 			}
 			lb := New(tt.s)
-			startWidth := 0
+			startWidth := tt.startWidth
 			for i := 0; i < tt.numTakes; i++ {
 				actual, actualWidth := lb.Take(startWidth, tt.width, tt.continuation, tt.toHighlight, highlightStyle)
 				util.CmpStr(t, tt.expected[i], actual)
