@@ -33,18 +33,6 @@ func NewMulti(buffers ...*LineBuffer) *MultiLineBuffer {
 	}
 }
 
-func (m MultiLineBuffer) Repr() string {
-	v := "Multi("
-	for i := range m.buffers {
-		if i > 0 {
-			v += ", "
-		}
-		v += m.buffers[i].Repr()
-	}
-	v += ")"
-	return v
-}
-
 func (m MultiLineBuffer) Width() int {
 	return m.totalWidth
 }
@@ -141,6 +129,18 @@ func (m MultiLineBuffer) WrappedLines(
 	//m.SeekToWidth(0)
 	//return res
 	return []string{}
+}
+
+func (m MultiLineBuffer) Repr() string {
+	v := "Multi("
+	for i := range m.buffers {
+		if i > 0 {
+			v += ", "
+		}
+		v += m.buffers[i].Repr()
+	}
+	v += ")"
+	return v
 }
 
 //func (m MultiLineBuffer) totalLines(width int) int {

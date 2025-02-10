@@ -79,10 +79,6 @@ func New(line string) *LineBuffer {
 	return &lb
 }
 
-func (l LineBuffer) Repr() string {
-	return fmt.Sprintf("LB(%q)", l.content)
-}
-
 func (l LineBuffer) Width() int {
 	if len(l.lineNoAnsiCumWidths) > 0 {
 		return int(l.lineNoAnsiCumWidths[len(l.lineNoAnsiCumWidths)-1])
@@ -205,6 +201,10 @@ func (l LineBuffer) WrappedLines(
 	}
 
 	return res
+}
+
+func (l LineBuffer) Repr() string {
+	return fmt.Sprintf("LB(%q)", l.content)
 }
 
 func (l LineBuffer) highlightString(
