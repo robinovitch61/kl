@@ -5,7 +5,7 @@ import "github.com/charmbracelet/lipgloss/v2"
 type LineBufferer interface {
 	// Width returns the total width in terminal cells
 	Width() int
-	// Content returns the underlying content as a string
+	// Content returns the underlying complete string
 	Content() string
 	// Take returns a substring of the content starting at startWidth and taking takeWidth
 	// continuation replaces the start and end if the content exceeds the bounds of startWidth to startWidth + takeWidth

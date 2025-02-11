@@ -5,6 +5,10 @@ import (
 	"testing"
 )
 
+var (
+	redBg = lipgloss.NewStyle().Background(lipgloss.Color("#FF0000"))
+)
+
 var equivalentLineBuffers = map[string][]LineBufferer{
 	// TODO LEO: add ansi, unicode
 	"hello world": {
@@ -135,6 +139,36 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 			toHighlight:    "",
 			highlightStyle: lipgloss.NewStyle(),
 			expected:       "... ...",
+		},
+		{
+			name:           "hello world with highlight whole word",
+			key:            "hello world",
+			startWidth:     0,
+			takeWidth:      11,
+			continuation:   "",
+			toHighlight:    "hello",
+			highlightStyle: redBg,
+			expected:       redBg.Render("hello") + " world",
+		},
+		{
+			name:           "hello world with highlight across buffer boundary",
+			key:            "hello world",
+			startWidth:     3,
+			takeWidth:      6,
+			continuation:   "",
+			toHighlight:    "lo wo",
+			highlightStyle: redBg,
+			expected:       "lo" + redBg.Render("lo wo") + "rl",
+		},
+		{
+			name:           "hello world with highlight and continuation",
+			key:            "hello world",
+			startWidth:     2,
+			takeWidth:      7,
+			continuation:   "...",
+			toHighlight:    "lo",
+			highlightStyle: redBg,
+			expected:       "..." + redBg.Render("lo") + "...",
 		},
 		// TODO LEO: highlight style, other keys
 	}
