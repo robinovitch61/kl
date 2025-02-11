@@ -112,6 +112,22 @@ func (m MultiLineBuffer) Take(
 		currentBufferIdx++
 	}
 
+	// apply continuation indicators if needed
+	if len(continuation) > 0 {
+		contentToLeft := startWidth > 0
+		contentToRight := m.totalWidth-startWidth > takeWidth-remainingWidth
+
+		if contentToLeft || contentToRight {
+			continuationRunes := []rune(continuation)
+			if contentToLeft {
+				result = replaceStartWithContinuation(result, continuationRunes)
+			}
+			if contentToRight {
+				result = replaceEndWithContinuation(result, continuationRunes)
+			}
+		}
+	}
+
 	return result, takeWidth - remainingWidth
 }
 

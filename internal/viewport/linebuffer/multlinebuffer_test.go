@@ -106,7 +106,37 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 			highlightStyle: lipgloss.NewStyle(),
 			expected:       "",
 		},
-		// TODO LEO: continuation, highlight style, other keys
+		{
+			name:           "hello world with continuation at end",
+			key:            "hello world",
+			startWidth:     0,
+			takeWidth:      7,
+			continuation:   "...",
+			toHighlight:    "",
+			highlightStyle: lipgloss.NewStyle(),
+			expected:       "hell...",
+		},
+		{
+			name:           "hello world with continuation at start",
+			key:            "hello world",
+			startWidth:     4,
+			takeWidth:      7,
+			continuation:   "...",
+			toHighlight:    "",
+			highlightStyle: lipgloss.NewStyle(),
+			expected:       "...orld",
+		},
+		{
+			name:           "hello world with continuation both ends",
+			key:            "hello world",
+			startWidth:     2,
+			takeWidth:      7,
+			continuation:   "...",
+			toHighlight:    "",
+			highlightStyle: lipgloss.NewStyle(),
+			expected:       "... ...",
+		},
+		// TODO LEO: highlight style, other keys
 	}
 
 	for _, tt := range tests {
