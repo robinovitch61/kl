@@ -183,7 +183,7 @@ func (l LineBuffer) WrappedLines(
 	}
 
 	var res []string
-	totalLines := l.totalLines(width)
+	totalLines := getTotalLines(l.lineNoAnsiCumWidths, uint32(width))
 
 	startWidth := 0
 	if maxLinesEachEnd > 0 && totalLines > maxLinesEachEnd*2 {

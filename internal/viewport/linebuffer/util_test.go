@@ -943,7 +943,7 @@ func TestLineBuffer_totalLines(t *testing.T) {
 	tests := []struct {
 		name         string
 		s            string
-		width        int
+		width        uint32
 		continuation string
 		expected     int
 	}{
@@ -987,7 +987,7 @@ func TestLineBuffer_totalLines(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			lb := New(tt.s)
-			if lines := lb.totalLines(tt.width); lines != tt.expected {
+			if lines := getTotalLines(lb.lineNoAnsiCumWidths, tt.width); lines != tt.expected {
 				t.Fatalf("expected %d, got %d", tt.expected, lines)
 			}
 		})

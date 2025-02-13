@@ -176,7 +176,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			for _, eq := range equivalentLineBuffers[tt.key] {
-				actual, _ := eq.Take(tt.startWidth, tt.takeWidth, tt.continuation, "", lipgloss.NewStyle())
+				actual, _ := eq.Take(tt.startWidth, tt.takeWidth, tt.continuation, tt.toHighlight, tt.highlightStyle)
 				if actual != tt.expected {
 					t.Errorf("for %s, expected %q, got %q", eq.Repr(), tt.expected, actual)
 				}

@@ -175,10 +175,6 @@ func stripAnsi(input string) string {
 }
 
 func simplifyAnsiCodes(ansis []string) []string {
-	//println()
-	//for _, a := range ansis {
-	//	println(fmt.Sprintf("%q", a))
-	//}
 	if len(ansis) == 0 {
 		return []string{}
 	}
@@ -436,20 +432,6 @@ func findAnsiRanges(s string) [][]uint32 {
 	return ranges[:rangeIdx]
 }
 
-func (l LineBuffer) totalLines(width int) int {
-	if width == 0 {
-		return 0
-	}
-	return (int(l.fullWidth()) + width - 1) / width
-}
-
-func (l LineBuffer) fullWidth() uint32 {
-	if len(l.lineNoAnsiCumWidths) == 0 {
-		return 0
-	}
-	return l.lineNoAnsiCumWidths[len(l.lineNoAnsiCumWidths)-1]
-}
-
 // getLeftRuneIdx does a binary search to find the first index at which vals[index-1] >= w
 func getLeftRuneIdx(w int, vals []uint32) int {
 	if w == 0 {
@@ -476,4 +458,16 @@ func getLeftRuneIdx(w int, vals []uint32) int {
 	}
 
 	return left + 1
+}
+
+func getTotalLines(cumWidths []uint32, lineWidth uint32) int {
+	if len(cumWidths) == 0 {
+		return 0
+	}
+	if lineWidth == 0 {
+		return 0
+	}
+
+	fullWidth := cumWidths[len(cumWidths)-1]
+	return int((fullWidth + lineWidth - 1) / lineWidth)
 }

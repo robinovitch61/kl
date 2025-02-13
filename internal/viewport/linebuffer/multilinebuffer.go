@@ -2,6 +2,7 @@ package linebuffer
 
 import (
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/robinovitch61/kl/internal/constants"
 	"strings"
 )
 
@@ -81,36 +82,46 @@ func (m MultiLineBuffer) Take(
 	}
 
 	// find which buffer contains our start position
-	currentWidth := 0
-	startBufferIdx := 0
-	startBufferOffset := startWidth
+	skippedWidth := 0
+	firstBufferIdx := 0
+	startWidthFirstBuffer := startWidth
 
 	for i, buf := range m.buffers {
 		bufWidth := buf.Width()
-		if currentWidth+bufWidth > startWidth {
-			startBufferIdx = i
-			startBufferOffset = startWidth - currentWidth
+		if skippedWidth+bufWidth > startWidth {
+			firstBufferIdx = i
+			startWidthFirstBuffer = startWidth - skippedWidth
 			break
 		}
-		currentWidth += bufWidth
-		startBufferOffset -= bufWidth
+		skippedWidth += bufWidth
+		startWidthFirstBuffer -= bufWidth
 	}
 
+	// TODO: adjust this based on content taken from the left of res
+	// we should take enough bytes from the left of res to ensure that an overlapping highlight can be found, 2x the length of toHighlight
+	// ansi sequences should be stripped from the content taken from the left and right of res when formulating lineNoAnsi
+	startByteOffset := 0
+
 	// take from first buffer
-	result, takenWidth := m.buffers[startBufferIdx].Take(startBufferOffset, takeWidth, "", toHighlight, highlightStyle)
+	res, takenWidth := m.buffers[firstBufferIdx].Take(startWidthFirstBuffer, takeWidth, "", "", lipgloss.NewStyle())
 	remainingWidth := takeWidth - takenWidth
 
 	// if we have more width to take and more buffers available, continue
-	currentBufferIdx := startBufferIdx + 1
+	currentBufferIdx := firstBufferIdx + 1
 	for remainingWidth > 0 && currentBufferIdx < len(m.buffers) {
-		nextPart, partWidth := m.buffers[currentBufferIdx].Take(0, remainingWidth, "", toHighlight, highlightStyle)
+		nextPart, partWidth := m.buffers[currentBufferIdx].Take(0, remainingWidth, "", "", lipgloss.NewStyle())
 		if partWidth == 0 {
 			break
 		}
-		result += nextPart
+		res += nextPart
 		remainingWidth -= partWidth
 		currentBufferIdx++
 	}
+
+	// TODO: adjust this based on content taken from the right of res
+	// we should take enough bytes from the right of res to ensure that an overlapping highlight can be found, 2x the length of toHighlight
+	// ansi sequences should be stripped from the content taken from the left and right of res when formulating lineNoAnsi
+	endByteOffset := startByteOffset + len(res)
 
 	// apply continuation indicators if needed
 	if len(continuation) > 0 {
@@ -120,15 +131,28 @@ func (m MultiLineBuffer) Take(
 		if contentToLeft || contentToRight {
 			continuationRunes := []rune(continuation)
 			if contentToLeft {
-				result = replaceStartWithContinuation(result, continuationRunes)
+				res = replaceStartWithContinuation(res, continuationRunes)
 			}
 			if contentToRight {
-				result = replaceEndWithContinuation(result, continuationRunes)
+				res = replaceEndWithContinuation(res, continuationRunes)
 			}
 		}
 	}
 
-	return result, takeWidth - remainingWidth
+	// highlight the desired string
+	res = highlightString(
+		res,
+		toHighlight,
+		highlightStyle,
+		lineNoAnsi, // TODO: this should include content taken from the left and right of res, all stripped of ansi codes
+		startByteOffset,
+		endByteOffset,
+	)
+
+	// remove empty sequences
+	res = constants.EmptySequenceRegex.ReplaceAllString(res, "")
+
+	return res, takeWidth - remainingWidth
 }
 
 func (m MultiLineBuffer) WrappedLines(
