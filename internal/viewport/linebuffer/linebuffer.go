@@ -148,7 +148,14 @@ func (l LineBuffer) Take(
 	}
 
 	// highlight the desired string
-	res = l.highlightString(res, int(startByteOffset), int(l.runeIdxToByteOffset[leftRuneIdx]), toHighlight, highlightStyle)
+	res = highlightString(
+		res,
+		toHighlight,
+		highlightStyle,
+		l.lineNoAnsi,
+		int(startByteOffset),
+		int(l.runeIdxToByteOffset[leftRuneIdx]),
+	)
 
 	// remove empty sequences
 	res = constants.EmptySequenceRegex.ReplaceAllString(res, "")
@@ -205,28 +212,4 @@ func (l LineBuffer) WrappedLines(
 
 func (l LineBuffer) Repr() string {
 	return fmt.Sprintf("LB(%q)", l.line)
-}
-
-func (l LineBuffer) highlightString(
-	s string,
-	startByteOffset int,
-	endByteOffset int,
-	toHighlight string,
-	highlightStyle lipgloss.Style,
-) string {
-	if toHighlight != "" && len(highlightStyle.String()) > 0 {
-		s = highlightLine(s, toHighlight, highlightStyle, 0, len(s))
-
-		if left, endIdx := overflowsLeft(l.lineNoAnsi, startByteOffset, toHighlight); left {
-			highlightLeft := l.lineNoAnsi[startByteOffset:endIdx]
-			s = highlightLine(s, highlightLeft, highlightStyle, 0, len(highlightLeft))
-		}
-		if right, startIdx := overflowsRight(l.lineNoAnsi, endByteOffset, toHighlight); right {
-			highlightRight := l.lineNoAnsi[startIdx:endByteOffset]
-			lenPlainTextRes := len(stripAnsi(s))
-			s = highlightLine(s, highlightRight, highlightStyle, lenPlainTextRes-len(highlightRight), lenPlainTextRes)
-		}
-	}
-
-	return s
 }

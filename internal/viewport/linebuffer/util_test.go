@@ -389,6 +389,115 @@ func TestLineBuffer_highlightLine(t *testing.T) {
 	}
 }
 
+func TestHighlightString(t *testing.T) {
+	red := lipgloss.Color("#ff0000")
+	blue := lipgloss.Color("#0000ff")
+
+	for _, tt := range []struct {
+		name           string
+		styledSegment  string // segment with ANSI codes
+		toHighlight    string
+		highlightStyle lipgloss.Style
+		plainLine      string // full line without ANSI
+		segmentStart   int
+		segmentEnd     int
+		expected       string
+	}{
+		{
+			name:           "empty",
+			styledSegment:  "",
+			toHighlight:    "",
+			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			plainLine:      "",
+			segmentStart:   0,
+			segmentEnd:     0,
+			expected:       "",
+		},
+		{
+			name:           "no highlight",
+			styledSegment:  "hello",
+			toHighlight:    "",
+			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			plainLine:      "hello",
+			segmentStart:   0,
+			segmentEnd:     5,
+			expected:       "hello",
+		},
+		{
+			name:           "simple highlight",
+			styledSegment:  "hello",
+			toHighlight:    "ell",
+			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			plainLine:      "hello",
+			segmentStart:   0,
+			segmentEnd:     5,
+			expected:       "h\x1b[38;2;255;0;0mell\x1b[mo",
+		},
+		{
+			name:           "highlight with existing style",
+			styledSegment:  "\x1b[38;2;255;0;0mfirst line\x1b[m",
+			toHighlight:    "first",
+			highlightStyle: lipgloss.NewStyle().Foreground(blue),
+			plainLine:      "first line",
+			segmentStart:   0,
+			segmentEnd:     10,
+			expected:       "\x1b[38;2;255;0;0m\x1b[m\x1b[38;2;0;0;255mfirst\x1b[m\x1b[38;2;255;0;0m line\x1b[m",
+		},
+		{
+			name:           "left overflow",
+			styledSegment:  "ello world",
+			toHighlight:    "hello",
+			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			plainLine:      "hello world",
+			segmentStart:   1,
+			segmentEnd:     11,
+			expected:       "\x1b[38;2;255;0;0mello\x1b[m world",
+		},
+		{
+			name:           "right overflow",
+			styledSegment:  "hello wo",
+			toHighlight:    "world",
+			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			plainLine:      "hello world",
+			segmentStart:   0,
+			segmentEnd:     8,
+			expected:       "hello \x1b[38;2;255;0;0mwo\x1b[m",
+		},
+		{
+			name:           "both overflow with existing style",
+			styledSegment:  "\x1b[38;2;255;0;0mello wor\x1b[m",
+			toHighlight:    "hello world",
+			highlightStyle: lipgloss.NewStyle().Foreground(blue),
+			plainLine:      "hello world",
+			segmentStart:   1,
+			segmentEnd:     9,
+			expected:       "\x1b[38;2;255;0;0mello wor\x1b[m",
+		},
+		{
+			name:           "no match in segment",
+			styledSegment:  "middle",
+			toHighlight:    "outside",
+			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			plainLine:      "outside middle outside",
+			segmentStart:   8,
+			segmentEnd:     14,
+			expected:       "middle",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			result := highlightString(
+				tt.styledSegment,
+				tt.toHighlight,
+				tt.highlightStyle,
+				tt.plainLine,
+				tt.segmentStart,
+				tt.segmentEnd,
+			)
+			util.CmpStr(t, tt.expected, result)
+		})
+	}
+}
+
 func TestLineBuffer_overflowsLeft(t *testing.T) {
 	tests := []struct {
 		name         string

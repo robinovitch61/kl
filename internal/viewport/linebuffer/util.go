@@ -112,6 +112,43 @@ func highlightLine(line, highlight string, highlightStyle lipgloss.Style, start,
 	return result.String()
 }
 
+// highlightString applies highlighting to a segment of text while handling cases where the highlight
+// might overflow the segment boundaries. It preserves any existing ANSI styling in the segment.
+//
+// Parameters:
+//   - styledSegment: the text segment to highlight, which may contain ANSI codes
+//   - toHighlight: the substring to search for and highlight
+//   - highlightStyle: the style to apply to matched substrings
+//   - plainLine: the complete line without any ANSI codes, used for overflow detection
+//   - segmentStart: byte offset where this segment starts in plainLine
+//   - segmentEnd: byte offset where this segment ends in plainLine
+//
+// Returns the segment with highlighting applied, preserving original ANSI codes.
+func highlightString(
+	styledSegment string,
+	toHighlight string,
+	highlightStyle lipgloss.Style,
+	plainLine string,
+	segmentStart int,
+	segmentEnd int,
+) string {
+	if toHighlight != "" && len(highlightStyle.String()) > 0 {
+		styledSegment = highlightLine(styledSegment, toHighlight, highlightStyle, 0, len(styledSegment))
+
+		if left, endIdx := overflowsLeft(plainLine, segmentStart, toHighlight); left {
+			highlightLeft := plainLine[segmentStart:endIdx]
+			styledSegment = highlightLine(styledSegment, highlightLeft, highlightStyle, 0, len(highlightLeft))
+		}
+		if right, startIdx := overflowsRight(plainLine, segmentEnd, toHighlight); right {
+			highlightRight := plainLine[startIdx:segmentEnd]
+			lenPlainTextRes := len(stripAnsi(styledSegment))
+			styledSegment = highlightLine(styledSegment, highlightRight, highlightStyle, lenPlainTextRes-len(highlightRight), lenPlainTextRes)
+		}
+	}
+
+	return styledSegment
+}
+
 func stripAnsi(input string) string {
 	ranges := findAnsiRanges(input)
 	if len(ranges) == 0 {
