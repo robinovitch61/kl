@@ -471,3 +471,80 @@ func getTotalLines(cumWidths []uint32, lineWidth uint32) int {
 	fullWidth := cumWidths[len(cumWidths)-1]
 	return int((fullWidth + lineWidth - 1) / lineWidth)
 }
+
+// getBytesLeftOfWidth returns nBytes of content to the left of startBufferIdx while excluding ANSI codes
+func getBytesLeftOfWidth(nBytes int, buffers []LineBuffer, startBufferIdx int, startWidth int) string {
+	if nBytes <= 0 || len(buffers) == 0 || startBufferIdx >= len(buffers) {
+		return ""
+	}
+
+	// first try to get bytes from the current buffer
+	var result string
+	currentBuffer := buffers[startBufferIdx]
+	leftRuneIdx := getLeftRuneIdx(startWidth, currentBuffer.lineNoAnsiCumWidths)
+	if leftRuneIdx > 0 {
+		startByteOffset := currentBuffer.runeIdxToByteOffset[leftRuneIdx]
+		noAnsiContent := currentBuffer.lineNoAnsi[:startByteOffset]
+		if len(noAnsiContent) >= nBytes {
+			return noAnsiContent[len(noAnsiContent)-nBytes:]
+		}
+		result = noAnsiContent
+		nBytes -= len(noAnsiContent)
+	}
+
+	// if we need more bytes, look in previous buffers
+	for i := startBufferIdx - 1; i >= 0 && nBytes > 0; i-- {
+		prevBuffer := buffers[i]
+		noAnsiContent := prevBuffer.lineNoAnsi
+		if len(noAnsiContent) >= nBytes {
+			result = noAnsiContent[len(noAnsiContent)-nBytes:] + result
+			break
+		}
+		result = noAnsiContent + result
+		nBytes -= len(noAnsiContent)
+	}
+
+	return result
+}
+
+// getBytesRightOfWidth returns nBytes of content to the right of endBufferIdx while excluding ANSI codes
+func getBytesRightOfWidth(nBytes int, buffers []LineBuffer, endBufferIdx int, remainingWidth int) string {
+	if nBytes <= 0 || len(buffers) == 0 || endBufferIdx >= len(buffers) {
+		return ""
+	}
+
+	// first try to get bytes from the current buffer
+	var result string
+	currentBuffer := buffers[endBufferIdx]
+	if remainingWidth > 0 {
+		currentWidth := currentBuffer.Width()
+		startWidth := currentWidth - remainingWidth
+		if startWidth < 0 {
+			startWidth = 0
+		}
+		leftRuneIdx := getLeftRuneIdx(startWidth, currentBuffer.lineNoAnsiCumWidths)
+		if leftRuneIdx < len(currentBuffer.lineNoAnsiRunes) {
+			startByteOffset := currentBuffer.runeIdxToByteOffset[leftRuneIdx]
+			noAnsiContent := currentBuffer.lineNoAnsi[startByteOffset:]
+			if len(noAnsiContent) >= nBytes {
+				return noAnsiContent[:nBytes]
+			}
+			result = noAnsiContent
+			nBytes -= len(noAnsiContent)
+		}
+	}
+
+	// if we need more bytes, look in subsequent buffers
+	for i := endBufferIdx + 1; i < len(buffers) && nBytes > 0; i++ {
+		nextBuffer := buffers[i]
+		noAnsiContent := nextBuffer.lineNoAnsi
+		if len(noAnsiContent) >= nBytes {
+			result += noAnsiContent[:nBytes]
+			break
+		}
+		result += noAnsiContent
+		nBytes -= len(noAnsiContent)
+	}
+
+	return result
+}

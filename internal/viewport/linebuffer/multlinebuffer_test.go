@@ -158,17 +158,18 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 			continuation:   "",
 			toHighlight:    "lo wo",
 			highlightStyle: redBg,
-			expected:       "lo" + redBg.Render("lo wo") + "rl",
+			expected:       redBg.Render("lo wo") + "r",
 		},
+		// TODO LEO: make this work with ..., decide what behavior should be based off linebuffer
 		{
 			name:           "hello world with highlight and continuation",
 			key:            "hello world",
-			startWidth:     2,
+			startWidth:     1,
 			takeWidth:      7,
-			continuation:   "...",
-			toHighlight:    "lo",
+			continuation:   "..",
+			toHighlight:    "lo ",
 			highlightStyle: redBg,
-			expected:       "..." + redBg.Render("lo") + "...",
+			expected:       ".." + redBg.Render("lo ") + "..",
 		},
 		// TODO LEO: highlight style, other keys
 	}

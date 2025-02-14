@@ -72,11 +72,9 @@ func (m MultiLineBuffer) Take(
 	if len(m.buffers) == 0 {
 		return "", 0
 	}
-
 	if len(m.buffers) == 1 {
 		return m.buffers[0].Take(startWidth, takeWidth, continuation, toHighlight, highlightStyle)
 	}
-
 	if startWidth >= m.totalWidth {
 		return "", 0
 	}
@@ -97,10 +95,9 @@ func (m MultiLineBuffer) Take(
 		startWidthFirstBuffer -= bufWidth
 	}
 
-	// TODO: adjust this based on content taken from the left of res
-	// we should take enough bytes from the left of res to ensure that an overlapping highlight can be found, 2x the length of toHighlight
-	// ansi sequences should be stripped from the content taken from the left and right of res when formulating lineNoAnsi
-	startByteOffset := 0
+	// get content before our start position for highlight context
+	nBytesLeftContext := len(toHighlight) * 2
+	leftContext := getBytesLeftOfWidth(nBytesLeftContext, m.buffers, firstBufferIdx, startWidthFirstBuffer)
 
 	// take from first buffer
 	res, takenWidth := m.buffers[firstBufferIdx].Take(startWidthFirstBuffer, takeWidth, "", "", lipgloss.NewStyle())
@@ -118,16 +115,14 @@ func (m MultiLineBuffer) Take(
 		currentBufferIdx++
 	}
 
-	// TODO: adjust this based on content taken from the right of res
-	// we should take enough bytes from the right of res to ensure that an overlapping highlight can be found, 2x the length of toHighlight
-	// ansi sequences should be stripped from the content taken from the left and right of res when formulating lineNoAnsi
-	endByteOffset := startByteOffset + len(res)
+	// get content after our result for highlight context
+	nBytesRightContext := len(toHighlight) * 2
+	rightContext := getBytesRightOfWidth(nBytesRightContext, m.buffers, currentBufferIdx, remainingWidth)
 
 	// apply continuation indicators if needed
 	if len(continuation) > 0 {
 		contentToLeft := startWidth > 0
 		contentToRight := m.totalWidth-startWidth > takeWidth-remainingWidth
-
 		if contentToLeft || contentToRight {
 			continuationRunes := []rune(continuation)
 			if contentToLeft {
@@ -140,18 +135,19 @@ func (m MultiLineBuffer) Take(
 	}
 
 	// highlight the desired string
+	resNoAnsi := stripAnsi(res)
+	lineNoAnsi := leftContext + resNoAnsi + rightContext
 	res = highlightString(
 		res,
 		toHighlight,
 		highlightStyle,
-		lineNoAnsi, // TODO: this should include content taken from the left and right of res, all stripped of ansi codes
-		startByteOffset,
-		endByteOffset,
+		lineNoAnsi,
+		len(leftContext),
+		len(leftContext)+len(resNoAnsi),
 	)
 
 	// remove empty sequences
 	res = constants.EmptySequenceRegex.ReplaceAllString(res, "")
-
 	return res, takeWidth - remainingWidth
 }
 
