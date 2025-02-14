@@ -180,7 +180,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 			highlightStyle: redBg,
 			expected:       "...o...", // does not highlight continuation, could in future
 		},
-		// TODO LEO: highlight style, other keys
+		// TODO LEO: other keys
 	}
 
 	for _, tt := range tests {
@@ -240,6 +240,32 @@ func TestMultiLineBuffer_WrappedLines(t *testing.T) {
 			toHighlight:     "",
 			highlightStyle:  lipgloss.NewStyle(),
 			expected:        []string{},
+		},
+		{
+			name:            "hello world highlight",
+			key:             "hello world",
+			width:           5,
+			maxLinesEachEnd: -1,
+			toHighlight:     "lo",
+			highlightStyle:  redBg,
+			expected: []string{
+				"hel" + redBg.Render("lo"),
+				" worl",
+				"d",
+			},
+		},
+		{
+			name:            "hello world highlight wrap",
+			key:             "hello world",
+			width:           4,
+			maxLinesEachEnd: -1,
+			toHighlight:     "lo",
+			highlightStyle:  redBg,
+			expected: []string{
+				"hel" + redBg.Render("l"),
+				redBg.Render("o") + " wo",
+				"rld",
+			},
 		},
 		// TODO LEO: highlight style, other keys
 	}

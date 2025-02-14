@@ -84,8 +84,8 @@ func (m MultiLineBuffer) Take(
 	firstBufferIdx := 0
 	startWidthFirstBuffer := startWidth
 
-	for i, buf := range m.buffers {
-		bufWidth := buf.Width()
+	for i := range m.buffers {
+		bufWidth := m.buffers[i].Width()
 		if skippedWidth+bufWidth > startWidth {
 			firstBufferIdx = i
 			startWidthFirstBuffer = startWidth - skippedWidth
@@ -101,28 +101,31 @@ func (m MultiLineBuffer) Take(
 
 	// take from first buffer
 	res, takenWidth := m.buffers[firstBufferIdx].Take(startWidthFirstBuffer, takeWidth, "", "", lipgloss.NewStyle())
-	remainingWidth := takeWidth - takenWidth
+	remainingTotalWidth := takeWidth - takenWidth
+	remainingBufferWidth := m.buffers[firstBufferIdx].Width() - takenWidth
 
 	// if we have more width to take and more buffers available, continue
 	currentBufferIdx := firstBufferIdx + 1
-	for remainingWidth > 0 && currentBufferIdx < len(m.buffers) {
-		nextPart, partWidth := m.buffers[currentBufferIdx].Take(0, remainingWidth, "", "", lipgloss.NewStyle())
+	for remainingTotalWidth > 0 && currentBufferIdx < len(m.buffers) {
+		nextPart, partWidth := m.buffers[currentBufferIdx].Take(0, remainingTotalWidth, "", "", lipgloss.NewStyle())
+		remainingBufferWidth = m.buffers[currentBufferIdx].Width() - partWidth
 		if partWidth == 0 {
 			break
 		}
 		res += nextPart
-		remainingWidth -= partWidth
+		remainingTotalWidth -= partWidth
 		currentBufferIdx++
 	}
 
 	// get content after our result for highlight context
+	currentBufferIdx -= 1
 	nBytesRightContext := len(toHighlight) * 2
-	rightContext := getBytesRightOfWidth(nBytesRightContext, m.buffers, currentBufferIdx, remainingWidth)
+	rightContext := getBytesRightOfWidth(nBytesRightContext, m.buffers, currentBufferIdx, remainingBufferWidth)
 
 	// apply continuation indicators if needed
 	if len(continuation) > 0 {
 		contentToLeft := startWidth > 0
-		contentToRight := m.totalWidth-startWidth > takeWidth-remainingWidth
+		contentToRight := m.totalWidth-startWidth > takeWidth-remainingTotalWidth
 		if contentToLeft || contentToRight {
 			continuationRunes := []rune(continuation)
 			if contentToLeft {
@@ -148,7 +151,7 @@ func (m MultiLineBuffer) Take(
 
 	// remove empty sequences
 	res = constants.EmptySequenceRegex.ReplaceAllString(res, "")
-	return res, takeWidth - remainingWidth
+	return res, takeWidth - remainingTotalWidth
 }
 
 func (m MultiLineBuffer) WrappedLines(
@@ -157,12 +160,8 @@ func (m MultiLineBuffer) WrappedLines(
 	toHighlight string,
 	toHighlightStyle lipgloss.Style,
 ) []string {
-	// handle edge cases
 	if width <= 0 {
 		return []string{}
-	}
-	if maxLinesEachEnd <= 0 {
-		maxLinesEachEnd = -1
 	}
 	if len(m.buffers) == 0 {
 		return []string{}
@@ -171,40 +170,19 @@ func (m MultiLineBuffer) WrappedLines(
 		return m.buffers[0].WrappedLines(width, maxLinesEachEnd, toHighlight, toHighlightStyle)
 	}
 
-	// calculate total number of lines
 	totalLines := (m.totalWidth + width - 1) / width
 	if totalLines == 0 {
 		return []string{""}
 	}
 
-	var result []string
-	startWidth := 0
-
-	if maxLinesEachEnd > 0 && totalLines > maxLinesEachEnd*2 {
-		// take maxLinesEachEnd from start
-		for nLines := 0; nLines < maxLinesEachEnd; nLines++ {
-			line, lineWidth := m.Take(startWidth, width, "", toHighlight, toHighlightStyle)
-			result = append(result, line)
-			startWidth += lineWidth
-		}
-
-		// take maxLinesEachEnd from end
-		startWidth = (totalLines - maxLinesEachEnd) * width
-		for nLines := 0; nLines < maxLinesEachEnd; nLines++ {
-			line, lineWidth := m.Take(startWidth, width, "", toHighlight, toHighlightStyle)
-			result = append(result, line)
-			startWidth += lineWidth
-		}
-	} else {
-		// take all lines
-		for nLines := 0; nLines < totalLines; nLines++ {
-			line, lineWidth := m.Take(startWidth, width, "", toHighlight, toHighlightStyle)
-			result = append(result, line)
-			startWidth += lineWidth
-		}
-	}
-
-	return result
+	return getWrappedLines(
+		m,
+		totalLines,
+		width,
+		maxLinesEachEnd,
+		toHighlight,
+		toHighlightStyle,
+	)
 }
 
 func (m MultiLineBuffer) Repr() string {

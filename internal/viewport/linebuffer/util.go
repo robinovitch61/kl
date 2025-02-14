@@ -472,6 +472,7 @@ func getTotalLines(cumWidths []uint32, lineWidth uint32) int {
 	return int((fullWidth + lineWidth - 1) / lineWidth)
 }
 
+// TODO LEO: test
 // getBytesLeftOfWidth returns nBytes of content to the left of startBufferIdx while excluding ANSI codes
 func getBytesLeftOfWidth(nBytes int, buffers []LineBuffer, startBufferIdx int, startWidth int) string {
 	if nBytes <= 0 || len(buffers) == 0 || startBufferIdx >= len(buffers) {
@@ -507,6 +508,7 @@ func getBytesLeftOfWidth(nBytes int, buffers []LineBuffer, startBufferIdx int, s
 	return result
 }
 
+// TODO LEO: test
 // getBytesRightOfWidth returns nBytes of content to the right of endBufferIdx while excluding ANSI codes
 func getBytesRightOfWidth(nBytes int, buffers []LineBuffer, endBufferIdx int, remainingWidth int) string {
 	if nBytes <= 0 || len(buffers) == 0 || endBufferIdx >= len(buffers) {
@@ -547,4 +549,46 @@ func getBytesRightOfWidth(nBytes int, buffers []LineBuffer, endBufferIdx int, re
 	}
 
 	return result
+}
+
+// TODO LEO: test
+func getWrappedLines(
+	l LineBufferer,
+	totalLines int,
+	width int,
+	maxLinesEachEnd int,
+	toHighlight string,
+	toHighlightStyle lipgloss.Style,
+) []string {
+	if width <= 0 {
+		return []string{}
+	}
+	if maxLinesEachEnd <= 0 {
+		maxLinesEachEnd = -1
+	}
+
+	var res []string
+	startWidth := 0
+	if maxLinesEachEnd > 0 && totalLines > maxLinesEachEnd*2 {
+		for nLines := 0; nLines < maxLinesEachEnd; nLines++ {
+			line, lineWidth := l.Take(startWidth, width, "", toHighlight, toHighlightStyle)
+			res = append(res, line)
+			startWidth += lineWidth
+		}
+
+		startWidth = (totalLines - maxLinesEachEnd) * width
+		for nLines := 0; nLines < maxLinesEachEnd; nLines++ {
+			line, lineWidth := l.Take(startWidth, width, "", toHighlight, toHighlightStyle)
+			res = append(res, line)
+			startWidth += lineWidth
+		}
+	} else {
+		for nLines := 0; nLines < totalLines; nLines++ {
+			line, lineWidth := l.Take(startWidth, width, "", toHighlight, toHighlightStyle)
+			res = append(res, line)
+			startWidth += lineWidth
+		}
+	}
+
+	return res
 }

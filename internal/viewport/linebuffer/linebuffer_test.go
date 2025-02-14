@@ -626,7 +626,7 @@ func TestLineBuffer_Take(t *testing.T) {
 			},
 		},
 		{
-			name:         "multi-byte runes with ansi",
+			name:         "multi-byte runes with ansi and continuation",
 			s:            "\x1b[38;2;0;0;255m├─flask\x1b[m",
 			width:        6,
 			continuation: "...",
@@ -828,6 +828,7 @@ func TestLineBuffer_Take(t *testing.T) {
 }
 
 func TestLineBuffer_WrappedLines(t *testing.T) {
+	highlightStyle := lipgloss.NewStyle().Background(lipgloss.Color("#00FF00"))
 	tests := []struct {
 		name            string
 		s               string
@@ -942,6 +943,32 @@ func TestLineBuffer_WrappedLines(t *testing.T) {
 			width:           10,
 			maxLinesEachEnd: 2,
 			want:            []string{"     "},
+		},
+		{
+			name:            "highlight",
+			s:               "hello world",
+			width:           5,
+			maxLinesEachEnd: 2,
+			toHighlight:     "lo",
+			highlightStyle:  highlightStyle,
+			want: []string{
+				"hel" + highlightStyle.Render("lo"),
+				" worl",
+				"d",
+			},
+		},
+		{
+			name:            "highlight overflow",
+			s:               "hello world",
+			width:           4,
+			maxLinesEachEnd: 2,
+			toHighlight:     "lo",
+			highlightStyle:  highlightStyle,
+			want: []string{
+				"hel" + highlightStyle.Render("l"),
+				highlightStyle.Render("o") + " wo",
+				"rld",
+			},
 		},
 		{
 			name:            "unicode characters",

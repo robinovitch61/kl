@@ -169,45 +169,19 @@ func (l LineBuffer) WrappedLines(
 	toHighlight string,
 	toHighlightStyle lipgloss.Style,
 ) []string {
-	if width <= 0 {
-		return []string{}
-	}
-
-	if maxLinesEachEnd <= 0 {
-		maxLinesEachEnd = -1
-	}
-
 	// preserve empty lines
 	if l.line == "" {
 		return []string{l.line}
 	}
 
-	var res []string
-	totalLines := getTotalLines(l.lineNoAnsiCumWidths, uint32(width))
-
-	startWidth := 0
-	if maxLinesEachEnd > 0 && totalLines > maxLinesEachEnd*2 {
-		for nLines := 0; nLines < maxLinesEachEnd; nLines++ {
-			line, lineWidth := l.Take(startWidth, width, "", toHighlight, toHighlightStyle)
-			res = append(res, line)
-			startWidth += lineWidth
-		}
-
-		startWidth = (totalLines - maxLinesEachEnd) * width
-		for nLines := 0; nLines < maxLinesEachEnd; nLines++ {
-			line, lineWidth := l.Take(startWidth, width, "", toHighlight, toHighlightStyle)
-			res = append(res, line)
-			startWidth += lineWidth
-		}
-	} else {
-		for nLines := 0; nLines < totalLines; nLines++ {
-			line, lineWidth := l.Take(startWidth, width, "", toHighlight, toHighlightStyle)
-			res = append(res, line)
-			startWidth += lineWidth
-		}
-	}
-
-	return res
+	return getWrappedLines(
+		l,
+		getTotalLines(l.lineNoAnsiCumWidths, uint32(width)),
+		width,
+		maxLinesEachEnd,
+		toHighlight,
+		toHighlightStyle,
+	)
 }
 
 func (l LineBuffer) Repr() string {
