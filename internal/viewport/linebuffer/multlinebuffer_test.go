@@ -160,9 +160,8 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 			highlightStyle: redBg,
 			expected:       redBg.Render("lo wo") + "r",
 		},
-		// TODO LEO: make this work with ..., decide what behavior should be based off linebuffer
 		{
-			name:           "hello world with highlight and continuation",
+			name:           "hello world with highlight and middle continuation",
 			key:            "hello world",
 			startWidth:     1,
 			takeWidth:      7,
@@ -170,6 +169,16 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 			toHighlight:    "lo ",
 			highlightStyle: redBg,
 			expected:       ".." + redBg.Render("lo ") + "..",
+		},
+		{
+			name:           "hello world with highlight and overlapping continuation",
+			key:            "hello world",
+			startWidth:     1,
+			takeWidth:      7,
+			continuation:   "...",
+			toHighlight:    "lo ",
+			highlightStyle: redBg,
+			expected:       "...o...", // does not highlight continuation, could in future
 		},
 		// TODO LEO: highlight style, other keys
 	}

@@ -679,6 +679,18 @@ func TestLineBuffer_Take(t *testing.T) {
 			},
 		},
 		{
+			name:         "toHighlight, another continuation, no overflow, no ansi",
+			s:            "a very normal log",
+			width:        15,
+			continuation: "...",
+			toHighlight:  "very",
+			startWidth:   1,
+			numTakes:     1,
+			expected: []string{
+				"...ry normal...", // does not highlight continuation, could in future
+			},
+		},
+		{
 			name:         "toHighlight, no continuation, no overflow, no ansi, many matches",
 			s:            strings.Repeat("r", 10),
 			width:        6,
