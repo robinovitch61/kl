@@ -5,14 +5,11 @@ import (
 	"testing"
 )
 
-var (
-	redBg = lipgloss.NewStyle().Background(lipgloss.Color("#FF0000"))
-)
-
 var equivalentLineBuffers = map[string][]LineBufferer{
 	// TODO LEO: add ansi, unicode
 	"hello world": {
 		New("hello world"),
+		NewMulti(New("hello world")),
 		NewMulti(
 			New("hello"),
 			New(" world"),
@@ -37,13 +34,26 @@ var equivalentLineBuffers = map[string][]LineBufferer{
 			New("d"),
 		),
 	},
+	"ansi": {
+		New(redBg.Render("hello") + " " + blueBg.Render("world")),
+		NewMulti(New(redBg.Render("hello") + " " + blueBg.Render("world"))),
+		NewMulti(
+			New(redBg.Render("hello")+" "),
+			New(blueBg.Render("world")),
+		),
+		NewMulti(
+			New(redBg.Render("hello")),
+			New(" "),
+			New(blueBg.Render("world")),
+		),
+	},
 }
 
 func TestMultiLineBuffer_Width(t *testing.T) {
 	for _, eq := range equivalentLineBuffers {
-		for i, lb := range eq {
+		for _, lb := range eq {
 			if lb.Width() != eq[0].Width() {
-				t.Errorf("expected %d, got %d for line buffer %d", eq[0].Width(), lb.Width(), i)
+				t.Errorf("expected %d, got %d for line buffer %s", eq[0].Width(), lb.Width(), lb.Repr())
 			}
 		}
 	}
@@ -51,9 +61,9 @@ func TestMultiLineBuffer_Width(t *testing.T) {
 
 func TestMultiLineBuffer_Content(t *testing.T) {
 	for _, eq := range equivalentLineBuffers {
-		for i, lb := range eq {
+		for _, lb := range eq {
 			if lb.Content() != eq[0].Content() {
-				t.Errorf("expected %q, got %q for line buffer %d", eq[0].Content(), lb.Content(), i)
+				t.Errorf("expected %q, got %q for line buffer %s", eq[0].Content(), lb.Content(), lb.Repr())
 			}
 		}
 	}
@@ -71,7 +81,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		expected       string
 	}{
 		{
-			name:           "hello world 0",
+			name:           "hello world start at 0",
 			key:            "hello world",
 			startWidth:     0,
 			takeWidth:      7,
@@ -81,7 +91,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 			expected:       "hello w",
 		},
 		{
-			name:           "hello world 1",
+			name:           "hello world start at 1",
 			key:            "hello world",
 			startWidth:     1,
 			takeWidth:      7,
@@ -180,6 +190,126 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 			highlightStyle: redBg,
 			expected:       "...o...", // does not highlight continuation, could in future
 		},
+		{
+			name:           "ansi start at 0",
+			key:            "ansi",
+			startWidth:     0,
+			takeWidth:      7,
+			continuation:   "",
+			toHighlight:    "",
+			highlightStyle: lipgloss.NewStyle(),
+			expected:       redBg.Render("hello") + " " + blueBg.Render("w"),
+		},
+		{
+			name:           "ansi start at 1",
+			key:            "ansi",
+			startWidth:     1,
+			takeWidth:      7,
+			continuation:   "",
+			toHighlight:    "",
+			highlightStyle: lipgloss.NewStyle(),
+			expected:       redBg.Render("ello") + " " + blueBg.Render("wo"),
+		},
+		{
+			name:           "ansi end",
+			key:            "ansi",
+			startWidth:     10,
+			takeWidth:      3,
+			continuation:   "",
+			toHighlight:    "",
+			highlightStyle: lipgloss.NewStyle(),
+			expected:       blueBg.Render("d"),
+		},
+		{
+			name:           "ansi past end",
+			key:            "ansi",
+			startWidth:     11,
+			takeWidth:      3,
+			continuation:   "",
+			toHighlight:    "",
+			highlightStyle: lipgloss.NewStyle(),
+			expected:       "",
+		},
+		{
+			name:           "ansi with continuation at end",
+			key:            "ansi",
+			startWidth:     0,
+			takeWidth:      7,
+			continuation:   "...",
+			toHighlight:    "",
+			highlightStyle: lipgloss.NewStyle(),
+			expected:       redBg.Render("hell.") + "." + blueBg.Render("."),
+		},
+		{
+			name:           "ansi with continuation at start",
+			key:            "ansi",
+			startWidth:     4,
+			takeWidth:      7,
+			continuation:   "...",
+			toHighlight:    "",
+			highlightStyle: lipgloss.NewStyle(),
+			expected:       redBg.Render(".") + "." + blueBg.Render(".orld"),
+		},
+		{
+			name:           "ansi with continuation both ends",
+			key:            "ansi",
+			startWidth:     2,
+			takeWidth:      7,
+			continuation:   "...",
+			toHighlight:    "",
+			highlightStyle: lipgloss.NewStyle(),
+			expected:       redBg.Render("...") + " " + blueBg.Render("..."),
+		},
+		{
+			name:           "ansi with highlight whole word",
+			key:            "ansi",
+			startWidth:     0,
+			takeWidth:      11,
+			continuation:   "",
+			toHighlight:    "hello",
+			highlightStyle: greenBg,
+			expected:       greenBg.Render("hello") + " " + blueBg.Render("world"),
+		},
+		{
+			name:           "ansi with highlight partial word",
+			key:            "ansi",
+			startWidth:     0,
+			takeWidth:      11,
+			continuation:   "",
+			toHighlight:    "ell",
+			highlightStyle: greenBg,
+			expected:       redBg.Render("h") + greenBg.Render("ell") + redBg.Render("o") + " " + blueBg.Render("world"),
+		},
+		{
+			name:           "ansi with highlight across buffer boundary",
+			key:            "ansi",
+			startWidth:     0,
+			takeWidth:      11,
+			continuation:   "",
+			toHighlight:    "lo wo",
+			highlightStyle: greenBg,
+			expected:       redBg.Render("hel") + greenBg.Render("lo wo") + blueBg.Render("rld"),
+		},
+		//{
+		//	name:           "ansi with highlight and middle continuation",
+		//	key:            "ansi",
+		//	startWidth:     1,
+		//	takeWidth:      7,
+		//	continuation:   "..",
+		//	toHighlight:    "lo ",
+		//	highlightStyle: redBg,
+		//	expected:       ".." + redBg.Render("lo ") + "..",
+		//},
+		//{
+		//	name:           "ansi with highlight and overlapping continuation",
+		//	key:            "ansi",
+		//	startWidth:     1,
+		//	takeWidth:      7,
+		//	continuation:   "...",
+		//	toHighlight:    "lo ",
+		//	highlightStyle: redBg,
+		//	expected:       "...o...", // does not highlight continuation, could in future
+		//},
 		// TODO LEO: other keys
 	}
 
@@ -267,7 +397,7 @@ func TestMultiLineBuffer_WrappedLines(t *testing.T) {
 				"rld",
 			},
 		},
-		// TODO LEO: highlight style, other keys
+		// TODO LEO: other keys
 	}
 
 	for _, tt := range tests {

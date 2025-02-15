@@ -7,6 +7,15 @@ import (
 	"unicode/utf8"
 )
 
+var (
+	red     = lipgloss.Color("#FF0000")
+	blue    = lipgloss.Color("#0000FF")
+	green   = lipgloss.Color("#00FF00")
+	redBg   = lipgloss.NewStyle().Background(red)
+	blueBg  = lipgloss.NewStyle().Background(blue)
+	greenBg = lipgloss.NewStyle().Background(green)
+)
+
 func reapplyAnsi(original, truncated string, truncByteOffset int, ansiCodeIndexes [][]uint32) string {
 	var result []byte
 	var lenAnsiAdded int
@@ -264,12 +273,19 @@ func overflowsRight(s string, endByteIdx int, substr string) (bool, int) {
 	return false, 0
 }
 
-func replaceStartWithContinuation(result string, continuationRunes []rune) string {
-	if len(result) == 0 {
-		return result
+func replaceStartWithContinuation(s string, continuationRunes []rune) string {
+	if len(s) == 0 {
+		return s
 	}
 
-	resultRunes := []rune(result)
+	ansiRanges := findAnsiRanges(s)
+	if len(ansiRanges) != 0 {
+		plainText := stripAnsi(s)
+		replacedPlainText := replaceStartWithContinuation(plainText, continuationRunes)
+		return reapplyAnsi(s, replacedPlainText, 0, ansiRanges)
+	}
+
+	resultRunes := []rune(s)
 	totalContinuationRunes := len(continuationRunes)
 	continuationRunesPlaced := 0
 	resultRunesReplaced := 0
@@ -330,6 +346,13 @@ func replaceStartWithContinuation(result string, continuationRunes []rune) strin
 func replaceEndWithContinuation(s string, continuationRunes []rune) string {
 	if len(s) == 0 {
 		return s
+	}
+
+	ansiRanges := findAnsiRanges(s)
+	if len(ansiRanges) != 0 {
+		plainText := stripAnsi(s)
+		replacedPlainText := replaceEndWithContinuation(plainText, continuationRunes)
+		return reapplyAnsi(s, replacedPlainText, 0, ansiRanges)
 	}
 
 	resultRunes := []rune(s)

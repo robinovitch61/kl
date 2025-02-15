@@ -839,6 +839,18 @@ func TestLineBuffer_replaceStartWithContinuation(t *testing.T) {
 			expected:     "...string",
 		},
 		{
+			name:         "ansi from start",
+			s:            "\x1b[31mmy string\x1b[m",
+			continuation: "...",
+			expected:     "\x1b[31m...string\x1b[m",
+		},
+		{
+			name:         "ansi overlaps continuation",
+			s:            "m\x1b[31my string\x1b[m",
+			continuation: "...",
+			expected:     ".\x1b[31m..string\x1b[m",
+		},
+		{
 			name: "unicode",
 			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
 			s:            "A💖中e\u0301",
@@ -900,6 +912,18 @@ func TestLineBuffer_replaceEndWithContinuation(t *testing.T) {
 			s:            "my string",
 			continuation: "...",
 			expected:     "my str...",
+		},
+		{
+			name:         "ansi from end",
+			s:            "\x1b[31mmy string\x1b[m",
+			continuation: "...",
+			expected:     "\x1b[31mmy str...\x1b[m",
+		},
+		{
+			name:         "ansi overlaps continuation",
+			s:            "\x1b[31mmy strin\x1b[mg",
+			continuation: "...",
+			expected:     "\x1b[31mmy str..\x1b[m.",
 		},
 		{
 			name: "unicode",

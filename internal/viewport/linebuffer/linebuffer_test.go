@@ -79,16 +79,16 @@ func TestLineBuffer_Content(t *testing.T) {
 }
 
 func TestLineBuffer_Take(t *testing.T) {
-	highlightStyle := lipgloss.NewStyle().Background(lipgloss.Color("#FF0000"))
 	tests := []struct {
-		name         string
-		s            string
-		width        int
-		continuation string
-		toHighlight  string
-		startWidth   int
-		numTakes     int
-		expected     []string
+		name           string
+		s              string
+		width          int
+		continuation   string
+		toHighlight    string
+		highlightStyle lipgloss.Style
+		startWidth     int
+		numTakes       int
+		expected       []string
 	}{
 		{
 			name:         "empty",
@@ -508,7 +508,7 @@ func TestLineBuffer_Take(t *testing.T) {
 			expected:     []string{"hi"},
 		},
 		{
-			name:         "lineContinuationIndicator longer than width",
+			name:         "continuation longer than width",
 			s:            "1234567890123456789012345",
 			width:        1,
 			continuation: "...",
@@ -516,7 +516,7 @@ func TestLineBuffer_Take(t *testing.T) {
 			expected:     []string{"."},
 		},
 		{
-			name:         "twice the lineContinuationIndicator longer than width",
+			name:         "twice the continuation longer than width",
 			s:            "1234567",
 			width:        5,
 			continuation: "...",
@@ -646,152 +646,190 @@ func TestLineBuffer_Take(t *testing.T) {
 			},
 		},
 		{
-			name:         "toHighlight, no continuation, no overflow, no ansi",
-			s:            "a very normal log",
-			width:        15,
-			continuation: "",
-			toHighlight:  "very",
-			numTakes:     1,
+			name:           "toHighlight, no continuation, no overflow, no ansi",
+			s:              "a very normal log",
+			width:          15,
+			continuation:   "",
+			toHighlight:    "very",
+			highlightStyle: redBg,
+			numTakes:       1,
 			expected: []string{
-				"a " + highlightStyle.Render("very") + " normal l",
+				"a " + redBg.Render("very") + " normal l",
 			},
 		},
 		{
-			name:         "toHighlight, no continuation, no overflow, no ansi",
-			s:            "a very normal log",
-			width:        15,
-			continuation: "",
-			toHighlight:  "very",
-			numTakes:     1,
+			name:           "toHighlight, no continuation, no overflow, no ansi",
+			s:              "a very normal log",
+			width:          15,
+			continuation:   "",
+			toHighlight:    "very",
+			highlightStyle: redBg,
+			numTakes:       1,
 			expected: []string{
-				"a " + highlightStyle.Render("very") + " normal l",
+				"a " + redBg.Render("very") + " normal l",
 			},
 		},
 		{
-			name:         "toHighlight, continuation, no overflow, no ansi",
-			s:            "a very normal log",
-			width:        15,
-			continuation: "...",
-			toHighlight:  "l l",
-			numTakes:     1,
+			name:           "toHighlight, continuation, no overflow, no ansi",
+			s:              "a very normal log",
+			width:          15,
+			continuation:   "...",
+			toHighlight:    "l l",
+			highlightStyle: redBg,
+			numTakes:       1,
 			expected: []string{
 				"a very norma...", // does not highlight continuation, could in future
 			},
 		},
 		{
-			name:         "toHighlight, another continuation, no overflow, no ansi",
-			s:            "a very normal log",
-			width:        15,
-			continuation: "...",
-			toHighlight:  "very",
-			startWidth:   1,
-			numTakes:     1,
+			name:           "toHighlight, another continuation, no overflow, no ansi",
+			s:              "a very normal log",
+			width:          15,
+			continuation:   "...",
+			toHighlight:    "very",
+			highlightStyle: redBg,
+			startWidth:     1,
+			numTakes:       1,
 			expected: []string{
 				"...ry normal...", // does not highlight continuation, could in future
 			},
 		},
 		{
-			name:         "toHighlight, no continuation, no overflow, no ansi, many matches",
-			s:            strings.Repeat("r", 10),
-			width:        6,
-			continuation: "",
-			toHighlight:  "r",
-			numTakes:     2,
+			name:           "toHighlight, no continuation, no overflow, no ansi, many matches",
+			s:              strings.Repeat("r", 10),
+			width:          6,
+			continuation:   "",
+			toHighlight:    "r",
+			highlightStyle: redBg,
+			numTakes:       2,
 			expected: []string{
 				strings.Repeat("\x1b[48;2;255;0;0mr\x1b[m", 6),
 				strings.Repeat("\x1b[48;2;255;0;0mr\x1b[m", 4),
 			},
 		},
 		{
-			name:         "toHighlight, no continuation, no overflow, ansi",
-			s:            "\x1b[38;2;0;0;255mhi \x1b[48;2;0;255;0mthere\x1b[m er",
-			width:        15,
-			continuation: "",
-			toHighlight:  "er",
-			numTakes:     1,
+			name:           "toHighlight, no continuation, no overflow, ansi",
+			s:              "\x1b[38;2;0;0;255mhi \x1b[48;2;0;255;0mthere\x1b[m er",
+			width:          15,
+			continuation:   "",
+			toHighlight:    "er",
+			highlightStyle: redBg,
+			numTakes:       1,
 			expected: []string{
 				"\x1b[38;2;0;0;255mhi \x1b[48;2;0;255;0mth\x1b[m\x1b[48;2;255;0;0mer\x1b[m\x1b[38;2;0;0;255m\x1b[48;2;0;255;0me\x1b[m \x1b[48;2;255;0;0mer\x1b[m",
 			},
 		},
 		{
-			name:         "toHighlight, no continuation, overflows left and right, no ansi",
-			s:            "hi there re",
-			width:        6,
-			continuation: "",
-			toHighlight:  "hi there",
-			numTakes:     2,
+			name:           "toHighlight, no continuation, overflows left and right, no ansi",
+			s:              "hi there re",
+			width:          6,
+			continuation:   "",
+			toHighlight:    "hi there",
+			highlightStyle: redBg,
+			numTakes:       2,
 			expected: []string{
-				highlightStyle.Render("hi the"),
-				highlightStyle.Render("re") + " re",
+				redBg.Render("hi the"),
+				redBg.Render("re") + " re",
 			},
 		},
 		{
-			name:         "toHighlight, no continuation, overflows left and right, ansi",
-			s:            "\x1b[38;2;0;0;255mhi there re\x1b[m",
-			width:        6,
-			continuation: "",
-			toHighlight:  "hi there",
-			numTakes:     2,
+			name:           "toHighlight, no continuation, overflows left and right, ansi",
+			s:              "\x1b[38;2;0;0;255mhi there re\x1b[m",
+			width:          6,
+			continuation:   "",
+			toHighlight:    "hi there",
+			highlightStyle: redBg,
+			numTakes:       2,
 			expected: []string{
 				"\x1b[48;2;255;0;0mhi the\x1b[m",
 				"\x1b[48;2;255;0;0mre\x1b[m\x1b[38;2;0;0;255m re\x1b[m",
 			},
 		},
+		// TODO LEO: remove tmp, fix next one
 		{
-			name:         "toHighlight, no continuation, overflows left and right one char, no ansi",
-			s:            "hi there re",
-			width:        7,
-			continuation: "",
-			toHighlight:  "hi there",
-			numTakes:     2,
+			name:           "tmp",
+			s:              "hello world",
+			width:          11,
+			continuation:   "",
+			toHighlight:    "lo wo",
+			highlightStyle: greenBg,
+			numTakes:       1,
 			expected: []string{
-				highlightStyle.Render("hi ther"),
-				highlightStyle.Render("e") + " re",
+				"hel" + greenBg.Render("lo wo") + "rld",
 			},
 		},
 		{
-			name:         "unicode toHighlight, no continuation, no overflow, no ansi",
-			s:            "世界🌟世界🌟",
-			width:        7,
-			continuation: "",
-			toHighlight:  "世界",
-			numTakes:     2,
+			name:           "toHighlight, no continuation, another ansi",
+			s:              redBg.Render("hello") + " " + blueBg.Render("world"),
+			width:          11,
+			continuation:   "",
+			toHighlight:    "lo wo",
+			highlightStyle: greenBg,
+			numTakes:       1,
 			expected: []string{
-				highlightStyle.Render("世界") + "🌟",
-				highlightStyle.Render("世界") + "🌟",
+				redBg.Render("hel") + greenBg.Render("lo wo") + blueBg.Render("rld"),
 			},
 		},
 		{
-			name:         "unicode toHighlight, no continuation, overflow, no ansi",
-			s:            "世界🌟世界🌟",
-			width:        7,
-			continuation: "",
-			toHighlight:  "世界🌟世",
-			numTakes:     2,
+			name:           "toHighlight, no continuation, overflows left and right one char, no ansi",
+			s:              "hi there re",
+			width:          7,
+			continuation:   "",
+			toHighlight:    "hi there",
+			highlightStyle: redBg,
+			numTakes:       2,
 			expected: []string{
-				highlightStyle.Render("世界🌟"),
-				highlightStyle.Render("世") + "界🌟",
+				redBg.Render("hi ther"),
+				redBg.Render("e") + " re",
 			},
 		},
 		{
-			name:         "unicode toHighlight, no continuation, overflow, ansi",
-			s:            "\x1b[38;2;0;0;255m世界🌟世界🌟\x1b[m",
-			width:        7,
-			continuation: "",
-			toHighlight:  "世界🌟世",
-			numTakes:     2,
+			name:           "unicode toHighlight, no continuation, no overflow, no ansi",
+			s:              "世界🌟世界🌟",
+			width:          7,
+			continuation:   "",
+			toHighlight:    "世界",
+			highlightStyle: redBg,
+			numTakes:       2,
 			expected: []string{
-				highlightStyle.Render("世界🌟"),
-				highlightStyle.Render("世") + "\x1b[38;2;0;0;255m界🌟\x1b[m",
+				redBg.Render("世界") + "🌟",
+				redBg.Render("世界") + "🌟",
 			},
 		},
 		{
-			name:         "unicode toHighlight, continuation, overflow, ansi",
-			s:            "\x1b[38;2;0;0;255m世界🌟世界🌟\x1b[m",
-			width:        7,
-			continuation: "...",
-			toHighlight:  "世界🌟世",
-			numTakes:     2,
+			name:           "unicode toHighlight, no continuation, overflow, no ansi",
+			s:              "世界🌟世界🌟",
+			width:          7,
+			continuation:   "",
+			toHighlight:    "世界🌟世",
+			highlightStyle: redBg,
+			numTakes:       2,
+			expected: []string{
+				redBg.Render("世界🌟"),
+				redBg.Render("世") + "界🌟",
+			},
+		},
+		{
+			name:           "unicode toHighlight, no continuation, overflow, ansi",
+			s:              "\x1b[38;2;0;0;255m世界🌟世界🌟\x1b[m",
+			width:          7,
+			continuation:   "",
+			toHighlight:    "世界🌟世",
+			highlightStyle: redBg,
+			numTakes:       2,
+			expected: []string{
+				redBg.Render("世界🌟"),
+				redBg.Render("世") + "\x1b[38;2;0;0;255m界🌟\x1b[m",
+			},
+		},
+		{
+			name:           "unicode toHighlight, continuation, overflow, ansi",
+			s:              "\x1b[38;2;0;0;255m世界🌟世界🌟\x1b[m",
+			width:          7,
+			continuation:   "...",
+			toHighlight:    "世界🌟世",
+			highlightStyle: redBg,
+			numTakes:       2,
 			expected: []string{
 				"\x1b[38;2;0;0;255m世界..\x1b[m", // does not highlight continuation, could in future
 				"\x1b[38;2;0;0;255m..界🌟\x1b[m", // does not highlight continuation, could in future
@@ -819,7 +857,7 @@ func TestLineBuffer_Take(t *testing.T) {
 			lb := New(tt.s)
 			startWidth := tt.startWidth
 			for i := 0; i < tt.numTakes; i++ {
-				actual, actualWidth := lb.Take(startWidth, tt.width, tt.continuation, tt.toHighlight, highlightStyle)
+				actual, actualWidth := lb.Take(startWidth, tt.width, tt.continuation, tt.toHighlight, tt.highlightStyle)
 				util.CmpStr(t, tt.expected[i], actual)
 				startWidth += actualWidth
 			}
