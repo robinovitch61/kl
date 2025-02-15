@@ -1,7 +1,6 @@
 package constants
 
 import (
-	"regexp"
 	"time"
 )
 
@@ -27,8 +26,6 @@ var CheckStylesLoadedDuration = 200 * time.Millisecond
 var AttemptUpdateSinceTimeInterval = 500 * time.Millisecond
 
 // *********************************************************************************************************************
-
-var EmptySequenceRegex = regexp.MustCompile("\x1b\\[[0-9;]+m\x1b\\[m")
 
 // LeftPageWidthFraction controls the width of the left page as a fraction of the terminal width
 const LeftPageWidthFraction = 2. / 5.

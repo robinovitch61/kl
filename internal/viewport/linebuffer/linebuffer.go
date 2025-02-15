@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/mattn/go-runewidth"
-	"github.com/robinovitch61/kl/internal/constants"
 	"strings"
 	"unicode/utf8"
 )
@@ -157,9 +156,7 @@ func (l LineBuffer) Take(
 		int(l.runeIdxToByteOffset[leftRuneIdx]),
 	)
 
-	// remove empty sequences
-	res = constants.EmptySequenceRegex.ReplaceAllString(res, "")
-
+	res = removeEmptyAnsiSequences(res)
 	return res, takeWidth - remainingWidth
 }
 

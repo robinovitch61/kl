@@ -284,9 +284,6 @@ func TestLineBuffer_reapplyAnsi(t *testing.T) {
 }
 
 func TestLineBuffer_highlightLine(t *testing.T) {
-	red := lipgloss.Color("#ff0000")
-	blue := lipgloss.Color("#0000ff")
-
 	for _, tt := range []struct {
 		name           string
 		line           string
@@ -300,84 +297,93 @@ func TestLineBuffer_highlightLine(t *testing.T) {
 			name:           "empty",
 			line:           "",
 			highlight:      "",
-			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			highlightStyle: redFg,
 			expected:       "",
 		},
 		{
 			name:           "no highlight",
 			line:           "hello",
 			highlight:      "",
-			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			highlightStyle: redFg,
 			expected:       "hello",
 		},
 		{
 			name:           "highlight",
 			line:           "hello",
 			highlight:      "ell",
-			highlightStyle: lipgloss.NewStyle().Foreground(red),
-			expected:       "h\x1b[38;2;255;0;0mell\x1b[mo",
+			highlightStyle: redFg,
+			expected:       "h" + redFg.Render("ell") + "o",
 		},
 		{
 			name:           "highlight already styled line",
-			line:           "\x1b[38;2;255;0;0mfirst line\x1b[m",
+			line:           redFg.Render("first line"),
 			highlight:      "first",
-			highlightStyle: lipgloss.NewStyle().Foreground(blue),
-			expected:       "\x1b[38;2;255;0;0m\x1b[m\x1b[38;2;0;0;255mfirst\x1b[m\x1b[38;2;255;0;0m line\x1b[m",
+			highlightStyle: blueBg,
+			expected:       blueBg.Render("first") + redFg.Render(" line"),
 		},
 		{
 			name:           "highlight already partially styled line",
-			line:           "hi a \x1b[38;2;255;0;0mstyled line\x1b[m cool \x1b[38;2;255;0;0mand styled\x1b[m more",
+			line:           "hi a " + redFg.Render("styled line") + " cool " + redFg.Render("and styled") + " more",
 			highlight:      "style",
-			highlightStyle: lipgloss.NewStyle().Foreground(blue),
-			expected:       "hi a \x1b[38;2;255;0;0m\x1b[m\x1b[38;2;0;0;255mstyle\x1b[m\x1b[38;2;255;0;0md line\x1b[m cool \x1b[38;2;255;0;0mand \x1b[m\x1b[38;2;0;0;255mstyle\x1b[m\x1b[38;2;255;0;0md\x1b[m more",
+			highlightStyle: blueBg,
+			expected:       "hi a " + blueBg.Render("style") + redFg.Render("d line") + " cool " + redFg.Render("and ") + blueBg.Render("style") + redFg.Render("d") + " more",
 		},
 		{
 			name:           "dont highlight ansi escape codes themselves",
-			line:           "\x1b[38;2;255;0;0mhi\x1b[m",
+			line:           redFg.Render("hi"),
 			highlight:      "38",
-			highlightStyle: lipgloss.NewStyle().Foreground(blue),
-			expected:       "\x1b[38;2;255;0;0mhi\x1b[m",
+			highlightStyle: blueBg,
+			expected:       redFg.Render("hi"),
 		},
 		{
 			name:           "single letter in partially styled line",
-			line:           "line \x1b[38;2;255;0;0mred\x1b[m e again",
+			line:           "line " + redFg.Render("red") + " e again",
 			highlight:      "e",
-			highlightStyle: lipgloss.NewStyle().Foreground(blue),
-			expected:       "lin\x1b[38;2;0;0;255me\x1b[m \x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;0;0;255me\x1b[m\x1b[38;2;255;0;0md\x1b[m \x1b[38;2;0;0;255me\x1b[m again",
+			highlightStyle: blueBg,
+			expected:       "lin" + blueBg.Render("e") + " " + redFg.Render("r") + blueBg.Render("e") + redFg.Render("d") + " " + blueBg.Render("e") + " again",
 		},
 		{
 			name:           "super long line",
 			line:           strings.Repeat("python generator code world world world code text test code words random words generator hello python generator", 10000),
 			highlight:      "e",
-			highlightStyle: lipgloss.NewStyle().Foreground(red),
-			expected:       strings.Repeat("python g\x1b[38;2;255;0;0me\x1b[mn\x1b[38;2;255;0;0me\x1b[mrator cod\x1b[38;2;255;0;0me\x1b[m world world world cod\x1b[38;2;255;0;0me\x1b[m t\x1b[38;2;255;0;0me\x1b[mxt t\x1b[38;2;255;0;0me\x1b[mst cod\x1b[38;2;255;0;0me\x1b[m words random words g\x1b[38;2;255;0;0me\x1b[mn\x1b[38;2;255;0;0me\x1b[mrator h\x1b[38;2;255;0;0me\x1b[mllo python g\x1b[38;2;255;0;0me\x1b[mn\x1b[38;2;255;0;0me\x1b[mrator", 10000),
+			highlightStyle: redFg,
+			expected:       strings.Repeat("python g"+redFg.Render("e")+"n"+redFg.Render("e")+"rator cod"+redFg.Render("e")+" world world world cod"+redFg.Render("e")+" t"+redFg.Render("e")+"xt t"+redFg.Render("e")+"st cod"+redFg.Render("e")+" words random words g"+redFg.Render("e")+"n"+redFg.Render("e")+"rator h"+redFg.Render("e")+"llo python g"+redFg.Render("e")+"n"+redFg.Render("e")+"rator", 10000),
 		},
 		{
 			name:           "start and end",
 			line:           "my line",
 			highlight:      "line",
-			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			highlightStyle: redFg,
 			start:          0,
 			end:            2,
 			expected:       "my line",
 		},
 		{
 			name:           "start and end ansi, in range",
-			line:           "\x1b[38;2;0;0;255mmy line\x1b[m",
+			line:           blueBg.Render("my line"),
 			highlight:      "my",
-			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			highlightStyle: redFg,
 			start:          0,
 			end:            2,
-			expected:       "\x1b[38;2;0;0;255m\x1b[m\x1b[38;2;255;0;0mmy\x1b[m\x1b[38;2;0;0;255m line\x1b[m",
+			expected:       redFg.Render("my") + blueBg.Render(" line"),
 		},
 		{
 			name:           "start and end ansi, out of range",
-			line:           "\x1b[38;2;0;0;255mmy line\x1b[m",
+			line:           blueBg.Render("my line"),
 			highlight:      "my",
-			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			highlightStyle: redFg,
 			start:          2,
 			end:            4,
-			expected:       "\x1b[38;2;0;0;255mmy line\x1b[m",
+			expected:       blueBg.Render("my line"),
+		},
+		{
+			name:           "ansi across multiple styles",
+			line:           redBg.Render("hello") + " " + blueBg.Render("world"),
+			highlight:      "lo wo",
+			highlightStyle: greenBg,
+			start:          0,
+			end:            11,
+			expected:       redBg.Render("hel") + greenBg.Render("lo wo") + blueBg.Render("rld"),
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -390,9 +396,6 @@ func TestLineBuffer_highlightLine(t *testing.T) {
 }
 
 func TestHighlightString(t *testing.T) {
-	red := lipgloss.Color("#ff0000")
-	blue := lipgloss.Color("#0000ff")
-
 	for _, tt := range []struct {
 		name           string
 		styledSegment  string // segment with ANSI codes
@@ -407,7 +410,7 @@ func TestHighlightString(t *testing.T) {
 			name:           "empty",
 			styledSegment:  "",
 			toHighlight:    "",
-			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			highlightStyle: redFg,
 			plainLine:      "",
 			segmentStart:   0,
 			segmentEnd:     0,
@@ -417,7 +420,7 @@ func TestHighlightString(t *testing.T) {
 			name:           "no highlight",
 			styledSegment:  "hello",
 			toHighlight:    "",
-			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			highlightStyle: redFg,
 			plainLine:      "hello",
 			segmentStart:   0,
 			segmentEnd:     5,
@@ -427,7 +430,7 @@ func TestHighlightString(t *testing.T) {
 			name:           "simple highlight",
 			styledSegment:  "hello",
 			toHighlight:    "ell",
-			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			highlightStyle: redFg,
 			plainLine:      "hello",
 			segmentStart:   0,
 			segmentEnd:     5,
@@ -441,13 +444,13 @@ func TestHighlightString(t *testing.T) {
 			plainLine:      "first line",
 			segmentStart:   0,
 			segmentEnd:     10,
-			expected:       "\x1b[38;2;255;0;0m\x1b[m\x1b[38;2;0;0;255mfirst\x1b[m\x1b[38;2;255;0;0m line\x1b[m",
+			expected:       "\x1b[38;2;0;0;255mfirst\x1b[m\x1b[38;2;255;0;0m line\x1b[m",
 		},
 		{
 			name:           "left overflow",
 			styledSegment:  "ello world",
 			toHighlight:    "hello",
-			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			highlightStyle: redFg,
 			plainLine:      "hello world",
 			segmentStart:   1,
 			segmentEnd:     11,
@@ -457,7 +460,7 @@ func TestHighlightString(t *testing.T) {
 			name:           "right overflow",
 			styledSegment:  "hello wo",
 			toHighlight:    "world",
-			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			highlightStyle: redFg,
 			plainLine:      "hello world",
 			segmentStart:   0,
 			segmentEnd:     8,
@@ -477,11 +480,21 @@ func TestHighlightString(t *testing.T) {
 			name:           "no match in segment",
 			styledSegment:  "middle",
 			toHighlight:    "outside",
-			highlightStyle: lipgloss.NewStyle().Foreground(red),
+			highlightStyle: redFg,
 			plainLine:      "outside middle outside",
 			segmentStart:   8,
 			segmentEnd:     14,
 			expected:       "middle",
+		},
+		{
+			name:           "across ansi styles",
+			styledSegment:  redBg.Render("hello") + " " + blueBg.Render("world"),
+			toHighlight:    "lo wo",
+			highlightStyle: greenBg,
+			plainLine:      "hello world",
+			segmentStart:   0,
+			segmentEnd:     11,
+			expected:       redBg.Render("hel") + greenBg.Render("lo wo") + blueBg.Render("rld"),
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

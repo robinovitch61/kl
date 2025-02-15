@@ -2,7 +2,6 @@ package linebuffer
 
 import (
 	"github.com/charmbracelet/lipgloss/v2"
-	"github.com/robinovitch61/kl/internal/constants"
 	"strings"
 )
 
@@ -149,8 +148,7 @@ func (m MultiLineBuffer) Take(
 		len(leftContext)+len(resNoAnsi),
 	)
 
-	// remove empty sequences
-	res = constants.EmptySequenceRegex.ReplaceAllString(res, "")
+	res = removeEmptyAnsiSequences(res)
 	return res, takeWidth - remainingTotalWidth
 }
 

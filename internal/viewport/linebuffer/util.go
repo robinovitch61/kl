@@ -3,14 +3,18 @@ package linebuffer
 import (
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/mattn/go-runewidth"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 )
+
+var emptySequenceRegex = regexp.MustCompile("\x1b\\[[0-9;]+m\x1b\\[m")
 
 var (
 	red     = lipgloss.Color("#FF0000")
 	blue    = lipgloss.Color("#0000FF")
 	green   = lipgloss.Color("#00FF00")
+	redFg   = lipgloss.NewStyle().Foreground(red)
 	redBg   = lipgloss.NewStyle().Background(red)
 	blueBg  = lipgloss.NewStyle().Background(blue)
 	greenBg = lipgloss.NewStyle().Background(green)
@@ -57,6 +61,33 @@ func reapplyAnsi(original, truncated string, truncByteOffset int, ansiCodeIndexe
 	return string(result)
 }
 
+// getNonAnsiText extracts a substring of specified length from the input text, excluding ANSI escape sequences.
+// It reads from the given start position until it has collected the requested number of non-ANSI bytes.
+//
+// Parameters:
+//   - text: The input string that may contain ANSI escape sequences
+//   - startPos: The byte position in the input to start reading from
+//   - bytesToExtract: The number of non-ANSI bytes to collect
+//
+// Returns a string containing bytesToExtract bytes of text with all ANSI sequences removed. If the input text ends
+// before collecting bytesToExtract bytes, returns all available non-ANSI bytes.
+func getNonAnsiText(text string, startPos, bytesToExtract int) string {
+	var result strings.Builder
+	currentPos := startPos
+	bytesCollected := 0
+	for currentPos < len(text) && bytesCollected < bytesToExtract {
+		if strings.HasPrefix(text[currentPos:], "\x1b[") {
+			escEnd := currentPos + strings.Index(text[currentPos:], "m") + 1
+			currentPos = escEnd
+			continue
+		}
+		result.WriteByte(text[currentPos])
+		bytesCollected++
+		currentPos++
+	}
+	return result.String()
+}
+
 // highlightLine highlights a string in a line that potentially has ansi codes in it without disrupting them
 // start and end are the byte offsets for which highlighting is considered in the line, not counting ansi codes
 func highlightLine(line, highlight string, highlightStyle lipgloss.Style, start, end int) string {
@@ -65,7 +96,6 @@ func highlightLine(line, highlight string, highlightStyle lipgloss.Style, start,
 	}
 
 	renderedHighlight := highlightStyle.Render(highlight)
-	lenHighlight := len(highlight)
 	var result strings.Builder
 	var activeStyles []string
 	inAnsi := false
@@ -93,32 +123,43 @@ func highlightLine(line, highlight string, highlightStyle lipgloss.Style, start,
 		}
 
 		// check if current position starts a highlight match
-		if len(highlight) > 0 && !inAnsi && nonAnsiBytes >= start && nonAnsiBytes < end && strings.HasPrefix(line[i:], highlight) {
-			// reset current styles, if any
-			if len(activeStyles) > 0 {
-				result.WriteString("\x1b[m")
-			}
-
-			// apply highlight
-			result.WriteString(renderedHighlight)
-			nonAnsiBytes += lenHighlight
-
-			// restore previous styles, if any
-			if len(activeStyles) > 0 {
-				for j := range activeStyles {
-					result.WriteString(activeStyles[j])
+		if !inAnsi && nonAnsiBytes >= start && nonAnsiBytes < end {
+			textToCheck := getNonAnsiText(line, i, len(highlight))
+			if textToCheck == highlight {
+				// reset current styles, if any
+				if len(activeStyles) > 0 {
+					result.WriteString("\x1b[m")
 				}
-			}
-			i += len(highlight)
-			continue
-		}
+				// apply highlight
+				result.WriteString(renderedHighlight)
+				// restore previous styles, if any
+				if len(activeStyles) > 0 {
+					for j := range activeStyles {
+						result.WriteString(activeStyles[j])
+					}
+				}
 
+				// skip to end of matched text
+				count := 0
+				for count < len(highlight) {
+					if strings.HasPrefix(line[i:], "\x1b[") {
+						escEnd := i + strings.Index(line[i:], "m") + 1
+						result.WriteString(line[i:escEnd])
+						i = escEnd
+						continue
+					}
+					i++
+					count++
+					nonAnsiBytes++
+				}
+				continue
+			}
+		}
 		result.WriteByte(line[i])
 		nonAnsiBytes++
 		i++
 	}
-
-	return result.String()
+	return removeEmptyAnsiSequences(result.String())
 }
 
 // highlightString applies highlighting to a segment of text while handling cases where the highlight
@@ -614,4 +655,8 @@ func getWrappedLines(
 	}
 
 	return res
+}
+
+func removeEmptyAnsiSequences(s string) string {
+	return emptySequenceRegex.ReplaceAllString(s, "")
 }
