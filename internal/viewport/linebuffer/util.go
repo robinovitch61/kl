@@ -71,6 +71,7 @@ func reapplyAnsi(original, truncated string, truncByteOffset int, ansiCodeIndexe
 //
 // Returns a string containing bytesToExtract bytes of text with all ANSI sequences removed. If the input text ends
 // before collecting bytesToExtract bytes, returns all available non-ANSI bytes.
+// TODO LEO: test
 func getNonAnsiText(text string, startPos, bytesToExtract int) string {
 	var result strings.Builder
 	currentPos := startPos
