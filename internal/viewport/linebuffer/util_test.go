@@ -269,14 +269,6 @@ func TestLineBuffer_reapplyAnsi(t *testing.T) {
 			truncByteOffset: 0,
 			expected:        redBg.Render("A💖") + "中é",
 		},
-		// TODO LEO: not sure this is feasible
-		//{
-		//	name:            "unicode with ansi equivalent width",
-		//	original:        redBg.Render("A💖") + "中é",
-		//	truncated:       "...中é",
-		//	truncByteOffset: 0,
-		//	expected:        redBg.Render("...") + "中é",
-		//},
 	}
 
 	ansiRegex := regexp.MustCompile("\x1b\\[[0-9;]*m")
