@@ -20,20 +20,31 @@ var (
 	greenBg = lipgloss.NewStyle().Background(green)
 )
 
+// reapplyAnsi reconstructs ANSI escape sequences in a truncated string based on their positions in the original.
+// It ensures that any active text formatting (colors, styles) from the original string is correctly maintained
+// in the truncated output, and adds proper reset codes where needed.
+//
+// Parameters:
+//   - original: the source string containing ANSI escape sequences
+//   - truncated: the truncated version of the string, without ANSI sequences
+//   - truncByteOffset: byte offset in the original string where truncation started
+//   - ansiCodeIndexes: pairs of start/end byte positions of ANSI codes in the original string
+//
+// Returns a string with ANSI escape sequences reapplied at appropriate positions,
+// maintaining the original text formatting while preserving proper UTF-8 encoding.
 func reapplyAnsi(original, truncated string, truncByteOffset int, ansiCodeIndexes [][]uint32) string {
-	var result []byte
+	var result string // TODO LEO: make more efficient (string.builder) when this is working
 	var lenAnsiAdded int
 	isReset := true
-	truncatedBytes := []byte(truncated)
 
-	for i := 0; i < len(truncatedBytes); {
+	for i := 0; i < len(truncated); {
 		// collect all ansi codes that should be applied immediately before the current runes
 		var ansisToAdd []string
 		for len(ansiCodeIndexes) > 0 {
 			candidateAnsi := ansiCodeIndexes[0]
 			codeStart, codeEnd := int(candidateAnsi[0]), int(candidateAnsi[1])
-			originalIdx := truncByteOffset + i + lenAnsiAdded
-			if codeStart <= originalIdx {
+			originalByteIdx := truncByteOffset + i + lenAnsiAdded
+			if codeStart <= originalByteIdx {
 				code := original[codeStart:codeEnd]
 				isReset = code == "\x1b[m"
 				ansisToAdd = append(ansisToAdd, code)
@@ -45,20 +56,20 @@ func reapplyAnsi(original, truncated string, truncByteOffset int, ansiCodeIndexe
 		}
 
 		for _, ansi := range simplifyAnsiCodes(ansisToAdd) {
-			result = append(result, ansi...)
+			result += ansi
 		}
 
 		// add the bytes of the current rune
-		_, size := utf8.DecodeRune(truncatedBytes[i:])
-		result = append(result, truncatedBytes[i:i+size]...)
+		_, size := utf8.DecodeRuneInString(truncated[i:])
+		result += truncated[i : i+size]
 		i += size
 	}
 
 	if !isReset {
-		result = append(result, "\x1b[m"...)
+		result += "\x1b[m"
 	}
 
-	return string(result)
+	return result
 }
 
 // getNonAnsiText extracts a substring of specified length from the input text, excluding ANSI escape sequences.
@@ -316,73 +327,65 @@ func overflowsRight(s string, endByteIdx int, substr string) (bool, int) {
 }
 
 func replaceStartWithContinuation(s string, continuationRunes []rune) string {
-	if len(s) == 0 {
+	if len(s) == 0 || len(continuationRunes) == 0 {
 		return s
 	}
 
-	ansiRanges := findAnsiRanges(s)
-	if len(ansiRanges) != 0 {
-		plainText := stripAnsi(s)
-		replacedPlainText := replaceStartWithContinuation(plainText, continuationRunes)
-		return reapplyAnsi(s, replacedPlainText, 0, ansiRanges)
-	}
+	var sb strings.Builder
+	ansiCodeIndexes := findAnsiRanges(s)
 
-	resultRunes := []rune(s)
-	totalContinuationRunes := len(continuationRunes)
-	continuationRunesPlaced := 0
-	resultRunesReplaced := 0
-
-	for {
-		if continuationRunesPlaced >= totalContinuationRunes {
-			return string(resultRunes)
+	for i := 0; i < len(s); {
+		if len(ansiCodeIndexes) > 0 {
+			codeStart, codeEnd := int(ansiCodeIndexes[0][0]), int(ansiCodeIndexes[0][1])
+			if i == codeStart {
+				sb.WriteString(s[codeStart:codeEnd])
+				// skip ansi
+				i = codeEnd
+				ansiCodeIndexes = ansiCodeIndexes[1:]
+				continue
+			}
 		}
+		r, size := utf8.DecodeRuneInString(s[i:])
+		if len(continuationRunes) > 0 {
+			rWidth := runewidth.RuneWidth(r)
 
-		var widthToReplace int
-		resultRuneToReplaceIdx := continuationRunesPlaced
-		for {
-			if resultRuneToReplaceIdx >= len(resultRunes) {
-				return string(resultRunes)
+			// if rune is wider than remaining continuation width, cut off the continuation
+			remainingContinuationWidth := 0
+			for _, cr := range continuationRunes {
+				remainingContinuationWidth += runewidth.RuneWidth(cr)
+			}
+			if rWidth > remainingContinuationWidth {
+				sb.WriteRune(r)
+				continuationRunes = nil
 			}
 
-			widthToReplace = runewidth.RuneWidth(resultRunes[resultRuneToReplaceIdx])
-			if widthToReplace > totalContinuationRunes-continuationRunesPlaced {
-				return string(resultRunes)
+			// replace current rune with continuation runes
+			for rWidth > 0 && len(continuationRunes) > 0 {
+				currContinuationRune := continuationRunes[0]
+				sb.WriteRune(currContinuationRune)
+				continuationRunes = continuationRunes[1:]
+				rWidth -= runewidth.RuneWidth(currContinuationRune)
 			}
 
-			if widthToReplace > 0 {
-				// remove any following zero-width runes
-				for resultRuneToReplaceIdx+1 < len(resultRunes) && runewidth.RuneWidth(resultRunes[resultRuneToReplaceIdx+1]) == 0 {
-					resultRunes = replaceRuneWithRunes(resultRunes, resultRuneToReplaceIdx+1, []rune{})
+			// skip subsequent zero-width runes that are not ansi sequences
+			nextIdx := i + size
+			for {
+				nextR, nextSize := utf8.DecodeRuneInString(s[nextIdx:])
+				nextRWidth := runewidth.RuneWidth(nextR)
+				if nextRWidth == 0 && !strings.HasPrefix(s[nextIdx:], "\x1b[") {
+					i += nextSize
+					nextIdx = i + nextSize
+				} else {
+					break
 				}
-				break
-			} else {
-				// this can occur when two runes combine into the width of 1
-				// e.g. e\u0301 (i.e. é) is 2 runes, the second of which has zero width so should not be replaced
-				resultRunes = replaceRuneWithRunes(resultRunes, resultRuneToReplaceIdx, []rune{})
 			}
+		} else {
+			sb.WriteRune(r)
 		}
-
-		// get a slice of continuation runes that will replace the result rune, e.g. ".." for double-width unicode char
-		var replaceWith []rune
-		for {
-			if widthToReplace <= 0 {
-				break
-			}
-
-			nextContinuationRuneIdx := continuationRunesPlaced
-			if nextContinuationRuneIdx >= len(continuationRunes) {
-				break
-			}
-
-			nextContinuationRune := continuationRunes[nextContinuationRuneIdx]
-			replaceWith = append(replaceWith, nextContinuationRune)
-			widthToReplace -= 1 // assumes continuation runes are of width 1
-			continuationRunesPlaced += 1
-		}
-
-		resultRunes = replaceRuneWithRunes(resultRunes, resultRuneToReplaceIdx, replaceWith)
-		resultRunesReplaced += 1
+		i += size
 	}
+
+	return sb.String()
 }
 
 func replaceEndWithContinuation(s string, continuationRunes []rune) string {
@@ -424,7 +427,7 @@ func replaceEndWithContinuation(s string, continuationRunes []rune) string {
 				break
 			} else {
 				// this can occur when two runes combine into the width of 1
-				// e.g. e\u0301 (i.e. é) is 2 runes, the second of which has zero width so should not be replaced
+				// e.g. é is 2 runes, the second of which has zero width so should not be replaced
 				resultRunes = replaceRuneWithRunes(resultRunes, resultRuneToReplaceIdx, []rune{})
 				resultRunesReplaced++
 			}

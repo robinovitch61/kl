@@ -6,7 +6,6 @@ import (
 )
 
 var equivalentLineBuffers = map[string][]LineBufferer{
-	// TODO LEO: add ansi, unicode
 	"hello world": {
 		New("hello world"),
 		NewMulti(New("hello world")),
@@ -45,6 +44,16 @@ var equivalentLineBuffers = map[string][]LineBufferer{
 			New(redBg.Render("hello")),
 			New(" "),
 			New(blueBg.Render("world")),
+		),
+	},
+	"unicode_ansi": {
+		// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
+		New(redBg.Render("A💖") + "中é"),
+		NewMulti(New(redBg.Render("A💖") + "中é")),
+		NewMulti(
+			New(redBg.Render("A💖")),
+			New("中"),
+			New("é"),
 		),
 	},
 }
@@ -310,7 +319,126 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 			highlightStyle: redBg,
 			expected:       redBg.Render("...o") + "." + blueBg.Render(".."), // does not highlight continuation, could in future
 		},
-		// TODO LEO: other keys
+		{
+			name:           "unicode_ansi start at 0",
+			key:            "unicode_ansi",
+			startWidth:     0,
+			takeWidth:      6,
+			continuation:   "",
+			toHighlight:    "",
+			highlightStyle: lipgloss.NewStyle(),
+			expected:       redBg.Render("A💖") + "中é",
+		},
+		{
+			name:           "unicode_ansi start at 1",
+			key:            "unicode_ansi",
+			startWidth:     1,
+			takeWidth:      5,
+			continuation:   "",
+			toHighlight:    "",
+			highlightStyle: lipgloss.NewStyle(),
+			expected:       redBg.Render("💖") + "中é",
+		},
+		{
+			name:           "unicode_ansi end",
+			key:            "unicode_ansi",
+			startWidth:     5,
+			takeWidth:      1,
+			continuation:   "",
+			toHighlight:    "",
+			highlightStyle: lipgloss.NewStyle(),
+			expected:       "é",
+		},
+		{
+			name:           "unicode_ansi past end",
+			key:            "unicode_ansi",
+			startWidth:     6,
+			takeWidth:      3,
+			continuation:   "",
+			toHighlight:    "",
+			highlightStyle: lipgloss.NewStyle(),
+			expected:       "",
+		},
+		{
+			name:           "unicode_ansi with continuation at end",
+			key:            "unicode_ansi",
+			startWidth:     0,
+			takeWidth:      5,
+			continuation:   "...",
+			toHighlight:    "",
+			highlightStyle: lipgloss.NewStyle(),
+			expected:       redBg.Render("A💖") + "..", // bit of an edge cases, seems fine
+		},
+		{
+			name:           "unicode_ansi with continuation at start",
+			key:            "unicode_ansi",
+			startWidth:     1,
+			takeWidth:      5,
+			continuation:   "...",
+			toHighlight:    "",
+			highlightStyle: lipgloss.NewStyle(),
+			expected:       redBg.Render("..") + "中é",
+		},
+		//{
+		//	name:           "unicode_ansi with continuation both ends",
+		//	key:            "unicode_ansi",
+		//	startWidth:     2,
+		//	takeWidth:      7,
+		//	continuation:   "...",
+		//	toHighlight:    "",
+		//	highlightStyle: lipgloss.NewStyle(),
+		//	expected:       redBg.Render("...") + " " + blueBg.Render("..."),
+		//},
+		//{
+		//	name:           "unicode_ansi with highlight whole word",
+		//	key:            "unicode_ansi",
+		//	startWidth:     0,
+		//	takeWidth:      11,
+		//	continuation:   "",
+		//	toHighlight:    "hello",
+		//	highlightStyle: greenBg,
+		//	expected:       greenBg.Render("hello") + " " + blueBg.Render("world"),
+		//},
+		//{
+		//	name:           "unicode_ansi with highlight partial word",
+		//	key:            "unicode_ansi",
+		//	startWidth:     0,
+		//	takeWidth:      11,
+		//	continuation:   "",
+		//	toHighlight:    "ell",
+		//	highlightStyle: greenBg,
+		//	expected:       redBg.Render("h") + greenBg.Render("ell") + redBg.Render("o") + " " + blueBg.Render("world"),
+		//},
+		//{
+		//	name:           "unicode_ansi with highlight across buffer boundary",
+		//	key:            "unicode_ansi",
+		//	startWidth:     0,
+		//	takeWidth:      11,
+		//	continuation:   "",
+		//	toHighlight:    "lo wo",
+		//	highlightStyle: greenBg,
+		//	expected:       redBg.Render("hel") + greenBg.Render("lo wo") + blueBg.Render("rld"),
+		//},
+		//{
+		//	name:           "unicode_ansi with highlight and middle continuation",
+		//	key:            "unicode_ansi",
+		//	startWidth:     1,
+		//	takeWidth:      7,
+		//	continuation:   "..",
+		//	toHighlight:    "lo ",
+		//	highlightStyle: greenBg,
+		//	expected:       redBg.Render("..") + greenBg.Render("lo ") + blueBg.Render(".."),
+		//},
+		//{
+		//	name:           "unicode_ansi with highlight and overlapping continuation",
+		//	key:            "unicode_ansi",
+		//	startWidth:     1,
+		//	takeWidth:      7,
+		//	continuation:   "...",
+		//	toHighlight:    "lo ",
+		//	highlightStyle: redBg,
+		//	expected:       redBg.Render("...o") + "." + blueBg.Render(".."), // does not highlight continuation, could in future
+		//},
 	}
 
 	for _, tt := range tests {
@@ -466,7 +594,7 @@ func TestMultiLineBuffer_WrappedLines(t *testing.T) {
 				blueBg.Render("rld"),
 			},
 		},
-		// TODO LEO: other keys
+		// TODO LEO: add unicode_ansi
 	}
 
 	for _, tt := range tests {

@@ -836,15 +836,45 @@ func TestLineBuffer_Take(t *testing.T) {
 			},
 		},
 		{
+			name: "unicode with heart exact width",
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
+			s:            "A💖中é",
+			width:        6,
+			continuation: "",
+			startWidth:   0,
+			numTakes:     1,
+			expected:     []string{"A💖中é"},
+		},
+		{
+			name: "unicode with heart start continuation",
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
+			s:            "A💖中é",
+			width:        5,
+			continuation: "...",
+			startWidth:   1,
+			numTakes:     1,
+			expected:     []string{"..中é"},
+		},
+		{
+			name: "unicode with heart start continuation and ansi",
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
+			s:            redBg.Render("A💖") + "中é",
+			width:        5,
+			continuation: "...",
+			startWidth:   1,
+			numTakes:     1,
+			expected:     []string{redBg.Render("..") + "中é"},
+		},
+		{
 			name: "unicode combining",
 			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
-			s:            "A💖中e\u0301A💖中e\u0301", // 12w total
+			s:            "A💖中éA💖中é", // 12w total
 			width:        10,
 			continuation: "",
 			numTakes:     2,
 			expected: []string{
-				"A💖中e\u0301A💖",
-				"中e\u0301",
+				"A💖中éA💖",
+				"中é",
 			},
 		},
 	}

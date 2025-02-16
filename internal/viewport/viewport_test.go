@@ -850,17 +850,17 @@ func TestViewport_SelectionOff_WrapOff_StringToHighlightAnsiUnicode(t *testing.T
 	w, h := 10, 5
 	vp := newViewport(w, h)
 	// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
-	vp.SetHeader([]string{"A💖中e\u0301"})
+	vp.SetHeader([]string{"A💖中é"})
 	setContent(&vp, []string{
-		"A💖中e\u0301",
-		"A💖中e\u0301A💖中e\u0301",
+		"A💖中é",
+		"A💖中éA💖中é",
 	})
-	vp.SetStringToHighlight("中e\u0301")
+	vp.SetStringToHighlight("中é")
 	vp.HighlightStyle = selectionStyle
 	expectedView := pad(vp.width, vp.height, []string{
-		"A💖中e\u0301",
-		"A💖\x1b[38;2;0;0;255m中e\u0301\x1b[m",
-		"A💖\x1b[38;2;0;0;255m中e\u0301\x1b[m...",
+		"A💖中é",
+		"A💖\x1b[38;2;0;0;255m中é\x1b[m",
+		"A💖\x1b[38;2;0;0;255m中é\x1b[m...",
 	})
 	util.CmpStr(t, expectedView, vp.View())
 }
@@ -2240,19 +2240,19 @@ func TestViewport_SelectionOn_WrapOff_StringToHighlightAnsiUnicode(t *testing.T)
 	w, h := 10, 5
 	vp := newViewport(w, h)
 	// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
-	vp.SetHeader([]string{"A💖中e\u0301"})
+	vp.SetHeader([]string{"A💖中é"})
 	vp.SetSelectionEnabled(true)
 	setContent(&vp, []string{
-		"A💖中e\u0301",
-		"A💖中e\u0301A💖中e\u0301",
+		"A💖中é",
+		"A💖中éA💖中é",
 	})
-	vp.SetStringToHighlight("中e\u0301")
+	vp.SetStringToHighlight("中é")
 	vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
 	vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
 	expectedView := pad(vp.width, vp.height, []string{
-		"A💖中e\u0301",
-		"\x1b[38;2;0;0;255mA💖\x1b[m\x1b[38;2;255;0;0m中e\u0301\x1b[m",
-		"A💖\x1b[38;2;0;255;0m中e\u0301\x1b[m...",
+		"A💖中é",
+		"\x1b[38;2;0;0;255mA💖\x1b[m\x1b[38;2;255;0;0m中é\x1b[m",
+		"A💖\x1b[38;2;0;255;0m中é\x1b[m...",
 	})
 	util.CmpStr(t, expectedView, vp.View())
 }
@@ -3126,20 +3126,20 @@ func TestViewport_SelectionOff_WrapOn_StringToHighlightAnsiUnicode(t *testing.T)
 	w, h := 10, 5
 	vp := newViewport(w, h)
 	// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
-	vp.SetHeader([]string{"A💖中e\u0301"})
+	vp.SetHeader([]string{"A💖中é"})
 	vp.SetWrapText(true)
 	setContent(&vp, []string{
-		"A💖中e\u0301",
-		"A💖中e\u0301A💖中e\u0301",
+		"A💖中é",
+		"A💖中éA💖中é",
 	})
-	vp.SetStringToHighlight("中e\u0301")
+	vp.SetStringToHighlight("中é")
 	vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
 	vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
 	expectedView := pad(vp.width, vp.height, []string{
-		"A💖中e\u0301",
-		"A💖\x1b[38;2;0;255;0m中e\u0301\x1b[m",
-		"A💖\x1b[38;2;0;255;0m中e\u0301\x1b[mA💖",
-		"\x1b[38;2;0;255;0m中e\u0301\x1b[m",
+		"A💖中é",
+		"A💖\x1b[38;2;0;255;0m中é\x1b[m",
+		"A💖\x1b[38;2;0;255;0m中é\x1b[mA💖",
+		"\x1b[38;2;0;255;0m中é\x1b[m",
 		"100% (2/2)",
 	})
 	util.CmpStr(t, expectedView, vp.View())
@@ -4664,21 +4664,21 @@ func TestViewport_SelectionOn_WrapOn_StringToHighlightAnsiUnicode(t *testing.T) 
 	w, h := 10, 5
 	vp := newViewport(w, h)
 	// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
-	vp.SetHeader([]string{"A💖中e\u0301"})
+	vp.SetHeader([]string{"A💖中é"})
 	vp.SetSelectionEnabled(true)
 	vp.SetWrapText(true)
 	setContent(&vp, []string{
-		"A💖中e\u0301",
-		"A💖中e\u0301A💖中e\u0301",
+		"A💖中é",
+		"A💖中éA💖中é",
 	})
-	vp.SetStringToHighlight("中e\u0301")
+	vp.SetStringToHighlight("中é")
 	vp.HighlightStyle = lipgloss.NewStyle().Foreground(green)
 	vp.HighlightStyleIfSelected = lipgloss.NewStyle().Foreground(red)
 	expectedView := pad(vp.width, vp.height, []string{
-		"A💖中e\u0301",
-		"\x1b[38;2;0;0;255mA💖\x1b[m\x1b[38;2;255;0;0m中e\u0301\x1b[m",
-		"A💖\x1b[38;2;0;255;0m中e\u0301\x1b[mA💖",
-		"\x1b[38;2;0;255;0m中e\u0301\x1b[m",
+		"A💖中é",
+		"\x1b[38;2;0;0;255mA💖\x1b[m\x1b[38;2;255;0;0m中é\x1b[m",
+		"A💖\x1b[38;2;0;255;0m中é\x1b[mA💖",
+		"\x1b[38;2;0;255;0m中é\x1b[m",
 		"50% (1/2)",
 	})
 	util.CmpStr(t, expectedView, vp.View())

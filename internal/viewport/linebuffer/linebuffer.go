@@ -124,7 +124,34 @@ func (l LineBuffer) Take(
 		remainingWidth -= int(runeWidth)
 	}
 
+	// if only zero-width runes were written, return ""
+	for i := 0; i < runesWritten; i++ {
+		if runewidth.RuneWidth(l.lineNoAnsiRunes[startRuneIdx+i]) > 0 {
+			break
+		}
+		if i == runesWritten-1 {
+			return "", 0
+		}
+	}
+
+	// write the subsequent zero-width runes, e.g. the accent on an 'e'
+	if result.Len() > 0 {
+		for ; leftRuneIdx < len(l.lineNoAnsiRunes); leftRuneIdx++ {
+			r := l.lineNoAnsiRunes[leftRuneIdx]
+			if runewidth.RuneWidth(r) == 0 {
+				result.WriteRune(r)
+			} else {
+				break
+			}
+		}
+	}
+
 	res := result.String()
+
+	// reapply original styling
+	if len(l.ansiCodeIndexes) > 0 {
+		res = reapplyAnsi(l.line, res, int(startByteOffset), l.ansiCodeIndexes)
+	}
 
 	// apply left/right line continuation indicators
 	if len(continuation) > 0 && (startRuneIdx > 0 || leftRuneIdx < len(l.lineNoAnsiRunes)) {
@@ -139,11 +166,6 @@ func (l LineBuffer) Take(
 		if leftRuneIdx < len(l.lineNoAnsiRunes) {
 			res = replaceEndWithContinuation(res, continuationRunes)
 		}
-	}
-
-	// reapply original styling
-	if len(l.ansiCodeIndexes) > 0 {
-		res = reapplyAnsi(l.line, res, int(startByteOffset), l.ansiCodeIndexes)
 	}
 
 	// highlight the desired string

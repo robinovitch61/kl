@@ -249,7 +249,7 @@ func TestLineBuffer_reapplyAnsi(t *testing.T) {
 			expected:        "\x1b[31m\x1b[32m好\x1b[33m世\x1b[m界",
 		},
 		{
-			name:            "lots of leading ansi",
+			name:            "lots of leading empty ansi",
 			original:        "\x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;255;0;0mr\x1b[m\x1b[38;2;255;0;0mr\x1b[m",
 			truncated:       "r",
 			truncByteOffset: 10,
@@ -262,6 +262,21 @@ func TestLineBuffer_reapplyAnsi(t *testing.T) {
 			truncByteOffset: 0,
 			expected:        "\x1b[38;2;0;0;255msome \x1b[m\x1b[38;2;255;0;0mred\x1b[m\x1b[38;2;0;0;255m t\x1b[m",
 		},
+		{
+			name:            "unicode with ansi",
+			original:        redBg.Render("A💖") + "中é",
+			truncated:       "A💖中é",
+			truncByteOffset: 0,
+			expected:        redBg.Render("A💖") + "中é",
+		},
+		// TODO LEO: not sure this is feasible
+		//{
+		//	name:            "unicode with ansi equivalent width",
+		//	original:        redBg.Render("A💖") + "中é",
+		//	truncated:       "...中é",
+		//	truncByteOffset: 0,
+		//	expected:        redBg.Render("...") + "中é",
+		//},
 	}
 
 	ansiRegex := regexp.MustCompile("\x1b\\[[0-9;]*m")
@@ -866,36 +881,57 @@ func TestLineBuffer_replaceStartWithContinuation(t *testing.T) {
 		{
 			name: "unicode",
 			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
-			s:            "A💖中e\u0301",
+			s:            "A💖中é",
 			continuation: "...",
-			expected:     "...中e\u0301",
+			expected:     "...中é",
 		},
 		{
 			name: "unicode leading combined",
 			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
-			s:            "e\u0301💖中",
+			s:            "é💖中",
 			continuation: "...",
 			expected:     "...中",
 		},
 		{
 			name: "unicode combined",
 			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
-			s:            "💖e\u0301💖中",
+			s:            "💖é💖中",
 			continuation: "...",
 			expected:     "...💖中",
 		},
 		{
 			name: "unicode width overlap",
 			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
-			s:            "中💖中e\u0301",
+			s:            "中💖中é",
 			continuation: "...",
-			expected:     "..💖中e\u0301", // continuation shrinks by 1
+			expected:     "..💖中é", // continuation shrinks by 1
+		},
+		{
+			name: "unicode start",
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			s:            "A💖中é",
+			continuation: "...",
+			expected:     "...中é",
+		},
+		{
+			name: "unicode start ansi",
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			s:            redBg.Render("A💖") + "中é",
+			continuation: "...",
+			expected:     redBg.Render("...") + "中é",
+		},
+		{
+			name: "unicode almost start ansi",
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			s:            "A" + redBg.Render("💖") + "中é",
+			continuation: "...",
+			expected:     "." + redBg.Render("..") + "中é",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if r := replaceStartWithContinuation(tt.s, []rune(tt.continuation)); r != tt.expected {
-				t.Errorf("expected %s, got %s", tt.expected, r)
+				t.Errorf("expected %q, got %q", tt.expected, r)
 			}
 		})
 	}
@@ -948,14 +984,14 @@ func TestLineBuffer_replaceEndWithContinuation(t *testing.T) {
 		{
 			name: "unicode trailing combined",
 			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
-			s:            "A💖中e\u0301",
+			s:            "A💖中é",
 			continuation: "...",
 			expected:     "A💖...",
 		},
 		{
 			name: "unicode combined",
 			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
-			s:            "A💖e\u0301中",
+			s:            "A💖é中",
 			continuation: "...",
 			expected:     "A💖...",
 		},
@@ -965,6 +1001,27 @@ func TestLineBuffer_replaceEndWithContinuation(t *testing.T) {
 			s:            "💖中",
 			continuation: "...",
 			expected:     "💖..", // continuation shrinks by 1
+		},
+		{
+			name: "unicode end",
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			s:            "A💖中é",
+			continuation: "...",
+			expected:     "A💖...",
+		},
+		{
+			name: "unicode end ansi",
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			s:            "A💖" + redBg.Render("中é"),
+			continuation: "...",
+			expected:     "A💖" + redBg.Render("..."),
+		},
+		{
+			name: "unicode almost end ansi",
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			s:            "A" + redBg.Render("💖中") + "é",
+			continuation: "...",
+			expected:     "A💖" + redBg.Render("..") + "é",
 		},
 	}
 	for _, tt := range tests {
