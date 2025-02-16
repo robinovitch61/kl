@@ -33,7 +33,8 @@ var (
 // Returns a string with ANSI escape sequences reapplied at appropriate positions,
 // maintaining the original text formatting while preserving proper UTF-8 encoding.
 func reapplyAnsi(original, truncated string, truncByteOffset int, ansiCodeIndexes [][]uint32) string {
-	var result string // TODO LEO: make more efficient (string.builder) when this is working
+	var result strings.Builder
+	result.Grow(len(truncated))
 	var lenAnsiAdded int
 	isReset := true
 
@@ -56,20 +57,19 @@ func reapplyAnsi(original, truncated string, truncByteOffset int, ansiCodeIndexe
 		}
 
 		for _, ansi := range simplifyAnsiCodes(ansisToAdd) {
-			result += ansi
+			result.WriteString(ansi)
 		}
 
 		// add the bytes of the current rune
 		_, size := utf8.DecodeRuneInString(truncated[i:])
-		result += truncated[i : i+size]
+		result.WriteString(truncated[i : i+size])
 		i += size
 	}
 
 	if !isReset {
-		result += "\x1b[m"
+		result.WriteString("\x1b[m")
 	}
-
-	return result
+	return result.String()
 }
 
 // getNonAnsiText extracts a substring of specified length from the input text, excluding ANSI escape sequences.

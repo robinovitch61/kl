@@ -44,7 +44,7 @@ func NewSingleLogPage(
 			Height:               height,
 			AllRows:              []viewport.RenderableString{},
 			MatchesFilter: func(s viewport.RenderableString, filter filter.Model) bool {
-				return filter.Matches(s.LineBuffer.Content())
+				return s.Render().Matches(filter)
 			},
 			ViewWhenEmpty: "",
 			Styles:        styles,

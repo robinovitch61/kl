@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/mattn/go-runewidth"
+	"github.com/robinovitch61/kl/internal/filter"
 	"strings"
 	"unicode/utf8"
 )
@@ -85,7 +86,6 @@ func (l LineBuffer) Width() int {
 	return 0
 }
 
-// TODO LEO: don't use this for e.g. search, instead inject filter into a Matches() bool method here
 func (l LineBuffer) Content() string {
 	return l.line
 }
@@ -201,6 +201,10 @@ func (l LineBuffer) WrappedLines(
 		toHighlight,
 		toHighlightStyle,
 	)
+}
+
+func (l LineBuffer) Matches(f filter.Model) bool {
+	return f.Matches(l.lineNoAnsi)
 }
 
 func (l LineBuffer) Repr() string {

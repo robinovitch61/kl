@@ -745,19 +745,6 @@ func TestLineBuffer_Take(t *testing.T) {
 				"\x1b[48;2;255;0;0mre\x1b[m\x1b[38;2;0;0;255m re\x1b[m",
 			},
 		},
-		// TODO LEO: remove tmp, fix next one
-		{
-			name:           "tmp",
-			s:              "hello world",
-			width:          11,
-			continuation:   "",
-			toHighlight:    "lo wo",
-			highlightStyle: greenBg,
-			numTakes:       1,
-			expected: []string{
-				"hel" + greenBg.Render("lo wo") + "rld",
-			},
-		},
 		{
 			name:           "toHighlight, no continuation, another ansi",
 			s:              redBg.Render("hello") + " " + blueBg.Render("world"),

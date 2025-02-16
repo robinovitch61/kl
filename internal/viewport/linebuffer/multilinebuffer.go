@@ -2,6 +2,7 @@ package linebuffer
 
 import (
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/robinovitch61/kl/internal/filter"
 	"strings"
 )
 
@@ -37,8 +38,6 @@ func (m MultiLineBuffer) Width() int {
 	return m.totalWidth
 }
 
-// TODO LEO: don't use this for e.g. search, instead inject filter into a Matches() bool method here
-// TODO LEO: or store the concatenated string on init?
 func (m MultiLineBuffer) Content() string {
 	if len(m.buffers) == 0 {
 		return ""
@@ -181,6 +180,16 @@ func (m MultiLineBuffer) WrappedLines(
 		toHighlight,
 		toHighlightStyle,
 	)
+}
+
+func (m MultiLineBuffer) Matches(f filter.Model) bool {
+	// TODO LEO: inefficient
+	var builder strings.Builder
+	for i := range m.buffers {
+		builder.WriteString(m.buffers[i].lineNoAnsi)
+	}
+	lineNoAnsi := builder.String()
+	return f.Matches(lineNoAnsi)
 }
 
 func (m MultiLineBuffer) Repr() string {
