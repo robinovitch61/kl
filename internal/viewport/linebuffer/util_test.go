@@ -1021,13 +1021,13 @@ func TestLineBuffer_replaceEndWithContinuation(t *testing.T) {
 			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
 			s:            "A" + redBg.Render("💖中") + "é",
 			continuation: "...",
-			expected:     "A💖" + redBg.Render("..") + "é",
+			expected:     "A" + redBg.Render("💖..") + ".",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if r := replaceEndWithContinuation(tt.s, []rune(tt.continuation)); r != tt.expected {
-				t.Errorf("expected %s, got %s", tt.expected, r)
+				t.Errorf("expected %q, got %q", tt.expected, r)
 			}
 		})
 	}

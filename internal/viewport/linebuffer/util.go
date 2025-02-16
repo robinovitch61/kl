@@ -212,7 +212,7 @@ func highlightString(
 }
 
 func stripAnsi(input string) string {
-	ranges := findAnsiRanges(input)
+	ranges := findAnsiByteRanges(input)
 	if len(ranges) == 0 {
 		return input
 	}
@@ -332,22 +332,24 @@ func replaceStartWithContinuation(s string, continuationRunes []rune) string {
 	}
 
 	var sb strings.Builder
-	ansiCodeIndexes := findAnsiRanges(s)
+	ansiCodeIndexes := findAnsiRuneRanges(s)
+	runes := []rune(s)
 
-	for i := 0; i < len(s); {
+	for runeIdx := 0; runeIdx < len(runes); {
 		if len(ansiCodeIndexes) > 0 {
 			codeStart, codeEnd := int(ansiCodeIndexes[0][0]), int(ansiCodeIndexes[0][1])
-			if i == codeStart {
-				sb.WriteString(s[codeStart:codeEnd])
+			if runeIdx == codeStart {
+				for j := codeStart; j < codeEnd; j++ {
+					sb.WriteRune(runes[j])
+				}
 				// skip ansi
-				i = codeEnd
+				runeIdx = codeEnd
 				ansiCodeIndexes = ansiCodeIndexes[1:]
 				continue
 			}
 		}
-		r, size := utf8.DecodeRuneInString(s[i:])
 		if len(continuationRunes) > 0 {
-			rWidth := runewidth.RuneWidth(r)
+			rWidth := runewidth.RuneWidth(runes[runeIdx])
 
 			// if rune is wider than remaining continuation width, cut off the continuation
 			remainingContinuationWidth := 0
@@ -355,7 +357,7 @@ func replaceStartWithContinuation(s string, continuationRunes []rune) string {
 				remainingContinuationWidth += runewidth.RuneWidth(cr)
 			}
 			if rWidth > remainingContinuationWidth {
-				sb.WriteRune(r)
+				sb.WriteRune(runes[runeIdx])
 				continuationRunes = nil
 			}
 
@@ -368,101 +370,82 @@ func replaceStartWithContinuation(s string, continuationRunes []rune) string {
 			}
 
 			// skip subsequent zero-width runes that are not ansi sequences
-			nextIdx := i + size
-			for {
-				nextR, nextSize := utf8.DecodeRuneInString(s[nextIdx:])
-				nextRWidth := runewidth.RuneWidth(nextR)
-				if nextRWidth == 0 && !strings.HasPrefix(s[nextIdx:], "\x1b[") {
-					i += nextSize
-					nextIdx = i + nextSize
+			nextIdx := runeIdx + 1
+			for nextIdx < len(runes) {
+				nextRWidth := runewidth.RuneWidth(runes[nextIdx])
+				if nextRWidth == 0 && nextIdx < len(runes) && !runesHaveAnsiPrefix(runes[nextIdx:]) {
+					runeIdx += 1
+					nextIdx = runeIdx + 1
 				} else {
 					break
 				}
 			}
 		} else {
-			sb.WriteRune(r)
+			sb.WriteRune(runes[runeIdx])
 		}
-		i += size
+		runeIdx += 1
 	}
 
 	return sb.String()
 }
 
 func replaceEndWithContinuation(s string, continuationRunes []rune) string {
-	if len(s) == 0 {
+	if len(s) == 0 || len(continuationRunes) == 0 {
 		return s
 	}
 
-	ansiRanges := findAnsiRanges(s)
-	if len(ansiRanges) != 0 {
-		plainText := stripAnsi(s)
-		replacedPlainText := replaceEndWithContinuation(plainText, continuationRunes)
-		return reapplyAnsi(s, replacedPlainText, 0, ansiRanges)
+	var result string
+	ansiCodeIndexes := findAnsiRuneRanges(s)
+	runes := []rune(s)
+
+	for runeIdx := len(runes) - 1; runeIdx >= 0; {
+		if len(ansiCodeIndexes) > 0 {
+			lastAnsiCodeIndexes := ansiCodeIndexes[len(ansiCodeIndexes)-1]
+			codeStart, codeEnd := int(lastAnsiCodeIndexes[0]), int(lastAnsiCodeIndexes[1])
+			if runeIdx == codeEnd-1 {
+				for j := codeEnd - 1; j >= codeStart; j-- {
+					result = string(runes[j]) + result
+				}
+				// skip ansi
+				runeIdx = codeStart - 1
+				ansiCodeIndexes = ansiCodeIndexes[:len(ansiCodeIndexes)-1]
+				continue
+			}
+		}
+		if len(continuationRunes) > 0 {
+			rWidth := runewidth.RuneWidth(runes[runeIdx])
+
+			// if rune is wider than remaining continuation width, cut off the continuation
+			remainingContinuationWidth := 0
+			for _, cr := range continuationRunes {
+				remainingContinuationWidth += runewidth.RuneWidth(cr)
+			}
+			if rWidth > remainingContinuationWidth {
+				result = string(runes[runeIdx]) + result
+				continuationRunes = nil
+			}
+
+			// replace current rune with continuation runes
+			for rWidth > 0 && len(continuationRunes) > 0 {
+				currContinuationRune := continuationRunes[len(continuationRunes)-1]
+				result = string(currContinuationRune) + result
+				continuationRunes = continuationRunes[:len(continuationRunes)-1]
+				rWidth -= runewidth.RuneWidth(currContinuationRune)
+			}
+		} else {
+			result = string(runes[runeIdx]) + result
+		}
+		runeIdx -= 1
 	}
 
-	resultRunes := []rune(s)
-	originalResultRunesLen := len(resultRunes)
-	totalContinuationRunes := len(continuationRunes)
-	continuationRunesPlaced := 0
-	resultRunesReplaced := 0
-	for {
-		if continuationRunesPlaced >= totalContinuationRunes {
-			return string(resultRunes)
-		}
-
-		var widthToReplace int
-		var resultRuneToReplaceIdx int
-		for {
-			resultRuneToReplaceIdx = originalResultRunesLen - 1 - resultRunesReplaced
-			if resultRuneToReplaceIdx < 0 {
-				return string(resultRunes)
-			}
-
-			widthToReplace = runewidth.RuneWidth(resultRunes[resultRuneToReplaceIdx])
-			if widthToReplace > totalContinuationRunes-continuationRunesPlaced {
-				return string(resultRunes)
-			}
-
-			if widthToReplace > 0 {
-				break
-			} else {
-				// this can occur when two runes combine into the width of 1
-				// e.g. é is 2 runes, the second of which has zero width so should not be replaced
-				resultRunes = replaceRuneWithRunes(resultRunes, resultRuneToReplaceIdx, []rune{})
-				resultRunesReplaced++
-			}
-		}
-
-		// get a slice of continuation runes that will replace the result rune, e.g. ".." for double-width unicode char
-		var replaceWith []rune
-		for {
-			if widthToReplace <= 0 {
-				break
-			}
-			nextContinuationRuneIdx := len(continuationRunes) - 1 - continuationRunesPlaced
-			if nextContinuationRuneIdx < 0 {
-				break
-			}
-			nextContinuationRune := continuationRunes[nextContinuationRuneIdx]
-			replaceWith = append([]rune{nextContinuationRune}, replaceWith...)
-			widthToReplace -= 1 // assumes continuation runes are of width 1
-			continuationRunesPlaced += 1
-		}
-
-		resultRunes = replaceRuneWithRunes(resultRunes, resultRuneToReplaceIdx, replaceWith)
-		resultRunesReplaced += 1
-	}
-}
-
-func replaceRuneWithRunes(rs []rune, idxToReplace int, replaceWith []rune) []rune {
-	result := make([]rune, len(rs)+len(replaceWith)-1)
-	copy(result, rs[:idxToReplace])
-	copy(result[idxToReplace:], replaceWith)
-	copy(result[idxToReplace+len(replaceWith):], rs[idxToReplace+1:])
 	return result
 }
 
-func findAnsiRanges(s string) [][]uint32 {
+func runesHaveAnsiPrefix(runes []rune) bool {
+	return len(runes) >= 2 && runes[0] == '\x1b' && runes[1] == '['
+}
+
+func findAnsiByteRanges(s string) [][]uint32 {
 	// pre-count to allocate exact size
 	count := strings.Count(s, "\x1b[")
 	if count == 0 {
@@ -488,6 +471,45 @@ func findAnsiRanges(s string) [][]uint32 {
 			}
 
 			if i < len(s) && s[i] == 'm' {
+				allRanges[rangeIdx*2] = uint32(start)
+				allRanges[rangeIdx*2+1] = uint32(i + 1)
+				rangeIdx++
+				i++
+				continue
+			}
+		}
+		i++
+	}
+	return ranges[:rangeIdx]
+}
+
+func findAnsiRuneRanges(s string) [][]uint32 {
+	// pre-count to allocate exact size
+	count := strings.Count(s, "\x1b[")
+	if count == 0 {
+		return nil
+	}
+
+	allRanges := make([]uint32, count*2)
+	ranges := make([][]uint32, count)
+
+	for i := 0; i < count; i++ {
+		ranges[i] = allRanges[i*2 : i*2+2]
+	}
+
+	rangeIdx := 0
+	runes := []rune(s)
+	for i := 0; i < len(runes); {
+		if i+1 < len(runes) && runes[i] == '\x1b' && runes[i+1] == '[' {
+			start := i
+			i += 2 // skip \x1b[
+
+			// find the 'm' that ends this sequence
+			for i < len(runes) && runes[i] != 'm' {
+				i++
+			}
+
+			if i < len(runes) && runes[i] == 'm' {
 				allRanges[rangeIdx*2] = uint32(start)
 				allRanges[rangeIdx*2+1] = uint32(i + 1)
 				rangeIdx++

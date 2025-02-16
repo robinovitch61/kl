@@ -31,7 +31,7 @@ func New(line string) LineBuffer {
 		line: line,
 	}
 
-	lb.ansiCodeIndexes = findAnsiRanges(line)
+	lb.ansiCodeIndexes = findAnsiByteRanges(line)
 
 	if len(lb.ansiCodeIndexes) > 0 {
 		totalLen := len(line)
