@@ -574,7 +574,74 @@ func TestMultiLineBuffer_WrappedLines(t *testing.T) {
 				blueBg.Render("rld"),
 			},
 		},
-		// TODO LEO: add unicode_ansi
+		{
+			name:            "unicode_ansi full width",
+			key:             "unicode_ansi",
+			width:           6,
+			maxLinesEachEnd: -1,
+			toHighlight:     "",
+			highlightStyle:  lipgloss.NewStyle(),
+			expected:        []string{redBg.Render("A💖") + "中é"},
+		},
+		{
+			name:            "unicode_ansi width 5",
+			key:             "unicode_ansi",
+			width:           5,
+			maxLinesEachEnd: -1,
+			toHighlight:     "",
+			highlightStyle:  lipgloss.NewStyle(),
+			expected: []string{
+				redBg.Render("A💖") + "中",
+				"é",
+			},
+		},
+		{
+			name:            "unicode_ansi max 1 line each end",
+			key:             "unicode_ansi",
+			width:           2,
+			maxLinesEachEnd: 1,
+			toHighlight:     "",
+			highlightStyle:  lipgloss.NewStyle(),
+			expected: []string{
+				redBg.Render("A"),
+				//redBg.Render("💖"),
+				//"中",
+				"é",
+			},
+		},
+		{
+			name:            "unicode_ansi width 0",
+			key:             "unicode_ansi",
+			width:           0,
+			maxLinesEachEnd: -1,
+			toHighlight:     "",
+			highlightStyle:  lipgloss.NewStyle(),
+			expected:        []string{},
+		},
+		{
+			name:            "unicode_ansi highlight",
+			key:             "unicode_ansi",
+			width:           3,
+			maxLinesEachEnd: -1,
+			toHighlight:     "💖",
+			highlightStyle:  greenBg,
+			expected: []string{
+				redBg.Render("A") + greenBg.Render("💖"),
+				"中é",
+			},
+		},
+		{
+			name:            "unicode_ansi highlight wrap",
+			key:             "unicode_ansi",
+			width:           3,
+			maxLinesEachEnd: -1,
+			toHighlight:     "💖中",
+			highlightStyle:  greenBg,
+			expected: []string{
+				redBg.Render("A") + greenBg.Render("💖"),
+				greenBg.Render("中") + "é",
+			},
+		},
 	}
 
 	for _, tt := range tests {
