@@ -13,6 +13,7 @@ import (
 	"github.com/robinovitch61/kl/internal/model"
 	"github.com/robinovitch61/kl/internal/style"
 	"github.com/robinovitch61/kl/internal/viewport"
+	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
 	"strings"
 )
 
@@ -43,7 +44,7 @@ func NewSingleLogPage(
 			Height:               height,
 			AllRows:              []viewport.RenderableString{},
 			MatchesFilter: func(s viewport.RenderableString, filter filter.Model) bool {
-				return filter.Matches(s)
+				return s.Render().Matches(filter)
 			},
 			ViewWhenEmpty: "",
 			Styles:        styles,
@@ -123,14 +124,14 @@ func (p SingleLogPage) Help() string {
 }
 
 func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
-	if log == p.log {
+	if log.Log.LineBuffer.Content() == p.log.Log.LineBuffer.Content() {
 		return p
 	}
 	p.log = log
 	header, content := veryNicelyFormatThisLog(log, true)
-	renderableStrings := []viewport.RenderableString{{Content: header}}
+	renderableStrings := []viewport.RenderableString{{LineBuffer: linebuffer.New(header)}}
 	for _, c := range content {
-		renderableStrings = append(renderableStrings, viewport.RenderableString{Content: c})
+		renderableStrings = append(renderableStrings, viewport.RenderableString{LineBuffer: linebuffer.New(c)})
 	}
 	p.filterableViewport.SetAllRows(renderableStrings)
 	return p
@@ -138,7 +139,7 @@ func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
 
 func veryNicelyFormatThisLog(log model.PageLog, styleHeader bool) (string, []string) {
 	header := fmt.Sprintf("%s | %s", log.Timestamps.Full, log.RenderName(log.ContainerNames.Full, styleHeader))
-	return header, formatJSON(log.Log.Content)
+	return header, formatJSON(log.Log.LineBuffer.Content())
 }
 
 func formatJSON(input string) []string {

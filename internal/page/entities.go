@@ -93,7 +93,7 @@ func (p EntityPage) HighjackingInput() bool {
 func (p EntityPage) ContentForFile() []string {
 	var content []string
 	for _, l := range p.getVisibleEntities() {
-		content = append(content, l.Render())
+		content = append(content, l.Render().Content())
 	}
 	return content
 }

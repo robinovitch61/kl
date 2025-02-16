@@ -1,16 +1,18 @@
 package viewport
 
+import "github.com/robinovitch61/kl/internal/viewport/linebuffer"
+
 type RenderableComparable interface {
-	Render() string
+	Render() linebuffer.LineBufferer
 	Equals(other interface{}) bool
 }
 
 type RenderableString struct {
-	Content string
+	LineBuffer linebuffer.LineBufferer
 }
 
-func (r RenderableString) Render() string {
-	return r.Content
+func (r RenderableString) Render() linebuffer.LineBufferer {
+	return r.LineBuffer
 }
 
 func (r RenderableString) Equals(other interface{}) bool {
@@ -18,7 +20,10 @@ func (r RenderableString) Equals(other interface{}) bool {
 	if !ok {
 		return false
 	}
-	return r.Content == otherStr.Content
+	if r.LineBuffer == nil || otherStr.LineBuffer == nil {
+		return false
+	}
+	return r.LineBuffer.Content() == otherStr.LineBuffer.Content()
 }
 
 // assert RenderableString implements viewport.RenderableComparable

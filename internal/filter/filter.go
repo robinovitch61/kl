@@ -13,10 +13,6 @@ import (
 	"strings"
 )
 
-type Renderable interface {
-	Render() string
-}
-
 type Model struct {
 	KeyMap                filterKeyMap
 	ShowContext           bool
@@ -122,15 +118,15 @@ func (m Model) View() string {
 	return filterStringStyle.Render(filterString)
 }
 
-func (m Model) Matches(renderable Renderable) bool {
+func (m Model) Matches(s string) bool {
 	if m.Value() == "" {
 		return true
 	}
 	// if invalid regexp, fallback to string matching
 	if m.isRegex && m.regexp != nil {
-		return m.regexp.MatchString(renderable.Render())
+		return m.regexp.MatchString(s)
 	} else {
-		return strings.Contains(renderable.Render(), m.Value())
+		return strings.Contains(s, m.Value())
 	}
 }
 

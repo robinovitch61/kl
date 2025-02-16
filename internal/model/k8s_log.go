@@ -6,14 +6,16 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/robinovitch61/kl/internal/dev"
+	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
 	"strings"
 	"time"
+	"unicode"
 )
 
 type Log struct {
-	Timestamp time.Time
-	Content   string
-	Container Container
+	Timestamp  time.Time
+	LineBuffer linebuffer.LineBuffer
+	Container  Container
 }
 
 type LogScanner struct {
@@ -57,16 +59,21 @@ func (ls LogScanner) StartReadingLogs() {
 
 			logContent := strings.Join(vals[1:], " ")
 			logContent = strings.ReplaceAll(logContent, "\t", "    ")
+			logContent = strings.TrimRightFunc(logContent, unicode.IsSpace)
+
+			// precompute LogData here as logs come in as logs are immutable. Having the LogData up front helps
+			// to minimize expensive/repeated re-computation later
 			newLog := Log{
-				Timestamp: parsedTime,
-				Content:   logContent,
-				Container: ls.Container,
+				Timestamp:  parsedTime,
+				LineBuffer: linebuffer.New(logContent),
+				Container:  ls.Container,
 			}
 			ls.LogChan <- newLog
 		}
 
 		err := ls.logLineScanner.Err()
 		errorExists := err != nil
+		// if err is "context canceled", scanner was stopped by the user
 		stoppedByUser := errorExists && err.Error() == "context canceled"
 
 		if errorExists && !stoppedByUser {

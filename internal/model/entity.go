@@ -5,6 +5,7 @@ import (
 	"github.com/robinovitch61/kl/internal/constants"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/util"
+	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
 	"time"
 )
 
@@ -17,19 +18,19 @@ type Entity struct {
 	State                                     EntityState
 }
 
-func (e Entity) Render() string {
+func (e Entity) Render() linebuffer.LineBufferer {
 	if e.IsCluster {
-		return e.Prefix + e.Container.Cluster
+		return linebuffer.New(e.Prefix + e.Container.Cluster)
 	} else if e.IsNamespace {
-		return e.Prefix + e.Container.Namespace
+		return linebuffer.New(e.Prefix + e.Container.Namespace)
 	} else if e.IsPodOwner {
 		res := e.Prefix + e.Container.PodOwner
 		if e.Container.PodOwnerMetadata.OwnerType != "" {
 			res += " <" + e.Container.PodOwnerMetadata.OwnerType + ">"
 		}
-		return res
+		return linebuffer.New(res)
 	} else if e.IsPod {
-		return e.Prefix + e.Container.Pod
+		return linebuffer.New(e.Prefix + e.Container.Pod)
 	} else {
 		// for containers
 		res := e.Prefix + e.State.StatusIndicator() + " " + e.Container.Name + " (" + e.Container.Status.State.String()
@@ -65,7 +66,7 @@ func (e Entity) Render() string {
 		}
 
 		res += ")"
-		return res
+		return linebuffer.New(res)
 	}
 }
 
