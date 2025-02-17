@@ -523,6 +523,7 @@ func findAnsiRuneRanges(s string) [][]uint32 {
 }
 
 // getLeftRuneIdx does a binary search to find the first index at which vals[index-1] >= w
+// TODO LEO: fix args and test
 func getLeftRuneIdx(w int, lb LineBuffer) int {
 	if w == 0 {
 		return 0
