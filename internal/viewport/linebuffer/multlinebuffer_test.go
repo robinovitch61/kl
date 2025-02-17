@@ -5,61 +5,62 @@ import (
 	"testing"
 )
 
-var equivalentLineBuffers = map[string][]LineBufferer{
-	"hello world": {
-		New("hello world"),
-		NewMulti(New("hello world")),
-		NewMulti(
-			New("hello"),
-			New(" world"),
-		),
-		NewMulti(
-			New("hel"),
-			New("lo "),
-			New("wo"),
-			New("rld"),
-		),
-		NewMulti(
-			New("h"),
-			New("e"),
-			New("l"),
-			New("l"),
-			New("o"),
-			New(" "),
-			New("w"),
-			New("o"),
-			New("r"),
-			New("l"),
-			New("d"),
-		),
-	},
-	"ansi": {
-		New(redBg.Render("hello") + " " + blueBg.Render("world")),
-		NewMulti(New(redBg.Render("hello") + " " + blueBg.Render("world"))),
-		NewMulti(
-			New(redBg.Render("hello")+" "),
-			New(blueBg.Render("world")),
-		),
-		NewMulti(
-			New(redBg.Render("hello")),
-			New(" "),
-			New(blueBg.Render("world")),
-		),
-	},
-	"unicode_ansi": {
-		// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
-		New(redBg.Render("A💖") + "中é"),
-		NewMulti(New(redBg.Render("A💖") + "中é")),
-		NewMulti(
-			New(redBg.Render("A💖")),
-			New("中"),
-			New("é"),
-		),
-	},
+func getEquivalentLineBuffers() map[string][]LineBufferer {
+	return map[string][]LineBufferer{
+		"hello world": {
+			New("hello world"),
+			NewMulti(New("hello world")),
+			NewMulti(
+				New("hello"),
+				New(" world"),
+			),
+			NewMulti(
+				New("hel"),
+				New("lo "),
+				New("wo"),
+				New("rld"),
+			),
+			NewMulti(
+				New("h"),
+				New("e"),
+				New("l"),
+				New("l"),
+				New("o"),
+				New(" "),
+				New("w"),
+				New("o"),
+				New("r"),
+				New("l"),
+				New("d"),
+			),
+		},
+		"ansi": {
+			New(redBg.Render("hello") + " " + blueBg.Render("world")),
+			NewMulti(New(redBg.Render("hello") + " " + blueBg.Render("world"))),
+			NewMulti(
+				New(redBg.Render("hello")+" "),
+				New(blueBg.Render("world")),
+			),
+			NewMulti(
+				New(redBg.Render("hello")),
+				New(" "),
+				New(blueBg.Render("world")),
+			),
+		},
+		"unicode_ansi": {
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
+			New(redBg.Render("A💖") + "中é"),
+			NewMulti(New(redBg.Render("A💖") + "中é")),
+			NewMulti(
+				New(redBg.Render("A💖")),
+				New("中"),
+				New("é"),
+			),
+		}}
 }
 
 func TestMultiLineBuffer_Width(t *testing.T) {
-	for _, eq := range equivalentLineBuffers {
+	for _, eq := range getEquivalentLineBuffers() {
 		for _, lb := range eq {
 			if lb.Width() != eq[0].Width() {
 				t.Errorf("expected %d, got %d for line buffer %s", eq[0].Width(), lb.Width(), lb.Repr())
@@ -69,7 +70,7 @@ func TestMultiLineBuffer_Width(t *testing.T) {
 }
 
 func TestMultiLineBuffer_Content(t *testing.T) {
-	for _, eq := range equivalentLineBuffers {
+	for _, eq := range getEquivalentLineBuffers() {
 		for _, lb := range eq {
 			if lb.Content() != eq[0].Content() {
 				t.Errorf("expected %q, got %q for line buffer %s", eq[0].Content(), lb.Content(), lb.Repr())
@@ -423,7 +424,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			for _, eq := range equivalentLineBuffers[tt.key] {
+			for _, eq := range getEquivalentLineBuffers()[tt.key] {
 				actual, _ := eq.Take(tt.startWidth, tt.takeWidth, tt.continuation, tt.toHighlight, tt.highlightStyle)
 				if actual != tt.expected {
 					t.Errorf("for %s, expected %q, got %q", eq.Repr(), tt.expected, actual)
@@ -646,7 +647,7 @@ func TestMultiLineBuffer_WrappedLines(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			for _, eq := range equivalentLineBuffers[tt.key] {
+			for _, eq := range getEquivalentLineBuffers()[tt.key] {
 				actual := eq.WrappedLines(tt.width, tt.maxLinesEachEnd, tt.toHighlight, tt.highlightStyle)
 
 				if len(actual) != len(tt.expected) {

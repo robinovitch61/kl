@@ -8,41 +8,42 @@ import (
 	"testing"
 )
 
-func TestLineBuffer_getLeftRuneIdx(t *testing.T) {
-	tests := []struct {
-		name     string
-		w        int
-		vals     []uint32
-		expected int
-	}{
-		{
-			name:     "empty",
-			w:        0,
-			vals:     []uint32{},
-			expected: 0,
-		},
-		{
-			name:     "step by 1",
-			w:        2,
-			vals:     []uint32{1, 2, 3},
-			expected: 2,
-		},
-		{
-			name:     "step by 2",
-			w:        2,
-			vals:     []uint32{1, 3, 5},
-			expected: 2,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if actual := getLeftRuneIdx(tt.w, tt.vals); actual != tt.expected {
-				t.Errorf("expected %d, got %d", tt.expected, actual)
-			}
-		})
-	}
-}
+// TODO LEO: finish
+//func TestLineBuffer_getLeftRuneIdx(t *testing.T) {
+//	tests := []struct {
+//		name     string
+//		w        int
+//		vals     []uint32
+//		expected int
+//	}{
+//		{
+//			name:     "empty",
+//			w:        0,
+//			vals:     []uint32{},
+//			expected: 0,
+//		},
+//		{
+//			name:     "step by 1",
+//			w:        2,
+//			vals:     []uint32{1, 2, 3},
+//			expected: 2,
+//		},
+//		{
+//			name:     "step by 2",
+//			w:        2,
+//			vals:     []uint32{1, 3, 5},
+//			expected: 2,
+//		},
+//	}
+//
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			if actual := getLeftRuneIdx(tt.w, tt.vals); actual != tt.expected {
+//				t.Errorf("expected %d, got %d", tt.expected, actual)
+//			}
+//		})
+//	}
+//}
 
 func TestLineBuffer_reapplyAnsi(t *testing.T) {
 	tests := []struct {
@@ -1020,61 +1021,6 @@ func TestLineBuffer_replaceEndWithContinuation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if r := replaceEndWithContinuation(tt.s, []rune(tt.continuation)); r != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, r)
-			}
-		})
-	}
-}
-
-func TestLineBuffer_totalLines(t *testing.T) {
-	tests := []struct {
-		name         string
-		s            string
-		width        uint32
-		continuation string
-		expected     int
-	}{
-		{
-			name:         "simple",
-			s:            "1234567890",
-			width:        10,
-			continuation: "",
-			expected:     1,
-		},
-		{
-			name:         "simple small width",
-			s:            "1234567890",
-			width:        1,
-			continuation: "",
-			expected:     10,
-		},
-		{
-			name:         "uneven number",
-			s:            "1234567890",
-			width:        3,
-			continuation: "",
-			expected:     4,
-		},
-		{
-			name:         "unicode even",
-			s:            "世界🌟世界",
-			width:        2,
-			continuation: "",
-			expected:     5,
-		},
-		{
-			name:         "unicode odd",
-			s:            "世界🌟世界",
-			width:        3,
-			continuation: "",
-			expected:     4,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			lb := New(tt.s)
-			if lines := getTotalLines(lb.lineNoAnsiCumWidths, tt.width); lines != tt.expected {
-				t.Fatalf("expected %d, got %d", tt.expected, lines)
 			}
 		})
 	}

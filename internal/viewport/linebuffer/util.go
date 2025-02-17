@@ -523,24 +523,22 @@ func findAnsiRuneRanges(s string) [][]uint32 {
 }
 
 // getLeftRuneIdx does a binary search to find the first index at which vals[index-1] >= w
-func getLeftRuneIdx(w int, vals []uint32) int {
+func getLeftRuneIdx(w int, lb LineBuffer) int {
 	if w == 0 {
 		return 0
 	}
-	if len(vals) == 0 {
+	if len(lb.lineNoAnsiRuneWidths) == 0 {
 		return 0
 	}
 
-	left, right := 0, len(vals)-1
-
-	if vals[right] < uint32(w) {
-		return len(vals)
+	left, right := 0, len(lb.lineNoAnsiRuneWidths)-1
+	if lb.getCumulativeWidthAtRuneIdx(right) < uint32(w) {
+		return len(lb.lineNoAnsiRuneWidths)
 	}
 
 	for left < right {
 		mid := left + (right-left)/2
-
-		if vals[mid] >= uint32(w) {
+		if lb.getCumulativeWidthAtRuneIdx(mid) >= uint32(w) {
 			right = mid
 		} else {
 			left = mid + 1
@@ -548,18 +546,6 @@ func getLeftRuneIdx(w int, vals []uint32) int {
 	}
 
 	return left + 1
-}
-
-func getTotalLines(cumWidths []uint32, lineWidth uint32) int {
-	if len(cumWidths) == 0 {
-		return 0
-	}
-	if lineWidth == 0 {
-		return 0
-	}
-
-	fullWidth := cumWidths[len(cumWidths)-1]
-	return int((fullWidth + lineWidth - 1) / lineWidth)
 }
 
 // TODO LEO: test
@@ -572,9 +558,9 @@ func getBytesLeftOfWidth(nBytes int, buffers []LineBuffer, startBufferIdx int, s
 	// first try to get bytes from the current buffer
 	var result string
 	currentBuffer := buffers[startBufferIdx]
-	leftRuneIdx := getLeftRuneIdx(startWidth, currentBuffer.lineNoAnsiCumWidths)
+	leftRuneIdx := getLeftRuneIdx(startWidth, currentBuffer)
 	if leftRuneIdx > 0 {
-		startByteOffset := currentBuffer.runeIdxToByteOffset[leftRuneIdx]
+		startByteOffset := currentBuffer.runeIdxToNoAnsiByteOffset[leftRuneIdx]
 		noAnsiContent := currentBuffer.lineNoAnsi[:startByteOffset]
 		if len(noAnsiContent) >= nBytes {
 			return noAnsiContent[len(noAnsiContent)-nBytes:]
@@ -614,9 +600,9 @@ func getBytesRightOfWidth(nBytes int, buffers []LineBuffer, endBufferIdx int, re
 		if startWidth < 0 {
 			startWidth = 0
 		}
-		leftRuneIdx := getLeftRuneIdx(startWidth, currentBuffer.lineNoAnsiCumWidths)
-		if leftRuneIdx < len(currentBuffer.lineNoAnsiWidths) {
-			startByteOffset := currentBuffer.runeIdxToByteOffset[leftRuneIdx]
+		leftRuneIdx := getLeftRuneIdx(startWidth, currentBuffer)
+		if leftRuneIdx < len(currentBuffer.lineNoAnsiRuneWidths) {
+			startByteOffset := currentBuffer.runeIdxToNoAnsiByteOffset[leftRuneIdx]
 			noAnsiContent := currentBuffer.lineNoAnsi[startByteOffset:]
 			if len(noAnsiContent) >= nBytes {
 				return noAnsiContent[:nBytes]
