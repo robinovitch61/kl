@@ -72,28 +72,27 @@ func reapplyAnsi(original, truncated string, truncByteOffset int, ansiCodeIndexe
 	return result.String()
 }
 
-// getNonAnsiText extracts a substring of specified length from the input text, excluding ANSI escape sequences.
+// getNonAnsiBytes extracts a substring of specified length from the input string, excluding ANSI escape sequences.
 // It reads from the given start position until it has collected the requested number of non-ANSI bytes.
 //
 // Parameters:
-//   - text: The input string that may contain ANSI escape sequences
-//   - startPos: The byte position in the input to start reading from
-//   - bytesToExtract: The number of non-ANSI bytes to collect
+//   - s: The input string that may contain ANSI escape sequences
+//   - startIdx: The byte position in the input to start reading from
+//   - numBytes: The number of non-ANSI bytes to collect
 //
-// Returns a string containing bytesToExtract bytes of text with all ANSI sequences removed. If the input text ends
+// Returns a string containing bytesToExtract bytes of the input with ANSI sequences removed. If the input text ends
 // before collecting bytesToExtract bytes, returns all available non-ANSI bytes.
-// TODO LEO: test
-func getNonAnsiText(text string, startPos, bytesToExtract int) string {
+func getNonAnsiBytes(s string, startIdx, numBytes int) string {
 	var result strings.Builder
-	currentPos := startPos
+	currentPos := startIdx
 	bytesCollected := 0
-	for currentPos < len(text) && bytesCollected < bytesToExtract {
-		if strings.HasPrefix(text[currentPos:], "\x1b[") {
-			escEnd := currentPos + strings.Index(text[currentPos:], "m") + 1
+	for currentPos < len(s) && bytesCollected < numBytes {
+		if strings.HasPrefix(s[currentPos:], "\x1b[") {
+			escEnd := currentPos + strings.Index(s[currentPos:], "m") + 1
 			currentPos = escEnd
 			continue
 		}
-		result.WriteByte(text[currentPos])
+		result.WriteByte(s[currentPos])
 		bytesCollected++
 		currentPos++
 	}
@@ -136,7 +135,7 @@ func highlightLine(line, highlight string, highlightStyle lipgloss.Style, start,
 
 		// check if current position starts a highlight match
 		if !inAnsi && nonAnsiBytes >= start && nonAnsiBytes < end {
-			textToCheck := getNonAnsiText(line, i, len(highlight))
+			textToCheck := getNonAnsiBytes(line, i, len(highlight))
 			if textToCheck == highlight {
 				// reset current styles, if any
 				if len(activeStyles) > 0 {
@@ -601,7 +600,8 @@ func getBytesRightOfWidth(nBytes int, buffers []LineBuffer, endBufferIdx int, re
 	return result
 }
 
-// TODO LEO: test
+// getWrappedLines is logic shared by WrappedLines in single and multi LineBuffers
+// it is well-tested as part of the tests of those methods
 func getWrappedLines(
 	l LineBufferer,
 	totalLines int,

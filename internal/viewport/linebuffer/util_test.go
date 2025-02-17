@@ -933,7 +933,7 @@ func TestLineBuffer_replaceEndWithContinuation(t *testing.T) {
 		{
 			name: "unicode",
 			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
-			s:            "A💖中e",
+			s:            "A💖中é",
 			continuation: "...",
 			expected:     "A💖...",
 		},
@@ -983,6 +983,97 @@ func TestLineBuffer_replaceEndWithContinuation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if r := replaceEndWithContinuation(tt.s, []rune(tt.continuation)); r != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, r)
+			}
+		})
+	}
+}
+
+func TestLineBuffer_getNonAnsiBytes(t *testing.T) {
+	tests := []struct {
+		name         string
+		s            string
+		startByteIdx int
+		numBytes     int
+		expected     string
+	}{
+		{
+			name:         "empty",
+			s:            "",
+			startByteIdx: 0,
+			numBytes:     0,
+			expected:     "",
+		},
+		// TODO LEO: expect that negative start panics
+		{
+			name:         "zero bytes",
+			s:            "abc",
+			startByteIdx: 1,
+			numBytes:     0,
+			expected:     "",
+		},
+		{
+			name:         "negative bytes",
+			s:            "abc",
+			startByteIdx: 1,
+			numBytes:     -1,
+			expected:     "",
+		},
+		{
+			name:         "all from start",
+			s:            "abc",
+			startByteIdx: 0,
+			numBytes:     3,
+			expected:     "abc",
+		},
+		{
+			name:         "some from start",
+			s:            "abc",
+			startByteIdx: 0,
+			numBytes:     2,
+			expected:     "ab",
+		},
+		{
+			name:         "rest from offset",
+			s:            "abc",
+			startByteIdx: 1,
+			numBytes:     2,
+			expected:     "bc",
+		},
+		{
+			name:         "some from offset",
+			s:            "abc",
+			startByteIdx: 1,
+			numBytes:     1,
+			expected:     "b",
+		},
+		{
+			name:         "ignore ansi",
+			s:            "abc" + redBg.Render("def") + "ghi",
+			startByteIdx: 1,
+			numBytes:     7,
+			expected:     "bcdefgh",
+		},
+		{
+			name: "unicode",
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			s:            "A💖中é",
+			startByteIdx: 1,
+			numBytes:     7,
+			expected:     "💖中",
+		},
+		{
+			name: "unicode with ansi",
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			s:            "A💖" + redBg.Render("中") + "é",
+			startByteIdx: 0,
+			numBytes:     11,
+			expected:     "A💖中é",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if r := getNonAnsiBytes(tt.s, tt.startByteIdx, tt.numBytes); r != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, r)
 			}
 		})
