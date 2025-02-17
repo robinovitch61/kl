@@ -62,9 +62,10 @@ func New(line string) LineBuffer {
 	// calculate size needed for sparse cumulative widths
 	sparseLen := (numRunes + lb.sparsity - 1) / lb.sparsity
 
-	// TODO LEO: combine these into a single allocation
-	lb.runeIdxToNoAnsiByteOffset = make([]uint32, numRunes)
-	lb.lineNoAnsiCumRuneWidths = make([]uint32, sparseLen)
+	// single memory allocation for common types
+	combined := make([]uint32, numRunes+sparseLen)
+	lb.runeIdxToNoAnsiByteOffset = combined[:numRunes]
+	lb.lineNoAnsiCumRuneWidths = combined[numRunes:]
 
 	lb.lineNoAnsiRuneWidths = make([]uint8, numRunes)
 
