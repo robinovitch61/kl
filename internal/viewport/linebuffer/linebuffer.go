@@ -12,13 +12,15 @@ import (
 // LineBuffer provides functionality to get sequential strings of a specified terminal cell width, accounting
 // for the ansi escape codes styling the line.
 type LineBuffer struct {
-	line                      string     // underlying string with ansi codes. utf-8 bytes
-	lineNoAnsi                string     // line without ansi codes. utf-8 bytes
-	runeIdxToNoAnsiByteOffset []uint32   // idx of lineNoAnsi runes to byte offset
-	lineNoAnsiRuneWidths      []uint8    // terminal cell widths
-	sparsity                  int        // interval for which to store cumulative cell width
-	lineNoAnsiCumRuneWidths   []uint32   // cumulative terminal cell width, stored every sparsity runes
-	ansiCodeIndexes           [][]uint32 // slice of startByte, endByte indexes of ansi codes
+	line       string // underlying string with ansi codes
+	lineNoAnsi string // line without ansi codes
+	// TODO LEO: make runeIdxToNoAnsiByteOffset sparse
+	runeIdxToNoAnsiByteOffset []uint32 // idx of lineNoAnsi runes to byte offset
+	// TODO LEO: consider making lineNoAnsiRuneWidths sparse
+	lineNoAnsiRuneWidths    []uint8    // terminal cell widths
+	sparsity                int        // interval for which to store cumulative cell width
+	lineNoAnsiCumRuneWidths []uint32   // cumulative terminal cell width, stored every sparsity runes
+	ansiCodeIndexes         [][]uint32 // slice of startByte, endByte indexes of ansi codes
 }
 
 // type assertion that LineBuffer implements LineBufferer
