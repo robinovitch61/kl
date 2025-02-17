@@ -8,43 +8,6 @@ import (
 	"testing"
 )
 
-// TODO LEO: finish
-//func TestLineBuffer_getLeftRuneIdx(t *testing.T) {
-//	tests := []struct {
-//		name     string
-//		w        int
-//		vals     []uint32
-//		expected int
-//	}{
-//		{
-//			name:     "empty",
-//			w:        0,
-//			vals:     []uint32{},
-//			expected: 0,
-//		},
-//		{
-//			name:     "step by 1",
-//			w:        2,
-//			vals:     []uint32{1, 2, 3},
-//			expected: 2,
-//		},
-//		{
-//			name:     "step by 2",
-//			w:        2,
-//			vals:     []uint32{1, 3, 5},
-//			expected: 2,
-//		},
-//	}
-//
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			if actual := getLeftRuneIdx(tt.w, tt.vals); actual != tt.expected {
-//				t.Errorf("expected %d, got %d", tt.expected, actual)
-//			}
-//		})
-//	}
-//}
-
 func TestLineBuffer_reapplyAnsi(t *testing.T) {
 	tests := []struct {
 		name            string

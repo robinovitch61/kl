@@ -183,7 +183,8 @@ func (m MultiLineBuffer) WrappedLines(
 }
 
 func (m MultiLineBuffer) Matches(f filter.Model) bool {
-	// TODO LEO: inefficient
+	// this isn't super efficient - could potentially consider trying to do string matches across
+	// LineBuffer boundaries in the future without allocating new strings every time, but that's tricky
 	var builder strings.Builder
 	for i := range m.buffers {
 		builder.WriteString(m.buffers[i].lineNoAnsi)

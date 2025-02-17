@@ -111,7 +111,7 @@ func (l LineBuffer) Take(
 		startWidth = 0
 	}
 
-	startRuneIdx := getLeftRuneIdx(startWidth, l)
+	startRuneIdx := l.getLeftRuneIdx(startWidth)
 
 	if startRuneIdx >= len(l.lineNoAnsiRuneWidths) || takeWidth == 0 {
 		return "", 0
@@ -299,4 +299,30 @@ func (l LineBuffer) getCumulativeWidthAtRuneIdx(runeIdx int) uint32 {
 	}
 
 	return l.sparseLineNoAnsiCumRuneWidths[sparseIdx] + additionalWidth
+}
+
+// getLeftRuneIdx does a binary search to find the first rune index at which TODO LEO RENAME AND IMPROVE DOCSTRING
+func (l LineBuffer) getLeftRuneIdx(w int) int {
+	if w == 0 {
+		return 0
+	}
+	if len(l.lineNoAnsiRuneWidths) == 0 {
+		return 0
+	}
+
+	left, right := 0, len(l.lineNoAnsiRuneWidths)-1
+	if l.getCumulativeWidthAtRuneIdx(right) < uint32(w) {
+		return len(l.lineNoAnsiRuneWidths)
+	}
+
+	for left < right {
+		mid := left + (right-left)/2
+		if l.getCumulativeWidthAtRuneIdx(mid) >= uint32(w) {
+			right = mid
+		} else {
+			left = mid + 1
+		}
+	}
+
+	return left + 1
 }

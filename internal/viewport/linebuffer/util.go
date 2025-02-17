@@ -522,33 +522,6 @@ func findAnsiRuneRanges(s string) [][]uint32 {
 	return ranges[:rangeIdx]
 }
 
-// getLeftRuneIdx does a binary search to find the first index at which vals[index-1] >= w
-// TODO LEO: fix args and test
-func getLeftRuneIdx(w int, lb LineBuffer) int {
-	if w == 0 {
-		return 0
-	}
-	if len(lb.lineNoAnsiRuneWidths) == 0 {
-		return 0
-	}
-
-	left, right := 0, len(lb.lineNoAnsiRuneWidths)-1
-	if lb.getCumulativeWidthAtRuneIdx(right) < uint32(w) {
-		return len(lb.lineNoAnsiRuneWidths)
-	}
-
-	for left < right {
-		mid := left + (right-left)/2
-		if lb.getCumulativeWidthAtRuneIdx(mid) >= uint32(w) {
-			right = mid
-		} else {
-			left = mid + 1
-		}
-	}
-
-	return left + 1
-}
-
 // TODO LEO: test
 // getBytesLeftOfWidth returns nBytes of content to the left of startBufferIdx while excluding ANSI codes
 func getBytesLeftOfWidth(nBytes int, buffers []LineBuffer, startBufferIdx int, startWidth int) string {
@@ -559,7 +532,7 @@ func getBytesLeftOfWidth(nBytes int, buffers []LineBuffer, startBufferIdx int, s
 	// first try to get bytes from the current buffer
 	var result string
 	currentBuffer := buffers[startBufferIdx]
-	leftRuneIdx := getLeftRuneIdx(startWidth, currentBuffer)
+	leftRuneIdx := currentBuffer.getLeftRuneIdx(startWidth)
 	if leftRuneIdx > 0 {
 		startByteOffset := currentBuffer.getByteOffsetAtRuneIdx(leftRuneIdx)
 		noAnsiContent := currentBuffer.lineNoAnsi[:startByteOffset]
@@ -601,7 +574,7 @@ func getBytesRightOfWidth(nBytes int, buffers []LineBuffer, endBufferIdx int, re
 		if startWidth < 0 {
 			startWidth = 0
 		}
-		leftRuneIdx := getLeftRuneIdx(startWidth, currentBuffer)
+		leftRuneIdx := currentBuffer.getLeftRuneIdx(startWidth)
 		if leftRuneIdx < len(currentBuffer.lineNoAnsiRuneWidths) {
 			startByteOffset := currentBuffer.getByteOffsetAtRuneIdx(leftRuneIdx)
 			noAnsiContent := currentBuffer.lineNoAnsi[startByteOffset:]
