@@ -561,7 +561,7 @@ func getBytesLeftOfWidth(nBytes int, buffers []LineBuffer, startBufferIdx int, s
 	currentBuffer := buffers[startBufferIdx]
 	leftRuneIdx := getLeftRuneIdx(startWidth, currentBuffer)
 	if leftRuneIdx > 0 {
-		startByteOffset := currentBuffer.runeIdxToNoAnsiByteOffset[leftRuneIdx]
+		startByteOffset := currentBuffer.getByteOffsetAtRuneIdx(leftRuneIdx)
 		noAnsiContent := currentBuffer.lineNoAnsi[:startByteOffset]
 		if len(noAnsiContent) >= nBytes {
 			return noAnsiContent[len(noAnsiContent)-nBytes:]
@@ -603,7 +603,7 @@ func getBytesRightOfWidth(nBytes int, buffers []LineBuffer, endBufferIdx int, re
 		}
 		leftRuneIdx := getLeftRuneIdx(startWidth, currentBuffer)
 		if leftRuneIdx < len(currentBuffer.lineNoAnsiRuneWidths) {
-			startByteOffset := currentBuffer.runeIdxToNoAnsiByteOffset[leftRuneIdx]
+			startByteOffset := currentBuffer.getByteOffsetAtRuneIdx(leftRuneIdx)
 			noAnsiContent := currentBuffer.lineNoAnsi[startByteOffset:]
 			if len(noAnsiContent) >= nBytes {
 				return noAnsiContent[:nBytes]
