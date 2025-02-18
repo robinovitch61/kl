@@ -564,10 +564,12 @@ func getBytesLeftOfWidth(nBytes int, buffers []LineBuffer, startBufferIdx int, w
 	return result
 }
 
-// TODO LEO: test
 // getBytesRightOfWidth returns nBytes of content to the right of endBufferIdx while excluding ANSI codes
 func getBytesRightOfWidth(nBytes int, buffers []LineBuffer, endBufferIdx int, widthToRight int) string {
-	if nBytes <= 0 || len(buffers) == 0 || endBufferIdx >= len(buffers) {
+	if nBytes < 0 {
+		panic("nBytes must be greater than 0")
+	}
+	if nBytes == 0 || len(buffers) == 0 || endBufferIdx >= len(buffers) {
 		return ""
 	}
 

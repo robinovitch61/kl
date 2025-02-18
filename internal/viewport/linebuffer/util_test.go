@@ -1094,7 +1094,7 @@ func TestLineBuffer_getNonAnsiBytes(t *testing.T) {
 	}
 }
 
-func TestLineBuffer_GetBytesLeftOfWidth(t *testing.T) {
+func TestLineBuffer_getBytesLeftOfWidth(t *testing.T) {
 	tests := []struct {
 		name           string
 		buffers        []LineBuffer
@@ -1209,6 +1209,126 @@ func TestLineBuffer_GetBytesLeftOfWidth(t *testing.T) {
 
 			if got := getBytesLeftOfWidth(tt.nBytes, tt.buffers, tt.startBufferIdx, tt.widthToLeft); got != tt.expected {
 				t.Errorf("getBytesLeftOfWidth() = %v, want %v", []byte(got), []byte(tt.expected))
+			}
+		})
+	}
+}
+
+func TestLineBuffer_getBytesRightOfWidth(t *testing.T) {
+	tests := []struct {
+		name         string
+		buffers      []LineBuffer
+		nBytes       int
+		endBufferIdx int
+		widthToRight int
+		expected     string
+		shouldPanic  bool
+	}{
+		{
+			name:         "empty buffers",
+			buffers:      nil,
+			nBytes:       1,
+			endBufferIdx: 0,
+			widthToRight: 0,
+			expected:     "",
+		},
+		{
+			name:         "negative bytes",
+			buffers:      []LineBuffer{New("abc")},
+			nBytes:       -1,
+			endBufferIdx: 0,
+			widthToRight: 1,
+			shouldPanic:  true,
+		},
+		{
+			name:         "zero bytes",
+			buffers:      []LineBuffer{New("abc")},
+			nBytes:       0,
+			endBufferIdx: 0,
+			widthToRight: 1,
+			expected:     "",
+		},
+		{
+			name:         "buffer index out of bounds",
+			buffers:      []LineBuffer{New("abc")},
+			nBytes:       1,
+			endBufferIdx: 1,
+			widthToRight: 0,
+			expected:     "",
+		},
+		{
+			name:         "single buffer full content",
+			buffers:      []LineBuffer{New("abc")},
+			nBytes:       3,
+			endBufferIdx: 0,
+			widthToRight: 3,
+			expected:     "abc",
+		},
+		{
+			name:         "single buffer partial content",
+			buffers:      []LineBuffer{New("abc")},
+			nBytes:       2,
+			endBufferIdx: 0,
+			widthToRight: 2,
+			expected:     "bc",
+		},
+		{
+			name: "multiple buffers full content",
+			buffers: []LineBuffer{
+				New("abc"),
+				New("def"),
+			},
+			nBytes:       6,
+			endBufferIdx: 0,
+			widthToRight: 3,
+			expected:     "abcdef",
+		},
+		{
+			name: "multiple buffers partial content",
+			buffers: []LineBuffer{
+				New("abc"),
+				New("def"),
+			},
+			nBytes:       4,
+			endBufferIdx: 0,
+			widthToRight: 2,
+			expected:     "bcde",
+		},
+		{
+			name: "ignore ansi codes",
+			buffers: []LineBuffer{
+				New("a" + redBg.Render("b") + "c"),
+				New(redBg.Render("def")),
+			},
+			nBytes:       5,
+			endBufferIdx: 0,
+			widthToRight: 2,
+			expected:     "bcdef",
+		},
+		// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b)
+		{
+			name: "unicode characters",
+			buffers: []LineBuffer{
+				New("A💖中"),
+				New("é"),
+			},
+			nBytes:       10,
+			endBufferIdx: 0,
+			widthToRight: 4,
+			expected:     "💖中é",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.shouldPanic {
+				assertPanic(t, func() {
+					getBytesRightOfWidth(tt.nBytes, tt.buffers, tt.endBufferIdx, tt.widthToRight)
+				})
+				return
+			}
+
+			if got := getBytesRightOfWidth(tt.nBytes, tt.buffers, tt.endBufferIdx, tt.widthToRight); got != tt.expected {
+				t.Errorf("getBytesRightOfWidth() = %v, want %v", []byte(got), []byte(tt.expected))
 			}
 		})
 	}
