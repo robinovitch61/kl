@@ -103,15 +103,16 @@ func (l LineBuffer) Content() string {
 
 // Take returns a string of the buffer's width from its current left offset
 func (l LineBuffer) Take(
-	startWidth, takeWidth int,
+	widthToLeft, takeWidth int,
 	continuation, toHighlight string,
 	highlightStyle lipgloss.Style,
 ) (string, int) {
-	if startWidth < 0 {
-		startWidth = 0
+	if widthToLeft < 0 {
+		widthToLeft = 0
 	}
 
-	startRuneIdx := l.getLeftRuneIdx(startWidth)
+	widthToLeft = min(widthToLeft, l.Width())
+	startRuneIdx := l.findRuneIndexWithWidthToLeft(widthToLeft)
 
 	if startRuneIdx >= len(l.lineNoAnsiRuneWidths) || takeWidth == 0 {
 		return "", 0
@@ -253,10 +254,13 @@ func (l LineBuffer) runeAt(runeIdx int) rune {
 
 func (l LineBuffer) getByteOffsetAtRuneIdx(runeIdx int) uint32 {
 	if runeIdx < 0 {
+		panic("runeIdx must be greater or equal to 0")
+	}
+	if runeIdx == 0 || len(l.line) == 0 || l.sparsity == 0 {
 		return 0
 	}
 	if runeIdx >= l.numNoAnsiRunes {
-		runeIdx = l.numNoAnsiRunes - 1
+		panic("rune index greater than num runes")
 	}
 
 	// get the last stored byte offset before this index
@@ -281,7 +285,7 @@ func (l LineBuffer) getCumulativeWidthAtRuneIdx(runeIdx int) uint32 {
 		return 0
 	}
 	if runeIdx >= l.numNoAnsiRunes {
-		runeIdx = l.numNoAnsiRunes - 1
+		panic("runeIdx greater than num runes")
 	}
 
 	// get the last stored cumulative width before this index
@@ -301,27 +305,38 @@ func (l LineBuffer) getCumulativeWidthAtRuneIdx(runeIdx int) uint32 {
 	return l.sparseLineNoAnsiCumRuneWidths[sparseIdx] + additionalWidth
 }
 
-// getLeftRuneIdx does a binary search to find the first rune index at which TODO LEO RENAME AND IMPROVE DOCSTRING
-func (l LineBuffer) getLeftRuneIdx(w int) int {
-	if w == 0 {
+// findRuneIndexWithWidthToLeft returns the index of the rune that has the input width to the left of it
+func (l LineBuffer) findRuneIndexWithWidthToLeft(widthToLeft int) int {
+	if widthToLeft < 0 {
+		panic("widthToLeft less than 0")
+	}
+	if widthToLeft == 0 || len(l.lineNoAnsiRuneWidths) == 0 {
 		return 0
 	}
-	if len(l.lineNoAnsiRuneWidths) == 0 {
-		return 0
+	if widthToLeft > l.Width() {
+		panic("widthToLeft greater than total width")
 	}
 
 	left, right := 0, len(l.lineNoAnsiRuneWidths)-1
-	if l.getCumulativeWidthAtRuneIdx(right) < uint32(w) {
+	if l.getCumulativeWidthAtRuneIdx(right) < uint32(widthToLeft) {
 		return len(l.lineNoAnsiRuneWidths)
 	}
 
 	for left < right {
 		mid := left + (right-left)/2
-		if l.getCumulativeWidthAtRuneIdx(mid) >= uint32(w) {
+		if l.getCumulativeWidthAtRuneIdx(mid) >= uint32(widthToLeft) {
 			right = mid
 		} else {
 			left = mid + 1
 		}
+	}
+
+	// skip over zero-width runes
+	w := l.getCumulativeWidthAtRuneIdx(left)
+	nextLeft := left + 1
+	for nextLeft < l.numNoAnsiRunes && l.getCumulativeWidthAtRuneIdx(nextLeft) == w {
+		left = nextLeft
+		nextLeft += 1
 	}
 
 	return left + 1

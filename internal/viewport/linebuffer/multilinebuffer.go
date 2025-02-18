@@ -63,7 +63,7 @@ func (m MultiLineBuffer) Content() string {
 }
 
 func (m MultiLineBuffer) Take(
-	startWidth, takeWidth int,
+	widthToLeft, takeWidth int,
 	continuation, toHighlight string,
 	highlightStyle lipgloss.Style,
 ) (string, int) {
@@ -71,22 +71,22 @@ func (m MultiLineBuffer) Take(
 		return "", 0
 	}
 	if len(m.buffers) == 1 {
-		return m.buffers[0].Take(startWidth, takeWidth, continuation, toHighlight, highlightStyle)
+		return m.buffers[0].Take(widthToLeft, takeWidth, continuation, toHighlight, highlightStyle)
 	}
-	if startWidth >= m.totalWidth {
+	if widthToLeft >= m.totalWidth {
 		return "", 0
 	}
 
 	// find which buffer contains our start position
 	skippedWidth := 0
 	firstBufferIdx := 0
-	startWidthFirstBuffer := startWidth
+	startWidthFirstBuffer := widthToLeft
 
 	for i := range m.buffers {
 		bufWidth := m.buffers[i].Width()
-		if skippedWidth+bufWidth > startWidth {
+		if skippedWidth+bufWidth > widthToLeft {
 			firstBufferIdx = i
-			startWidthFirstBuffer = startWidth - skippedWidth
+			startWidthFirstBuffer = widthToLeft - skippedWidth
 			break
 		}
 		skippedWidth += bufWidth
@@ -122,8 +122,8 @@ func (m MultiLineBuffer) Take(
 
 	// apply continuation indicators if needed
 	if len(continuation) > 0 {
-		contentToLeft := startWidth > 0
-		contentToRight := m.totalWidth-startWidth > takeWidth-remainingTotalWidth
+		contentToLeft := widthToLeft > 0
+		contentToRight := m.totalWidth-widthToLeft > takeWidth-remainingTotalWidth
 		if contentToLeft || contentToRight {
 			continuationRunes := []rune(continuation)
 			if contentToLeft {

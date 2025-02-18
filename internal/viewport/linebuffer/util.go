@@ -523,17 +523,25 @@ func findAnsiRuneRanges(s string) [][]uint32 {
 
 // TODO LEO: test
 // getBytesLeftOfWidth returns nBytes of content to the left of startBufferIdx while excluding ANSI codes
-func getBytesLeftOfWidth(nBytes int, buffers []LineBuffer, startBufferIdx int, startWidth int) string {
-	if nBytes <= 0 || len(buffers) == 0 || startBufferIdx >= len(buffers) {
+func getBytesLeftOfWidth(nBytes int, buffers []LineBuffer, startBufferIdx int, widthToLeft int) string {
+	if nBytes < 0 {
+		panic("nBytes must be greater than 0")
+	}
+	if nBytes == 0 || len(buffers) == 0 || startBufferIdx >= len(buffers) {
 		return ""
 	}
 
 	// first try to get bytes from the current buffer
 	var result string
 	currentBuffer := buffers[startBufferIdx]
-	leftRuneIdx := currentBuffer.getLeftRuneIdx(startWidth)
-	if leftRuneIdx > 0 {
-		startByteOffset := currentBuffer.getByteOffsetAtRuneIdx(leftRuneIdx)
+	runeIdx := currentBuffer.findRuneIndexWithWidthToLeft(widthToLeft)
+	if runeIdx > 0 {
+		var startByteOffset uint32
+		if runeIdx >= currentBuffer.numNoAnsiRunes {
+			startByteOffset = uint32(len(currentBuffer.lineNoAnsi))
+		} else {
+			startByteOffset = currentBuffer.getByteOffsetAtRuneIdx(runeIdx)
+		}
 		noAnsiContent := currentBuffer.lineNoAnsi[:startByteOffset]
 		if len(noAnsiContent) >= nBytes {
 			return noAnsiContent[len(noAnsiContent)-nBytes:]
@@ -559,7 +567,7 @@ func getBytesLeftOfWidth(nBytes int, buffers []LineBuffer, startBufferIdx int, s
 
 // TODO LEO: test
 // getBytesRightOfWidth returns nBytes of content to the right of endBufferIdx while excluding ANSI codes
-func getBytesRightOfWidth(nBytes int, buffers []LineBuffer, endBufferIdx int, remainingWidth int) string {
+func getBytesRightOfWidth(nBytes int, buffers []LineBuffer, endBufferIdx int, widthToRight int) string {
 	if nBytes <= 0 || len(buffers) == 0 || endBufferIdx >= len(buffers) {
 		return ""
 	}
@@ -567,15 +575,16 @@ func getBytesRightOfWidth(nBytes int, buffers []LineBuffer, endBufferIdx int, re
 	// first try to get bytes from the current buffer
 	var result string
 	currentBuffer := buffers[endBufferIdx]
-	if remainingWidth > 0 {
-		currentWidth := currentBuffer.Width()
-		startWidth := currentWidth - remainingWidth
-		if startWidth < 0 {
-			startWidth = 0
+	if widthToRight > 0 {
+		currentBufferWidth := currentBuffer.Width()
+		widthToLeft := currentBufferWidth - widthToRight
+		if widthToLeft < 0 {
+			// TODO LEO: panic?
+			widthToLeft = 0
 		}
-		leftRuneIdx := currentBuffer.getLeftRuneIdx(startWidth)
-		if leftRuneIdx < len(currentBuffer.lineNoAnsiRuneWidths) {
-			startByteOffset := currentBuffer.getByteOffsetAtRuneIdx(leftRuneIdx)
+		startRuneIdx := currentBuffer.findRuneIndexWithWidthToLeft(widthToLeft)
+		if startRuneIdx < len(currentBuffer.lineNoAnsiRuneWidths) {
+			startByteOffset := currentBuffer.getByteOffsetAtRuneIdx(startRuneIdx)
 			noAnsiContent := currentBuffer.lineNoAnsi[startByteOffset:]
 			if len(noAnsiContent) >= nBytes {
 				return noAnsiContent[:nBytes]

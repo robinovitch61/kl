@@ -836,49 +836,49 @@ func TestLineBuffer_replaceStartWithContinuation(t *testing.T) {
 		},
 		{
 			name: "unicode",
-			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b)
 			s:            "A💖中é",
 			continuation: "...",
 			expected:     "...中é",
 		},
 		{
 			name: "unicode leading combined",
-			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b)
 			s:            "é💖中",
 			continuation: "...",
 			expected:     "...中",
 		},
 		{
 			name: "unicode combined",
-			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b)
 			s:            "💖é💖中",
 			continuation: "...",
 			expected:     "...💖中",
 		},
 		{
 			name: "unicode width overlap",
-			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b)
 			s:            "中💖中é",
 			continuation: "...",
 			expected:     "..💖中é", // continuation shrinks by 1
 		},
 		{
 			name: "unicode start",
-			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b)
 			s:            "A💖中é",
 			continuation: "...",
 			expected:     "...中é",
 		},
 		{
 			name: "unicode start ansi",
-			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b)
 			s:            redBg.Render("A💖") + "中é",
 			continuation: "...",
 			expected:     redBg.Render("...") + "中é",
 		},
 		{
 			name: "unicode almost start ansi",
-			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b)
 			s:            "A" + redBg.Render("💖") + "中é",
 			continuation: "...",
 			expected:     "." + redBg.Render("..") + "中é",
@@ -932,49 +932,49 @@ func TestLineBuffer_replaceEndWithContinuation(t *testing.T) {
 		},
 		{
 			name: "unicode",
-			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b)
 			s:            "A💖中é",
 			continuation: "...",
 			expected:     "A💖...",
 		},
 		{
 			name: "unicode trailing combined",
-			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b)
 			s:            "A💖中é",
 			continuation: "...",
 			expected:     "A💖...",
 		},
 		{
 			name: "unicode combined",
-			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b)
 			s:            "A💖é中",
 			continuation: "...",
 			expected:     "A💖...",
 		},
 		{
 			name: "unicode width overlap",
-			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b)
 			s:            "💖中",
 			continuation: "...",
 			expected:     "💖..", // continuation shrinks by 1
 		},
 		{
 			name: "unicode end",
-			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b)
 			s:            "A💖中é",
 			continuation: "...",
 			expected:     "A💖...",
 		},
 		{
 			name: "unicode end ansi",
-			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b)
 			s:            "A💖" + redBg.Render("中é"),
 			continuation: "...",
 			expected:     "A💖" + redBg.Render("..."),
 		},
 		{
 			name: "unicode almost end ansi",
-			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b)
 			s:            "A" + redBg.Render("💖中") + "é",
 			continuation: "...",
 			expected:     "A" + redBg.Render("💖..") + ".",
@@ -1056,7 +1056,7 @@ func TestLineBuffer_getNonAnsiBytes(t *testing.T) {
 		},
 		{
 			name: "unicode",
-			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b)
 			s:            "A💖中é",
 			startByteIdx: 1,
 			numBytes:     7,
@@ -1064,7 +1064,7 @@ func TestLineBuffer_getNonAnsiBytes(t *testing.T) {
 		},
 		{
 			name: "unicode with ansi",
-			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b)
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b)
 			s:            "A💖" + redBg.Render("中") + "é",
 			startByteIdx: 0,
 			numBytes:     11,
@@ -1078,4 +1078,134 @@ func TestLineBuffer_getNonAnsiBytes(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestLineBuffer_GetBytesLeftOfWidth(t *testing.T) {
+	tests := []struct {
+		name           string
+		buffers        []LineBuffer
+		nBytes         int
+		startBufferIdx int
+		widthToLeft    int
+		expected       string
+		shouldPanic    bool
+	}{
+		{
+			name:           "empty buffers",
+			buffers:        nil,
+			nBytes:         1,
+			startBufferIdx: 0,
+			widthToLeft:    0,
+			expected:       "",
+		},
+		{
+			name:           "negative bytes",
+			buffers:        []LineBuffer{New("abc")},
+			nBytes:         -1,
+			startBufferIdx: 0,
+			widthToLeft:    1,
+			shouldPanic:    true,
+		},
+		{
+			name:           "zero bytes",
+			buffers:        []LineBuffer{New("abc")},
+			nBytes:         0,
+			startBufferIdx: 0,
+			widthToLeft:    1,
+			expected:       "",
+		},
+		{
+			name:           "buffer index out of bounds",
+			buffers:        []LineBuffer{New("abc")},
+			nBytes:         1,
+			startBufferIdx: 1,
+			widthToLeft:    0,
+			expected:       "",
+		},
+		{
+			name:           "single buffer full content",
+			buffers:        []LineBuffer{New("abc")},
+			nBytes:         3,
+			startBufferIdx: 0,
+			widthToLeft:    3,
+			expected:       "abc",
+		},
+		{
+			name:           "single buffer partial content",
+			buffers:        []LineBuffer{New("abc")},
+			nBytes:         2,
+			startBufferIdx: 0,
+			widthToLeft:    2,
+			expected:       "ab",
+		},
+		{
+			name: "multiple buffers full content",
+			buffers: []LineBuffer{
+				New("abc"),
+				New("def"),
+			},
+			nBytes:         6,
+			startBufferIdx: 1,
+			widthToLeft:    3,
+			expected:       "abcdef",
+		},
+		{
+			name: "multiple buffers partial content",
+			buffers: []LineBuffer{
+				New("abc"),
+				New("def"),
+			},
+			nBytes:         4,
+			startBufferIdx: 1,
+			widthToLeft:    2,
+			expected:       "bcde",
+		},
+		{
+			name: "ignore ansi codes",
+			buffers: []LineBuffer{
+				New("a" + redBg.Render("b") + "c"),
+				New(redBg.Render("def")),
+			},
+			nBytes:         5,
+			startBufferIdx: 1,
+			widthToLeft:    3,
+			expected:       "bcdef",
+		},
+		// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b)
+		{
+			name: "unicode characters",
+			buffers: []LineBuffer{
+				New("A💖中"),
+				New("é"),
+			},
+			nBytes:         10,
+			startBufferIdx: 1,
+			widthToLeft:    1,
+			expected:       "💖中é",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.shouldPanic {
+				assertPanic(t, func() {
+					getBytesLeftOfWidth(tt.nBytes, tt.buffers, tt.startBufferIdx, tt.widthToLeft)
+				})
+				return
+			}
+
+			if got := getBytesLeftOfWidth(tt.nBytes, tt.buffers, tt.startBufferIdx, tt.widthToLeft); got != tt.expected {
+				t.Errorf("getBytesLeftOfWidth() = %v, want %v", []byte(got), []byte(tt.expected))
+			}
+		})
+	}
+}
+
+// testing helper
+func assertPanic(t *testing.T, f func()) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("did not panic as expected")
+		}
+	}()
+	f()
 }
