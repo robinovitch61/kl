@@ -521,7 +521,6 @@ func findAnsiRuneRanges(s string) [][]uint32 {
 	return ranges[:rangeIdx]
 }
 
-// TODO LEO: test
 // getBytesLeftOfWidth returns nBytes of content to the left of startBufferIdx while excluding ANSI codes
 func getBytesLeftOfWidth(nBytes int, buffers []LineBuffer, startBufferIdx int, widthToLeft int) string {
 	if nBytes < 0 {
