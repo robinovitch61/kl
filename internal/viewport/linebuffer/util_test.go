@@ -996,6 +996,7 @@ func TestLineBuffer_getNonAnsiBytes(t *testing.T) {
 		startByteIdx int
 		numBytes     int
 		expected     string
+		shouldPanic  bool
 	}{
 		{
 			name:         "empty",
@@ -1004,7 +1005,13 @@ func TestLineBuffer_getNonAnsiBytes(t *testing.T) {
 			numBytes:     0,
 			expected:     "",
 		},
-		// TODO LEO: expect that negative start panics
+		{
+			name:         "negative start panics",
+			s:            "a",
+			startByteIdx: -1,
+			numBytes:     1,
+			shouldPanic:  true,
+		},
 		{
 			name:         "zero bytes",
 			s:            "abc",
@@ -1073,6 +1080,13 @@ func TestLineBuffer_getNonAnsiBytes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.shouldPanic {
+				assertPanic(t, func() {
+					getNonAnsiBytes(tt.s, tt.startByteIdx, tt.numBytes)
+				})
+				return
+			}
+
 			if r := getNonAnsiBytes(tt.s, tt.startByteIdx, tt.numBytes); r != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, r)
 			}
