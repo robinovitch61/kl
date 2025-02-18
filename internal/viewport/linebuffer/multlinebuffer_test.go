@@ -5,61 +5,62 @@ import (
 	"testing"
 )
 
-var equivalentLineBuffers = map[string][]LineBufferer{
-	"hello world": {
-		New("hello world"),
-		NewMulti(New("hello world")),
-		NewMulti(
-			New("hello"),
-			New(" world"),
-		),
-		NewMulti(
-			New("hel"),
-			New("lo "),
-			New("wo"),
-			New("rld"),
-		),
-		NewMulti(
-			New("h"),
-			New("e"),
-			New("l"),
-			New("l"),
-			New("o"),
-			New(" "),
-			New("w"),
-			New("o"),
-			New("r"),
-			New("l"),
-			New("d"),
-		),
-	},
-	"ansi": {
-		New(redBg.Render("hello") + " " + blueBg.Render("world")),
-		NewMulti(New(redBg.Render("hello") + " " + blueBg.Render("world"))),
-		NewMulti(
-			New(redBg.Render("hello")+" "),
-			New(blueBg.Render("world")),
-		),
-		NewMulti(
-			New(redBg.Render("hello")),
-			New(" "),
-			New(blueBg.Render("world")),
-		),
-	},
-	"unicode_ansi": {
-		// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
-		New(redBg.Render("A💖") + "中é"),
-		NewMulti(New(redBg.Render("A💖") + "中é")),
-		NewMulti(
-			New(redBg.Render("A💖")),
-			New("中"),
-			New("é"),
-		),
-	},
+func getEquivalentLineBuffers() map[string][]LineBufferer {
+	return map[string][]LineBufferer{
+		"hello world": {
+			New("hello world"),
+			NewMulti(New("hello world")),
+			NewMulti(
+				New("hello"),
+				New(" world"),
+			),
+			NewMulti(
+				New("hel"),
+				New("lo "),
+				New("wo"),
+				New("rld"),
+			),
+			NewMulti(
+				New("h"),
+				New("e"),
+				New("l"),
+				New("l"),
+				New("o"),
+				New(" "),
+				New("w"),
+				New("o"),
+				New("r"),
+				New("l"),
+				New("d"),
+			),
+		},
+		"ansi": {
+			New(redBg.Render("hello") + " " + blueBg.Render("world")),
+			NewMulti(New(redBg.Render("hello") + " " + blueBg.Render("world"))),
+			NewMulti(
+				New(redBg.Render("hello")+" "),
+				New(blueBg.Render("world")),
+			),
+			NewMulti(
+				New(redBg.Render("hello")),
+				New(" "),
+				New(blueBg.Render("world")),
+			),
+		},
+		"unicode_ansi": {
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b) = 6w, 11b
+			New(redBg.Render("A💖") + "中é"),
+			NewMulti(New(redBg.Render("A💖") + "中é")),
+			NewMulti(
+				New(redBg.Render("A💖")),
+				New("中"),
+				New("é"),
+			),
+		}}
 }
 
 func TestMultiLineBuffer_Width(t *testing.T) {
-	for _, eq := range equivalentLineBuffers {
+	for _, eq := range getEquivalentLineBuffers() {
 		for _, lb := range eq {
 			if lb.Width() != eq[0].Width() {
 				t.Errorf("expected %d, got %d for line buffer %s", eq[0].Width(), lb.Width(), lb.Repr())
@@ -69,7 +70,7 @@ func TestMultiLineBuffer_Width(t *testing.T) {
 }
 
 func TestMultiLineBuffer_Content(t *testing.T) {
-	for _, eq := range equivalentLineBuffers {
+	for _, eq := range getEquivalentLineBuffers() {
 		for _, lb := range eq {
 			if lb.Content() != eq[0].Content() {
 				t.Errorf("expected %q, got %q for line buffer %s", eq[0].Content(), lb.Content(), lb.Repr())
@@ -82,7 +83,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 	tests := []struct {
 		name           string
 		key            string
-		startWidth     int
+		widthToLeft    int
 		takeWidth      int
 		continuation   string
 		toHighlight    string
@@ -92,7 +93,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "hello world start at 0",
 			key:            "hello world",
-			startWidth:     0,
+			widthToLeft:    0,
 			takeWidth:      7,
 			continuation:   "",
 			toHighlight:    "",
@@ -102,7 +103,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "hello world start at 1",
 			key:            "hello world",
-			startWidth:     1,
+			widthToLeft:    1,
 			takeWidth:      7,
 			continuation:   "",
 			toHighlight:    "",
@@ -112,7 +113,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "hello world end",
 			key:            "hello world",
-			startWidth:     10,
+			widthToLeft:    10,
 			takeWidth:      3,
 			continuation:   "",
 			toHighlight:    "",
@@ -122,7 +123,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "hello world past end",
 			key:            "hello world",
-			startWidth:     11,
+			widthToLeft:    11,
 			takeWidth:      3,
 			continuation:   "",
 			toHighlight:    "",
@@ -132,7 +133,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "hello world with continuation at end",
 			key:            "hello world",
-			startWidth:     0,
+			widthToLeft:    0,
 			takeWidth:      7,
 			continuation:   "...",
 			toHighlight:    "",
@@ -142,7 +143,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "hello world with continuation at start",
 			key:            "hello world",
-			startWidth:     4,
+			widthToLeft:    4,
 			takeWidth:      7,
 			continuation:   "...",
 			toHighlight:    "",
@@ -152,7 +153,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "hello world with continuation both ends",
 			key:            "hello world",
-			startWidth:     2,
+			widthToLeft:    2,
 			takeWidth:      7,
 			continuation:   "...",
 			toHighlight:    "",
@@ -162,7 +163,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "hello world with highlight whole word",
 			key:            "hello world",
-			startWidth:     0,
+			widthToLeft:    0,
 			takeWidth:      11,
 			continuation:   "",
 			toHighlight:    "hello",
@@ -172,7 +173,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "hello world with highlight across buffer boundary",
 			key:            "hello world",
-			startWidth:     3,
+			widthToLeft:    3,
 			takeWidth:      6,
 			continuation:   "",
 			toHighlight:    "lo wo",
@@ -182,7 +183,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "hello world with highlight and middle continuation",
 			key:            "hello world",
-			startWidth:     1,
+			widthToLeft:    1,
 			takeWidth:      7,
 			continuation:   "..",
 			toHighlight:    "lo ",
@@ -192,7 +193,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "hello world with highlight and overlapping continuation",
 			key:            "hello world",
-			startWidth:     1,
+			widthToLeft:    1,
 			takeWidth:      7,
 			continuation:   "...",
 			toHighlight:    "lo ",
@@ -202,7 +203,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "ansi start at 0",
 			key:            "ansi",
-			startWidth:     0,
+			widthToLeft:    0,
 			takeWidth:      7,
 			continuation:   "",
 			toHighlight:    "",
@@ -212,7 +213,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "ansi start at 1",
 			key:            "ansi",
-			startWidth:     1,
+			widthToLeft:    1,
 			takeWidth:      7,
 			continuation:   "",
 			toHighlight:    "",
@@ -222,7 +223,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "ansi end",
 			key:            "ansi",
-			startWidth:     10,
+			widthToLeft:    10,
 			takeWidth:      3,
 			continuation:   "",
 			toHighlight:    "",
@@ -232,7 +233,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "ansi past end",
 			key:            "ansi",
-			startWidth:     11,
+			widthToLeft:    11,
 			takeWidth:      3,
 			continuation:   "",
 			toHighlight:    "",
@@ -242,7 +243,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "ansi with continuation at end",
 			key:            "ansi",
-			startWidth:     0,
+			widthToLeft:    0,
 			takeWidth:      7,
 			continuation:   "...",
 			toHighlight:    "",
@@ -252,7 +253,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "ansi with continuation at start",
 			key:            "ansi",
-			startWidth:     4,
+			widthToLeft:    4,
 			takeWidth:      7,
 			continuation:   "...",
 			toHighlight:    "",
@@ -262,7 +263,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "ansi with continuation both ends",
 			key:            "ansi",
-			startWidth:     2,
+			widthToLeft:    2,
 			takeWidth:      7,
 			continuation:   "...",
 			toHighlight:    "",
@@ -272,7 +273,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "ansi with highlight whole word",
 			key:            "ansi",
-			startWidth:     0,
+			widthToLeft:    0,
 			takeWidth:      11,
 			continuation:   "",
 			toHighlight:    "hello",
@@ -282,7 +283,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "ansi with highlight partial word",
 			key:            "ansi",
-			startWidth:     0,
+			widthToLeft:    0,
 			takeWidth:      11,
 			continuation:   "",
 			toHighlight:    "ell",
@@ -292,7 +293,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "ansi with highlight across buffer boundary",
 			key:            "ansi",
-			startWidth:     0,
+			widthToLeft:    0,
 			takeWidth:      11,
 			continuation:   "",
 			toHighlight:    "lo wo",
@@ -302,7 +303,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "ansi with highlight and middle continuation",
 			key:            "ansi",
-			startWidth:     1,
+			widthToLeft:    1,
 			takeWidth:      7,
 			continuation:   "..",
 			toHighlight:    "lo ",
@@ -312,7 +313,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "ansi with highlight and overlapping continuation",
 			key:            "ansi",
-			startWidth:     1,
+			widthToLeft:    1,
 			takeWidth:      7,
 			continuation:   "...",
 			toHighlight:    "lo ",
@@ -322,7 +323,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "unicode_ansi start at 0",
 			key:            "unicode_ansi",
-			startWidth:     0,
+			widthToLeft:    0,
 			takeWidth:      6,
 			continuation:   "",
 			toHighlight:    "",
@@ -332,7 +333,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "unicode_ansi start at 1",
 			key:            "unicode_ansi",
-			startWidth:     1,
+			widthToLeft:    1,
 			takeWidth:      5,
 			continuation:   "",
 			toHighlight:    "",
@@ -342,7 +343,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "unicode_ansi end",
 			key:            "unicode_ansi",
-			startWidth:     5,
+			widthToLeft:    5,
 			takeWidth:      1,
 			continuation:   "",
 			toHighlight:    "",
@@ -352,7 +353,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "unicode_ansi past end",
 			key:            "unicode_ansi",
-			startWidth:     6,
+			widthToLeft:    6,
 			takeWidth:      3,
 			continuation:   "",
 			toHighlight:    "",
@@ -362,7 +363,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "unicode_ansi with continuation at end",
 			key:            "unicode_ansi",
-			startWidth:     0,
+			widthToLeft:    0,
 			takeWidth:      5,
 			continuation:   "...",
 			toHighlight:    "",
@@ -372,7 +373,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "unicode_ansi with continuation at start",
 			key:            "unicode_ansi",
-			startWidth:     1,
+			widthToLeft:    1,
 			takeWidth:      5,
 			continuation:   "...",
 			toHighlight:    "",
@@ -382,7 +383,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "unicode_ansi with highlight whole word",
 			key:            "unicode_ansi",
-			startWidth:     0,
+			widthToLeft:    0,
 			takeWidth:      6,
 			continuation:   "",
 			toHighlight:    "A💖",
@@ -392,7 +393,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "unicode_ansi with highlight partial word",
 			key:            "unicode_ansi",
-			startWidth:     0,
+			widthToLeft:    0,
 			takeWidth:      6,
 			continuation:   "",
 			toHighlight:    "A",
@@ -402,7 +403,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "unicode_ansi with highlight across buffer boundary",
 			key:            "unicode_ansi",
-			startWidth:     0,
+			widthToLeft:    0,
 			takeWidth:      6,
 			continuation:   "",
 			toHighlight:    "💖中",
@@ -412,7 +413,7 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 		{
 			name:           "unicode_ansi with highlight and overlapping continuation",
 			key:            "unicode_ansi",
-			startWidth:     1,
+			widthToLeft:    1,
 			takeWidth:      5,
 			continuation:   "..",
 			toHighlight:    "💖",
@@ -423,8 +424,8 @@ func TestMultiLineBuffer_Take(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			for _, eq := range equivalentLineBuffers[tt.key] {
-				actual, _ := eq.Take(tt.startWidth, tt.takeWidth, tt.continuation, tt.toHighlight, tt.highlightStyle)
+			for _, eq := range getEquivalentLineBuffers()[tt.key] {
+				actual, _ := eq.Take(tt.widthToLeft, tt.takeWidth, tt.continuation, tt.toHighlight, tt.highlightStyle)
 				if actual != tt.expected {
 					t.Errorf("for %s, expected %q, got %q", eq.Repr(), tt.expected, actual)
 				}
@@ -646,7 +647,7 @@ func TestMultiLineBuffer_WrappedLines(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			for _, eq := range equivalentLineBuffers[tt.key] {
+			for _, eq := range getEquivalentLineBuffers()[tt.key] {
 				actual := eq.WrappedLines(tt.width, tt.maxLinesEachEnd, tt.toHighlight, tt.highlightStyle)
 
 				if len(actual) != len(tt.expected) {

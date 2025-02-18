@@ -109,7 +109,7 @@ func TestLineBuffer_Take(t *testing.T) {
 			expected:     []string{"1234567890"},
 		},
 		{
-			name:         "negative startWidth",
+			name:         "negative widthToLeft",
 			s:            "1234567890",
 			width:        10,
 			continuation: "",
@@ -824,7 +824,7 @@ func TestLineBuffer_Take(t *testing.T) {
 		},
 		{
 			name: "unicode with heart exact width",
-			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b) = 6w, 11b
 			s:            "A💖中é",
 			width:        6,
 			continuation: "",
@@ -834,7 +834,7 @@ func TestLineBuffer_Take(t *testing.T) {
 		},
 		{
 			name: "unicode with heart start continuation",
-			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b) = 6w, 11b
 			s:            "A💖中é",
 			width:        5,
 			continuation: "...",
@@ -844,7 +844,7 @@ func TestLineBuffer_Take(t *testing.T) {
 		},
 		{
 			name: "unicode with heart start continuation and ansi",
-			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b) = 6w, 11b
 			s:            redBg.Render("A💖") + "中é",
 			width:        5,
 			continuation: "...",
@@ -854,7 +854,7 @@ func TestLineBuffer_Take(t *testing.T) {
 		},
 		{
 			name: "unicode combining",
-			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
+			// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b) = 6w, 11b
 			s:            "A💖中éA💖中é", // 12w total
 			width:        10,
 			continuation: "",
@@ -1060,6 +1060,182 @@ func TestLineBuffer_WrappedLines(t *testing.T) {
 				if got[i] != tt.want[i] {
 					t.Errorf("wrap() line %d got %q, expected %q", i, got[i], tt.want[i])
 				}
+			}
+		})
+	}
+}
+
+func TestLineBuffer_findRuneIndexWithWidthToLeft(t *testing.T) {
+	tests := []struct {
+		name            string
+		s               string
+		widthToLeft     int
+		expectedRuneIdx int
+		shouldPanic     bool
+	}{
+		{
+			name:            "empty string",
+			s:               "",
+			widthToLeft:     0,
+			expectedRuneIdx: 0,
+		},
+		{
+			name:        "negative widthToLeft",
+			s:           "hello",
+			widthToLeft: -1,
+			shouldPanic: true,
+		},
+		{
+			name:            "single char",
+			s:               "a",
+			widthToLeft:     1,
+			expectedRuneIdx: 1,
+		},
+		{
+			name:            "widthToLeft at end",
+			s:               "abc",
+			widthToLeft:     3,
+			expectedRuneIdx: 3,
+		},
+		{
+			name:        "widthToLeft past total width",
+			s:           "a",
+			widthToLeft: 2,
+			shouldPanic: true,
+		},
+		{
+			name:            "longer",
+			s:               "hello",
+			widthToLeft:     3,
+			expectedRuneIdx: 3,
+		},
+		{
+			name:            "ansi",
+			s:               "hi " + redBg.Render("there") + " leo",
+			widthToLeft:     8,
+			expectedRuneIdx: 8,
+		},
+		{
+			name: "unicode",
+			s:    "A💖中é",
+			// A (1w, 1b, 1r), 💖 (2w, 4b, 1r), 中 (2w, 3b, 1r), é (1w, 3b, 2r) = 6w, 11b, 5r
+			widthToLeft:     5,
+			expectedRuneIdx: 3,
+		},
+		{
+			name: "unicode zero-width",
+			s:    "A💖中é",
+			// A (1w, 1b, 1r), 💖 (2w, 4b, 1r), 中 (2w, 3b, 1r), é (1w, 3b, 2r) = 6w, 11b, 5r
+			widthToLeft:     6,
+			expectedRuneIdx: 5,
+		},
+		{
+			name:            "unicode zero-width single char",
+			s:               "é",
+			widthToLeft:     1,
+			expectedRuneIdx: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lb := New(tt.s)
+
+			if tt.shouldPanic {
+				assertPanic(t, func() {
+					lb.findRuneIndexWithWidthToLeft(tt.widthToLeft)
+				})
+				return
+			}
+
+			actual := lb.findRuneIndexWithWidthToLeft(tt.widthToLeft)
+			if actual != tt.expectedRuneIdx {
+				t.Errorf("findRuneIndexWithWidthToLeft() got %d, expected %d", actual, tt.expectedRuneIdx)
+			}
+		})
+	}
+}
+
+func TestLineBuffer_getByteOffsetAtRuneIdx(t *testing.T) {
+	tests := []struct {
+		name               string
+		s                  string
+		runeIdx            int
+		expectedByteOffset int
+		shouldPanic        bool
+	}{
+		{
+			name:               "empty string",
+			s:                  "",
+			runeIdx:            0,
+			expectedByteOffset: 0,
+		},
+		{
+			name:        "negative runeIdx",
+			s:           "hello",
+			runeIdx:     -1,
+			shouldPanic: true,
+		},
+		{
+			name:               "single char",
+			s:                  "a",
+			runeIdx:            0,
+			expectedByteOffset: 0,
+		},
+		{
+			name:        "runeIdx out of bounds",
+			s:           "a",
+			runeIdx:     1,
+			shouldPanic: true,
+		},
+		{
+			name:               "longer",
+			s:                  "hello",
+			runeIdx:            3,
+			expectedByteOffset: 3,
+		},
+		{
+			name:               "ansi",
+			s:                  "hi " + redBg.Render("there") + " leo",
+			runeIdx:            8,
+			expectedByteOffset: 8,
+		},
+		{
+			name: "unicode",
+			s:    "A💖中é",
+			// A (1w, 1b, 1r), 💖 (2w, 4b, 1r), 中 (2w, 3b, 1r), é (1w, 3b, 2r) = 6w, 11b, 5r
+			runeIdx:            3, // first rune in é
+			expectedByteOffset: 8,
+		},
+		{
+			name: "unicode zero-width",
+			s:    "A💖中é",
+			// A (1w, 1b, 1r), 💖 (2w, 4b, 1r), 中 (2w, 3b, 1r), é (1w, 3b, 2r) = 6w, 11b, 5r
+			runeIdx:            4, // second rune in é
+			expectedByteOffset: 9,
+		},
+		{
+			name:               "unicode zero-width single char",
+			s:                  "é",
+			runeIdx:            1,
+			expectedByteOffset: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lb := New(tt.s)
+
+			if tt.shouldPanic {
+				assertPanic(t, func() {
+					lb.getByteOffsetAtRuneIdx(tt.runeIdx)
+				})
+				return
+			}
+
+			actual := lb.getByteOffsetAtRuneIdx(tt.runeIdx)
+			if int(actual) != tt.expectedByteOffset {
+				t.Errorf("getByteOffsetAtRuneIdx() got %d, expected %d", actual, tt.expectedByteOffset)
 			}
 		})
 	}

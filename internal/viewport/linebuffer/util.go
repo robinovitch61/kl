@@ -72,28 +72,27 @@ func reapplyAnsi(original, truncated string, truncByteOffset int, ansiCodeIndexe
 	return result.String()
 }
 
-// getNonAnsiText extracts a substring of specified length from the input text, excluding ANSI escape sequences.
+// getNonAnsiBytes extracts a substring of specified length from the input string, excluding ANSI escape sequences.
 // It reads from the given start position until it has collected the requested number of non-ANSI bytes.
 //
 // Parameters:
-//   - text: The input string that may contain ANSI escape sequences
-//   - startPos: The byte position in the input to start reading from
-//   - bytesToExtract: The number of non-ANSI bytes to collect
+//   - s: The input string that may contain ANSI escape sequences
+//   - startIdx: The byte position in the input to start reading from
+//   - numBytes: The number of non-ANSI bytes to collect
 //
-// Returns a string containing bytesToExtract bytes of text with all ANSI sequences removed. If the input text ends
+// Returns a string containing bytesToExtract bytes of the input with ANSI sequences removed. If the input text ends
 // before collecting bytesToExtract bytes, returns all available non-ANSI bytes.
-// TODO LEO: test
-func getNonAnsiText(text string, startPos, bytesToExtract int) string {
+func getNonAnsiBytes(s string, startIdx, numBytes int) string {
 	var result strings.Builder
-	currentPos := startPos
+	currentPos := startIdx
 	bytesCollected := 0
-	for currentPos < len(text) && bytesCollected < bytesToExtract {
-		if strings.HasPrefix(text[currentPos:], "\x1b[") {
-			escEnd := currentPos + strings.Index(text[currentPos:], "m") + 1
+	for currentPos < len(s) && bytesCollected < numBytes {
+		if strings.HasPrefix(s[currentPos:], "\x1b[") {
+			escEnd := currentPos + strings.Index(s[currentPos:], "m") + 1
 			currentPos = escEnd
 			continue
 		}
-		result.WriteByte(text[currentPos])
+		result.WriteByte(s[currentPos])
 		bytesCollected++
 		currentPos++
 	}
@@ -136,7 +135,7 @@ func highlightLine(line, highlight string, highlightStyle lipgloss.Style, start,
 
 		// check if current position starts a highlight match
 		if !inAnsi && nonAnsiBytes >= start && nonAnsiBytes < end {
-			textToCheck := getNonAnsiText(line, i, len(highlight))
+			textToCheck := getNonAnsiBytes(line, i, len(highlight))
 			if textToCheck == highlight {
 				// reset current styles, if any
 				if len(activeStyles) > 0 {
@@ -522,59 +521,26 @@ func findAnsiRuneRanges(s string) [][]uint32 {
 	return ranges[:rangeIdx]
 }
 
-// getLeftRuneIdx does a binary search to find the first index at which vals[index-1] >= w
-func getLeftRuneIdx(w int, vals []uint32) int {
-	if w == 0 {
-		return 0
-	}
-	if len(vals) == 0 {
-		return 0
-	}
-
-	left, right := 0, len(vals)-1
-
-	if vals[right] < uint32(w) {
-		return len(vals)
-	}
-
-	for left < right {
-		mid := left + (right-left)/2
-
-		if vals[mid] >= uint32(w) {
-			right = mid
-		} else {
-			left = mid + 1
-		}
-	}
-
-	return left + 1
-}
-
-func getTotalLines(cumWidths []uint32, lineWidth uint32) int {
-	if len(cumWidths) == 0 {
-		return 0
-	}
-	if lineWidth == 0 {
-		return 0
-	}
-
-	fullWidth := cumWidths[len(cumWidths)-1]
-	return int((fullWidth + lineWidth - 1) / lineWidth)
-}
-
-// TODO LEO: test
 // getBytesLeftOfWidth returns nBytes of content to the left of startBufferIdx while excluding ANSI codes
-func getBytesLeftOfWidth(nBytes int, buffers []LineBuffer, startBufferIdx int, startWidth int) string {
-	if nBytes <= 0 || len(buffers) == 0 || startBufferIdx >= len(buffers) {
+func getBytesLeftOfWidth(nBytes int, buffers []LineBuffer, startBufferIdx int, widthToLeft int) string {
+	if nBytes < 0 {
+		panic("nBytes must be greater than 0")
+	}
+	if nBytes == 0 || len(buffers) == 0 || startBufferIdx >= len(buffers) {
 		return ""
 	}
 
 	// first try to get bytes from the current buffer
 	var result string
 	currentBuffer := buffers[startBufferIdx]
-	leftRuneIdx := getLeftRuneIdx(startWidth, currentBuffer.lineNoAnsiCumWidths)
-	if leftRuneIdx > 0 {
-		startByteOffset := currentBuffer.runeIdxToByteOffset[leftRuneIdx]
+	runeIdx := currentBuffer.findRuneIndexWithWidthToLeft(widthToLeft)
+	if runeIdx > 0 {
+		var startByteOffset uint32
+		if runeIdx >= currentBuffer.numNoAnsiRunes {
+			startByteOffset = uint32(len(currentBuffer.lineNoAnsi))
+		} else {
+			startByteOffset = currentBuffer.getByteOffsetAtRuneIdx(runeIdx)
+		}
 		noAnsiContent := currentBuffer.lineNoAnsi[:startByteOffset]
 		if len(noAnsiContent) >= nBytes {
 			return noAnsiContent[len(noAnsiContent)-nBytes:]
@@ -598,25 +564,24 @@ func getBytesLeftOfWidth(nBytes int, buffers []LineBuffer, startBufferIdx int, s
 	return result
 }
 
-// TODO LEO: test
 // getBytesRightOfWidth returns nBytes of content to the right of endBufferIdx while excluding ANSI codes
-func getBytesRightOfWidth(nBytes int, buffers []LineBuffer, endBufferIdx int, remainingWidth int) string {
-	if nBytes <= 0 || len(buffers) == 0 || endBufferIdx >= len(buffers) {
+func getBytesRightOfWidth(nBytes int, buffers []LineBuffer, endBufferIdx int, widthToRight int) string {
+	if nBytes < 0 {
+		panic("nBytes must be greater than 0")
+	}
+	if nBytes == 0 || len(buffers) == 0 || endBufferIdx >= len(buffers) {
 		return ""
 	}
 
 	// first try to get bytes from the current buffer
 	var result string
 	currentBuffer := buffers[endBufferIdx]
-	if remainingWidth > 0 {
-		currentWidth := currentBuffer.Width()
-		startWidth := currentWidth - remainingWidth
-		if startWidth < 0 {
-			startWidth = 0
-		}
-		leftRuneIdx := getLeftRuneIdx(startWidth, currentBuffer.lineNoAnsiCumWidths)
-		if leftRuneIdx < len(currentBuffer.lineNoAnsiWidths) {
-			startByteOffset := currentBuffer.runeIdxToByteOffset[leftRuneIdx]
+	if widthToRight > 0 {
+		currentBufferWidth := currentBuffer.Width()
+		widthToLeft := currentBufferWidth - widthToRight
+		startRuneIdx := currentBuffer.findRuneIndexWithWidthToLeft(widthToLeft)
+		if startRuneIdx < len(currentBuffer.lineNoAnsiRuneWidths) {
+			startByteOffset := currentBuffer.getByteOffsetAtRuneIdx(startRuneIdx)
 			noAnsiContent := currentBuffer.lineNoAnsi[startByteOffset:]
 			if len(noAnsiContent) >= nBytes {
 				return noAnsiContent[:nBytes]
@@ -641,7 +606,8 @@ func getBytesRightOfWidth(nBytes int, buffers []LineBuffer, endBufferIdx int, re
 	return result
 }
 
-// TODO LEO: test
+// getWrappedLines is logic shared by WrappedLines in single and multi LineBuffers
+// it is well-tested as part of the tests of those methods
 func getWrappedLines(
 	l LineBufferer,
 	totalLines int,

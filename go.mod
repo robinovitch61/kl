@@ -11,7 +11,6 @@ require (
 	github.com/emirpasic/gods v1.18.1
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.4.0
-	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/mattn/go-runewidth v0.0.16
 	github.com/muesli/reflow v0.3.0
 	github.com/spf13/cobra v1.8.0

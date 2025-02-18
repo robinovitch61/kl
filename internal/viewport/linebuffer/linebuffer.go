@@ -12,12 +12,15 @@ import (
 // LineBuffer provides functionality to get sequential strings of a specified terminal cell width, accounting
 // for the ansi escape codes styling the line.
 type LineBuffer struct {
-	line                string     // underlying string with ansi codes. utf-8 bytes
-	lineNoAnsi          string     // line without ansi codes. utf-8 bytes
-	runeIdxToByteOffset []uint32   // idx of lineNoAnsiRunes to byte offset
-	lineNoAnsiWidths    []uint8    // terminal cell widths
-	lineNoAnsiCumWidths []uint32   // cumulative lineNoAnsiWidths
-	ansiCodeIndexes     [][]uint32 // slice of startByte, endByte indexes of ansi codes
+	line                 string     // underlying string with ansi codes. utf-8 encoded bytes
+	lineNoAnsi           string     // line without ansi codes. utf-8 encoded bytes
+	lineNoAnsiRuneWidths []uint8    // terminal cell widths
+	ansiCodeIndexes      [][]uint32 // slice of startByte, endByte indexes of ansi codes
+	numNoAnsiRunes       int        // number of runes in lineNoAnsi
+
+	sparsity                        int      // interval for which to store cumulative cell width
+	sparseRuneIdxToNoAnsiByteOffset []uint32 // rune idx to byte offset of lineNoAnsi, stored every sparsity runes
+	sparseLineNoAnsiCumRuneWidths   []uint32 // cumulative terminal cell width, stored every sparsity runes
 }
 
 // type assertion that LineBuffer implements LineBufferer
@@ -27,8 +30,13 @@ var _ LineBufferer = LineBuffer{}
 var _ LineBufferer = (*LineBuffer)(nil)
 
 func New(line string) LineBuffer {
+	if len(line) <= 0 {
+		return LineBuffer{line: line}
+	}
+
 	lb := LineBuffer{
-		line: line,
+		line:     line,
+		sparsity: 100, // tradeoff between memory usage and CPU. 100 seems to be a good balance
 	}
 
 	lb.ansiCodeIndexes = findAnsiByteRanges(line)
@@ -51,38 +59,42 @@ func New(line string) LineBuffer {
 		lb.lineNoAnsi = line
 	}
 
-	n := utf8.RuneCountInString(lb.lineNoAnsi)
+	numRunes := utf8.RuneCountInString(lb.lineNoAnsi)
 
-	// single allocation for all integer slices
-	combined := make([]uint32, n+1+n)
-	lb.runeIdxToByteOffset = combined[:n+1]
-	lb.lineNoAnsiCumWidths = combined[n+1:]
+	// calculate size needed for sparse cumulative widths
+	sparseLen := (numRunes + lb.sparsity - 1) / lb.sparsity
+	lb.sparseRuneIdxToNoAnsiByteOffset = make([]uint32, sparseLen)
+	lb.sparseLineNoAnsiCumRuneWidths = make([]uint32, sparseLen)
 
-	lb.lineNoAnsiWidths = make([]uint8, n)
+	lb.lineNoAnsiRuneWidths = make([]uint8, numRunes)
 
 	var currentOffset uint32
 	var cumWidth uint32
-	i := 0
-	for pos := 0; pos < len(lb.lineNoAnsi); {
-		lb.runeIdxToByteOffset[i] = currentOffset
-		r, size := utf8.DecodeRuneInString(lb.lineNoAnsi[pos:])
-		currentOffset += uint32(size)
+	runeIdx := 0
+	for byteOffset := 0; byteOffset < len(lb.lineNoAnsi); {
+		r, runeNumBytes := utf8.DecodeRuneInString(lb.lineNoAnsi[byteOffset:])
 		width := uint8(runewidth.RuneWidth(r))
-		lb.lineNoAnsiWidths[i] = width
+		lb.lineNoAnsiRuneWidths[runeIdx] = width
 		cumWidth += uint32(width)
-		lb.lineNoAnsiCumWidths[i] = cumWidth
-		i++
-		pos += size
+		if runeIdx%lb.sparsity == 0 {
+			lb.sparseRuneIdxToNoAnsiByteOffset[runeIdx/lb.sparsity] = currentOffset
+			lb.sparseLineNoAnsiCumRuneWidths[runeIdx/lb.sparsity] = cumWidth
+		}
+		currentOffset += uint32(runeNumBytes)
+		runeIdx++
+		byteOffset += runeNumBytes
 	}
-	lb.runeIdxToByteOffset[n] = currentOffset
+	lb.numNoAnsiRunes = runeIdx
+
 	return lb
 }
 
 func (l LineBuffer) Width() int {
-	if len(l.lineNoAnsiCumWidths) > 0 {
-		return int(l.lineNoAnsiCumWidths[len(l.lineNoAnsiCumWidths)-1])
+	if len(l.line) == 0 {
+		return 0
 	}
-	return 0
+	lastRuneIdx := len(l.lineNoAnsiRuneWidths) - 1
+	return int(l.getCumulativeWidthAtRuneIdx(lastRuneIdx))
 }
 
 func (l LineBuffer) Content() string {
@@ -91,29 +103,30 @@ func (l LineBuffer) Content() string {
 
 // Take returns a string of the buffer's width from its current left offset
 func (l LineBuffer) Take(
-	startWidth, takeWidth int,
+	widthToLeft, takeWidth int,
 	continuation, toHighlight string,
 	highlightStyle lipgloss.Style,
 ) (string, int) {
-	if startWidth < 0 {
-		startWidth = 0
+	if widthToLeft < 0 {
+		widthToLeft = 0
 	}
 
-	startRuneIdx := getLeftRuneIdx(startWidth, l.lineNoAnsiCumWidths)
+	widthToLeft = min(widthToLeft, l.Width())
+	startRuneIdx := l.findRuneIndexWithWidthToLeft(widthToLeft)
 
-	if startRuneIdx >= len(l.lineNoAnsiWidths) || takeWidth == 0 {
+	if startRuneIdx >= len(l.lineNoAnsiRuneWidths) || takeWidth == 0 {
 		return "", 0
 	}
 
 	var result strings.Builder
 	remainingWidth := takeWidth
 	leftRuneIdx := startRuneIdx
-	startByteOffset := l.runeIdxToByteOffset[startRuneIdx]
+	startByteOffset := l.getByteOffsetAtRuneIdx(startRuneIdx)
 
 	runesWritten := 0
-	for ; remainingWidth > 0 && leftRuneIdx < len(l.lineNoAnsiWidths); leftRuneIdx++ {
+	for ; remainingWidth > 0 && leftRuneIdx < len(l.lineNoAnsiRuneWidths); leftRuneIdx++ {
 		r := l.runeAt(leftRuneIdx)
-		runeWidth := l.lineNoAnsiWidths[leftRuneIdx]
+		runeWidth := l.lineNoAnsiRuneWidths[leftRuneIdx]
 		if int(runeWidth) > remainingWidth {
 			break
 		}
@@ -135,7 +148,7 @@ func (l LineBuffer) Take(
 
 	// write the subsequent zero-width runes, e.g. the accent on an 'e'
 	if result.Len() > 0 {
-		for ; leftRuneIdx < len(l.lineNoAnsiWidths); leftRuneIdx++ {
+		for ; leftRuneIdx < len(l.lineNoAnsiRuneWidths); leftRuneIdx++ {
 			r := l.runeAt(leftRuneIdx)
 			if runewidth.RuneWidth(r) == 0 {
 				result.WriteRune(r)
@@ -153,7 +166,7 @@ func (l LineBuffer) Take(
 	}
 
 	// apply left/right line continuation indicators
-	if len(continuation) > 0 && (startRuneIdx > 0 || leftRuneIdx < len(l.lineNoAnsiWidths)) {
+	if len(continuation) > 0 && (startRuneIdx > 0 || leftRuneIdx < len(l.lineNoAnsiRuneWidths)) {
 		continuationRunes := []rune(continuation)
 
 		// if more runes to the left of the result, replace start runes with continuation indicator
@@ -162,19 +175,25 @@ func (l LineBuffer) Take(
 		}
 
 		// if more runes to the right, replace final runes in result with continuation indicator
-		if leftRuneIdx < len(l.lineNoAnsiWidths) {
+		if leftRuneIdx < len(l.lineNoAnsiRuneWidths) {
 			res = replaceEndWithContinuation(res, continuationRunes)
 		}
 	}
 
 	// highlight the desired string
+	var endByteOffset int
+	if leftRuneIdx < l.numNoAnsiRunes {
+		endByteOffset = int(l.getByteOffsetAtRuneIdx(leftRuneIdx))
+	} else {
+		endByteOffset = len(l.lineNoAnsi)
+	}
 	res = highlightString(
 		res,
 		toHighlight,
 		highlightStyle,
 		l.lineNoAnsi,
 		int(startByteOffset),
-		int(l.runeIdxToByteOffset[leftRuneIdx]),
+		endByteOffset,
 	)
 
 	res = removeEmptyAnsiSequences(res)
@@ -187,14 +206,20 @@ func (l LineBuffer) WrappedLines(
 	toHighlight string,
 	toHighlightStyle lipgloss.Style,
 ) []string {
+	if width == 0 {
+		return []string{}
+	}
 	// preserve empty lines
 	if l.line == "" {
 		return []string{l.line}
 	}
 
+	lastRuneIdx := len(l.lineNoAnsiRuneWidths) - 1
+	totalWidth := l.getCumulativeWidthAtRuneIdx(lastRuneIdx)
+	totalLines := (int(totalWidth) + width - 1) / width
 	return getWrappedLines(
 		l,
-		getTotalLines(l.lineNoAnsiCumWidths, uint32(width)),
+		totalLines,
 		width,
 		maxLinesEachEnd,
 		toHighlight,
@@ -210,12 +235,109 @@ func (l LineBuffer) Repr() string {
 	return fmt.Sprintf("LB(%q)", l.line)
 }
 
-func (l LineBuffer) runeAt(idx int) rune {
-	if idx < 0 || idx >= len(l.lineNoAnsiWidths) {
+// runeAt decodes the desired rune from the lineNoAnsi string
+// it serves as a memory-saving technique compared to storing all the runes in a slice
+func (l LineBuffer) runeAt(runeIdx int) rune {
+	if runeIdx < 0 || runeIdx >= l.numNoAnsiRunes {
 		return -1
 	}
-	start := l.runeIdxToByteOffset[idx]
-	end := l.runeIdxToByteOffset[idx+1]
+	start := l.getByteOffsetAtRuneIdx(runeIdx)
+	var end uint32
+	if runeIdx+1 >= l.numNoAnsiRunes {
+		end = uint32(len(l.lineNoAnsi))
+	} else {
+		end = l.getByteOffsetAtRuneIdx(runeIdx + 1)
+	}
 	r, _ := utf8.DecodeRuneInString(l.lineNoAnsi[start:end])
 	return r
+}
+
+func (l LineBuffer) getByteOffsetAtRuneIdx(runeIdx int) uint32 {
+	if runeIdx < 0 {
+		panic("runeIdx must be greater or equal to 0")
+	}
+	if runeIdx == 0 || len(l.line) == 0 || l.sparsity == 0 {
+		return 0
+	}
+	if runeIdx >= l.numNoAnsiRunes {
+		panic("rune index greater than num runes")
+	}
+
+	// get the last stored byte offset before this index
+	sparseIdx := runeIdx / l.sparsity
+	baseRuneIdx := sparseIdx * l.sparsity
+
+	if baseRuneIdx == runeIdx {
+		return l.sparseRuneIdxToNoAnsiByteOffset[sparseIdx]
+	}
+
+	currRuneIdx := baseRuneIdx
+	byteOffset := l.sparseRuneIdxToNoAnsiByteOffset[sparseIdx]
+	for ; currRuneIdx != runeIdx; currRuneIdx++ {
+		_, nBytes := utf8.DecodeRuneInString(l.lineNoAnsi[byteOffset:])
+		byteOffset += uint32(nBytes)
+	}
+	return byteOffset
+}
+
+func (l LineBuffer) getCumulativeWidthAtRuneIdx(runeIdx int) uint32 {
+	if runeIdx < 0 {
+		return 0
+	}
+	if runeIdx >= l.numNoAnsiRunes {
+		panic("runeIdx greater than num runes")
+	}
+
+	// get the last stored cumulative width before this index
+	sparseIdx := runeIdx / l.sparsity
+	baseRuneIdx := sparseIdx * l.sparsity
+
+	if baseRuneIdx == runeIdx {
+		return l.sparseLineNoAnsiCumRuneWidths[sparseIdx]
+	}
+
+	// sum the widths from the last stored point to our target index
+	var additionalWidth uint32
+	for i := baseRuneIdx + 1; i <= runeIdx; i++ {
+		additionalWidth += uint32(l.lineNoAnsiRuneWidths[i])
+	}
+
+	return l.sparseLineNoAnsiCumRuneWidths[sparseIdx] + additionalWidth
+}
+
+// findRuneIndexWithWidthToLeft returns the index of the rune that has the input width to the left of it
+func (l LineBuffer) findRuneIndexWithWidthToLeft(widthToLeft int) int {
+	if widthToLeft < 0 {
+		panic("widthToLeft less than 0")
+	}
+	if widthToLeft == 0 || len(l.lineNoAnsiRuneWidths) == 0 {
+		return 0
+	}
+	if widthToLeft > l.Width() {
+		panic("widthToLeft greater than total width")
+	}
+
+	left, right := 0, len(l.lineNoAnsiRuneWidths)-1
+	if l.getCumulativeWidthAtRuneIdx(right) < uint32(widthToLeft) {
+		return len(l.lineNoAnsiRuneWidths)
+	}
+
+	for left < right {
+		mid := left + (right-left)/2
+		if l.getCumulativeWidthAtRuneIdx(mid) >= uint32(widthToLeft) {
+			right = mid
+		} else {
+			left = mid + 1
+		}
+	}
+
+	// skip over zero-width runes
+	w := l.getCumulativeWidthAtRuneIdx(left)
+	nextLeft := left + 1
+	for nextLeft < l.numNoAnsiRunes && l.getCumulativeWidthAtRuneIdx(nextLeft) == w {
+		left = nextLeft
+		nextLeft += 1
+	}
+
+	return left + 1
 }

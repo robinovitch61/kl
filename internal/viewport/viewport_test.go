@@ -849,7 +849,7 @@ func TestViewport_SelectionOff_WrapOff_StringToHighlightAnsi(t *testing.T) {
 func TestViewport_SelectionOff_WrapOff_StringToHighlightAnsiUnicode(t *testing.T) {
 	w, h := 10, 5
 	vp := newViewport(w, h)
-	// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
+	// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b) = 6w, 11b
 	vp.SetHeader([]string{"A💖中é"})
 	setContent(&vp, []string{
 		"A💖中é",
@@ -2239,7 +2239,7 @@ func TestViewport_SelectionOn_WrapOff_ExtraSlash(t *testing.T) {
 func TestViewport_SelectionOn_WrapOff_StringToHighlightAnsiUnicode(t *testing.T) {
 	w, h := 10, 5
 	vp := newViewport(w, h)
-	// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
+	// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b) = 6w, 11b
 	vp.SetHeader([]string{"A💖中é"})
 	vp.SetSelectionEnabled(true)
 	setContent(&vp, []string{
@@ -3125,7 +3125,7 @@ func TestViewport_SelectionOff_WrapOn_SuperLongWrappedLine(t *testing.T) {
 func TestViewport_SelectionOff_WrapOn_StringToHighlightAnsiUnicode(t *testing.T) {
 	w, h := 10, 5
 	vp := newViewport(w, h)
-	// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
+	// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b) = 6w, 11b
 	vp.SetHeader([]string{"A💖中é"})
 	vp.SetWrapText(true)
 	setContent(&vp, []string{
@@ -4663,7 +4663,7 @@ func TestViewport_SelectionOn_WrapOn_SuperLongWrappedLine(t *testing.T) {
 func TestViewport_SelectionOn_WrapOn_StringToHighlightAnsiUnicode(t *testing.T) {
 	w, h := 10, 5
 	vp := newViewport(w, h)
-	// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), e+ ́ (1w, 1b+2b) = 6w, 11b
+	// A (1w, 1b), 💖 (2w, 4b), 中 (2w, 3b), é (1w, 3b) = 6w, 11b
 	vp.SetHeader([]string{"A💖中é"})
 	vp.SetSelectionEnabled(true)
 	vp.SetWrapText(true)

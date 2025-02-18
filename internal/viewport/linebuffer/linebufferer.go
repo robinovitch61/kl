@@ -10,11 +10,11 @@ type LineBufferer interface {
 	Width() int
 	// Content returns the underlying complete string
 	Content() string
-	// Take returns a substring of the content starting at startWidth and taking takeWidth
-	// continuation replaces the start and end if the content exceeds the bounds of startWidth to startWidth + takeWidth
+	// Take returns a substring of the content with a specified widthToLeft and taking takeWidth
+	// continuation replaces the start and end if the content exceeds the bounds of widthToLeft to widthToLeft + takeWidth
 	// toHighlight is a substring to highlight, and highlightStyle is the style to apply to it
 	Take(
-		startWidth, takeWidth int,
+		widthToLeft, takeWidth int,
 		continuation, toHighlight string,
 		highlightStyle lipgloss.Style,
 	) (string, int)
