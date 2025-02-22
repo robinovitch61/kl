@@ -97,6 +97,22 @@ spec:
               value: "flaskpassword"
             - name: POSTGRES_HOST
               value: "postgres-service"
+            - name: PERIODIC_KILL_FLASK
+              value: ""  # "" for false
+            - name: PERIODIC_KILL_FLASK_SECONDS
+              value: "30"
+            - name: PERIODIC_LOGGING
+              value: "true"
+            - name: PERIODIC_LOGGING_BYTES_PER_LOG
+              value: "10000"
+            - name: PERIODIC_LOGGING_LOGS_PER_SECOND
+              value: "5"
+            - name: PERIODIC_BIG_LOGGING
+              value: "true"
+            - name: PERIODIC_BIG_LOGGING_BYTES_PER_LOG
+              value: "500000"
+            - name: PERIODIC_BIG_LOGGING_LOGS_PER_SECOND
+              value: "0.05"
           readinessProbe:
             httpGet:
               path: /health
@@ -118,6 +134,22 @@ spec:
               value: "flaskpassword"
             - name: POSTGRES_HOST
               value: "postgres-service"
+            - name: PERIODIC_KILL_FLASK
+              value: ""  # "" for false
+            - name: PERIODIC_KILL_FLASK_SECONDS
+              value: "30"
+            - name: PERIODIC_LOGGING
+              value: "true"
+            - name: PERIODIC_LOGGING_BYTES_PER_LOG
+              value: "10000"
+            - name: PERIODIC_LOGGING_LOGS_PER_SECOND
+              value: "5"
+            - name: PERIODIC_BIG_LOGGING
+              value: "true"
+            - name: PERIODIC_BIG_LOGGING_BYTES_PER_LOG
+              value: "500000"
+            - name: PERIODIC_BIG_LOGGING_LOGS_PER_SECOND
+              value: "0.05"
           readinessProbe:
             httpGet:
               path: /health
@@ -139,6 +171,22 @@ spec:
               value: "flaskpassword"
             - name: POSTGRES_HOST
               value: "postgres-service"
+            - name: PERIODIC_KILL_FLASK
+              value: ""  # "" for false
+            - name: PERIODIC_KILL_FLASK_SECONDS
+              value: "30"
+            - name: PERIODIC_LOGGING
+              value: "true"
+            - name: PERIODIC_LOGGING_BYTES_PER_LOG
+              value: "10000"
+            - name: PERIODIC_LOGGING_LOGS_PER_SECOND
+              value: "5"
+            - name: PERIODIC_BIG_LOGGING
+              value: "true"
+            - name: PERIODIC_BIG_LOGGING_BYTES_PER_LOG
+              value: "500000"
+            - name: PERIODIC_BIG_LOGGING_LOGS_PER_SECOND
+              value: "0.05"
           readinessProbe:
             httpGet:
               path: /health
