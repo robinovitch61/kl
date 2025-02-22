@@ -124,9 +124,16 @@ func (p SingleLogPage) Help() string {
 }
 
 func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
-	if log.Log.LineBuffer.Content() == p.log.Log.LineBuffer.Content() {
+	needsUpdate := true
+
+	if log.Log != nil && p.log.Log != nil {
+		needsUpdate = log.Log.LineBuffer.Content() != p.log.Log.LineBuffer.Content()
+	}
+
+	if !needsUpdate {
 		return p
 	}
+
 	p.log = log
 	header, content := veryNicelyFormatThisLog(log, true)
 	renderableStrings := []viewport.RenderableString{{LineBuffer: linebuffer.New(header)}}
