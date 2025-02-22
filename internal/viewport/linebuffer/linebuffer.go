@@ -1,19 +1,19 @@
 package linebuffer
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/mattn/go-runewidth"
 	"github.com/robinovitch61/kl/internal/filter"
-	"strings"
 	"unicode/utf8"
 )
 
 // LineBuffer provides functionality to get sequential strings of a specified terminal cell width, accounting
 // for the ansi escape codes styling the line.
 type LineBuffer struct {
-	line       string // underlying string with ansi codes. utf-8 encoded bytes
-	lineNoAnsi string // line without ansi codes. utf-8 encoded bytes
+	line       []byte // underlying content with ansi codes. utf-8 encoded bytes
+	lineNoAnsi []byte // line without ansi codes. utf-8 encoded bytes
 	// TODO LEO: make sparse
 	lineNoAnsiRuneWidths []uint8    // terminal cell widths
 	ansiCodeIndexes      [][]uint32 // slice of startByte, endByte indexes of ansi codes
@@ -30,7 +30,7 @@ var _ LineBufferer = LineBuffer{}
 // type assertion that *LineBuffer implements LineBufferer
 var _ LineBufferer = (*LineBuffer)(nil)
 
-func New(line string) LineBuffer {
+func New(line []byte) LineBuffer {
 	if len(line) <= 0 {
 		return LineBuffer{line: line}
 	}
@@ -55,12 +55,12 @@ func New(line string) LineBuffer {
 			lastPos = int(r[1])
 		}
 		buf = append(buf, line[lastPos:]...)
-		lb.lineNoAnsi = string(buf)
+		lb.lineNoAnsi = buf
 	} else {
 		lb.lineNoAnsi = line
 	}
 
-	numRunes := utf8.RuneCountInString(lb.lineNoAnsi)
+	numRunes := utf8.RuneCount(lb.lineNoAnsi)
 
 	// calculate size needed for sparse cumulative widths
 	sparseLen := (numRunes + lb.sparsity - 1) / lb.sparsity
@@ -73,7 +73,7 @@ func New(line string) LineBuffer {
 	var cumWidth uint32
 	runeIdx := 0
 	for byteOffset := 0; byteOffset < len(lb.lineNoAnsi); {
-		r, runeNumBytes := utf8.DecodeRuneInString(lb.lineNoAnsi[byteOffset:])
+		r, runeNumBytes := utf8.DecodeRune(lb.lineNoAnsi[byteOffset:])
 		width := uint8(runewidth.RuneWidth(r))
 		lb.lineNoAnsiRuneWidths[runeIdx] = width
 		cumWidth += uint32(width)
@@ -98,7 +98,7 @@ func (l LineBuffer) Width() int {
 	return int(l.getCumulativeWidthAtRuneIdx(lastRuneIdx))
 }
 
-func (l LineBuffer) Content() string {
+func (l LineBuffer) Content() []byte {
 	return l.line
 }
 
@@ -119,12 +119,12 @@ func (l LineBuffer) Take(
 		return "", 0
 	}
 
-	var result strings.Builder
+	var result bytes.Buffer
 	remainingWidth := takeWidth
 	leftRuneIdx := startRuneIdx
 	startByteOffset := l.getByteOffsetAtRuneIdx(startRuneIdx)
-
 	runesWritten := 0
+
 	for ; remainingWidth > 0 && leftRuneIdx < len(l.lineNoAnsiRuneWidths); leftRuneIdx++ {
 		r := l.runeAt(leftRuneIdx)
 		runeWidth := l.lineNoAnsiRuneWidths[leftRuneIdx]
@@ -159,12 +159,14 @@ func (l LineBuffer) Take(
 		}
 	}
 
-	res := result.String()
+	res := result.Bytes()
 
 	// reapply original styling
 	if len(l.ansiCodeIndexes) > 0 {
 		res = reapplyAnsi(l.line, res, int(startByteOffset), l.ansiCodeIndexes)
 	}
+
+	resStr := string(res)
 
 	// apply left/right line continuation indicators
 	if len(continuation) > 0 && (startRuneIdx > 0 || leftRuneIdx < len(l.lineNoAnsiRuneWidths)) {
@@ -172,12 +174,12 @@ func (l LineBuffer) Take(
 
 		// if more runes to the left of the result, replace start runes with continuation indicator
 		if startRuneIdx > 0 {
-			res = replaceStartWithContinuation(res, continuationRunes)
+			resStr = replaceStartWithContinuation(resStr, continuationRunes)
 		}
 
 		// if more runes to the right, replace final runes in result with continuation indicator
 		if leftRuneIdx < len(l.lineNoAnsiRuneWidths) {
-			res = replaceEndWithContinuation(res, continuationRunes)
+			resStr = replaceEndWithContinuation(resStr, continuationRunes)
 		}
 	}
 
@@ -188,17 +190,18 @@ func (l LineBuffer) Take(
 	} else {
 		endByteOffset = len(l.lineNoAnsi)
 	}
-	res = highlightString(
-		res,
+
+	resStr = highlightString(
+		resStr,
 		toHighlight,
 		highlightStyle,
-		l.lineNoAnsi,
+		string(l.lineNoAnsi),
 		int(startByteOffset),
 		endByteOffset,
 	)
 
-	res = removeEmptyAnsiSequences(res)
-	return res, takeWidth - remainingWidth
+	resStr = removeEmptyAnsiSequences(resStr)
+	return resStr, takeWidth - remainingWidth
 }
 
 func (l LineBuffer) WrappedLines(
@@ -211,8 +214,8 @@ func (l LineBuffer) WrappedLines(
 		return []string{}
 	}
 	// preserve empty lines
-	if l.line == "" {
-		return []string{l.line}
+	if l.line == nil {
+		return []string{""}
 	}
 
 	lastRuneIdx := len(l.lineNoAnsiRuneWidths) - 1
@@ -249,7 +252,7 @@ func (l LineBuffer) runeAt(runeIdx int) rune {
 	} else {
 		end = l.getByteOffsetAtRuneIdx(runeIdx + 1)
 	}
-	r, _ := utf8.DecodeRuneInString(l.lineNoAnsi[start:end])
+	r, _ := utf8.DecodeRune(l.lineNoAnsi[start:end])
 	return r
 }
 
@@ -275,7 +278,7 @@ func (l LineBuffer) getByteOffsetAtRuneIdx(runeIdx int) uint32 {
 	currRuneIdx := baseRuneIdx
 	byteOffset := l.sparseRuneIdxToNoAnsiByteOffset[sparseIdx]
 	for ; currRuneIdx != runeIdx; currRuneIdx++ {
-		_, nBytes := utf8.DecodeRuneInString(l.lineNoAnsi[byteOffset:])
+		_, nBytes := utf8.DecodeRune(l.lineNoAnsi[byteOffset:])
 		byteOffset += uint32(nBytes)
 	}
 	return byteOffset

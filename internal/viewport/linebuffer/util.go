@@ -1,6 +1,7 @@
 package linebuffer
 
 import (
+	"bytes"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/mattn/go-runewidth"
 	"regexp"
@@ -25,29 +26,29 @@ var (
 // in the truncated output, and adds proper reset codes where needed.
 //
 // Parameters:
-//   - original: the source string containing ANSI escape sequences
-//   - truncated: the truncated version of the string, without ANSI sequences
+//   - original: the source containing ANSI escape sequences
+//   - truncated: the truncated version of the source, without ANSI sequences
 //   - truncByteOffset: byte offset in the original string where truncation started
 //   - ansiCodeIndexes: pairs of start/end byte positions of ANSI codes in the original string
 //
 // Returns a string with ANSI escape sequences reapplied at appropriate positions,
 // maintaining the original text formatting while preserving proper UTF-8 encoding.
-func reapplyAnsi(original, truncated string, truncByteOffset int, ansiCodeIndexes [][]uint32) string {
-	var result strings.Builder
+func reapplyAnsi(original []byte, truncated []byte, truncByteOffset int, ansiCodeIndexes [][]uint32) []byte {
+	var result bytes.Buffer
 	result.Grow(len(truncated))
 	var lenAnsiAdded int
 	isReset := true
 
 	for i := 0; i < len(truncated); {
 		// collect all ansi codes that should be applied immediately before the current runes
-		var ansisToAdd []string
+		var ansisToAdd [][]byte
 		for len(ansiCodeIndexes) > 0 {
 			candidateAnsi := ansiCodeIndexes[0]
 			codeStart, codeEnd := int(candidateAnsi[0]), int(candidateAnsi[1])
 			originalByteIdx := truncByteOffset + i + lenAnsiAdded
 			if codeStart <= originalByteIdx {
 				code := original[codeStart:codeEnd]
-				isReset = code == "\x1b[m"
+				isReset = bytes.Equal(code, []byte("\x1b[m"))
 				ansisToAdd = append(ansisToAdd, code)
 				lenAnsiAdded += codeEnd - codeStart
 				ansiCodeIndexes = ansiCodeIndexes[1:]
@@ -57,19 +58,19 @@ func reapplyAnsi(original, truncated string, truncByteOffset int, ansiCodeIndexe
 		}
 
 		for _, ansi := range simplifyAnsiCodes(ansisToAdd) {
-			result.WriteString(ansi)
+			result.Write(ansi)
 		}
 
 		// add the bytes of the current rune
-		_, size := utf8.DecodeRuneInString(truncated[i:])
-		result.WriteString(truncated[i : i+size])
+		_, size := utf8.DecodeRune(truncated[i:])
+		result.Write(truncated[i : i+size])
 		i += size
 	}
 
 	if !isReset {
 		result.WriteString("\x1b[m")
 	}
-	return result.String()
+	return result.Bytes()
 }
 
 // getNonAnsiBytes extracts a substring of specified length from the input string, excluding ANSI escape sequences.
@@ -202,7 +203,7 @@ func highlightString(
 		}
 		if right, startIdx := overflowsRight(plainLine, segmentEnd, toHighlight); right {
 			highlightRight := plainLine[startIdx:segmentEnd]
-			lenPlainTextRes := len(stripAnsi(styledSegment))
+			lenPlainTextRes := len(stripAnsi([]byte(styledSegment)))
 			styledSegment = highlightLine(styledSegment, highlightRight, highlightStyle, lenPlainTextRes-len(highlightRight), lenPlainTextRes)
 		}
 	}
@@ -210,7 +211,7 @@ func highlightString(
 	return styledSegment
 }
 
-func stripAnsi(input string) string {
+func stripAnsi(input []byte) []byte {
 	ranges := findAnsiByteRanges(input)
 	if len(ranges) == 0 {
 		return input
@@ -222,43 +223,45 @@ func stripAnsi(input string) string {
 	}
 
 	finalLen := len(input) - totalAnsiLen
-	var builder strings.Builder
-	builder.Grow(finalLen)
+	var buffer bytes.Buffer
+	buffer.Grow(finalLen)
 
 	lastPos := 0
 	for _, r := range ranges {
-		builder.WriteString(input[lastPos:int(r[0])])
+		buffer.Write(input[lastPos:int(r[0])])
 		lastPos = int(r[1])
 	}
+	buffer.Write(input[lastPos:])
 
-	builder.WriteString(input[lastPos:])
-	return builder.String()
+	return buffer.Bytes()
 }
 
-func simplifyAnsiCodes(ansis []string) []string {
+func simplifyAnsiCodes(ansis [][]byte) [][]byte {
 	if len(ansis) == 0 {
-		return []string{}
+		return nil
 	}
+
+	resetSeq := []byte("\x1b[m")
 
 	// if there's just a bunch of reset sequences, compress it to one
 	allReset := true
 	for _, ansi := range ansis {
-		if ansi != "\x1b[m" {
+		if !bytes.Equal(ansi, resetSeq) {
 			allReset = false
 			break
 		}
 	}
 	if allReset {
-		return []string{"\x1b[m"}
+		return [][]byte{resetSeq}
 	}
 
 	// return all ansis to the right of the rightmost reset seq
 	for i := len(ansis) - 1; i >= 0; i-- {
-		if ansis[i] == "\x1b[m" {
+		if bytes.Equal(ansis[i], resetSeq) {
 			result := ansis[i+1:]
 			// keep reset at the start if present
-			if ansis[0] == "\x1b[m" {
-				return append([]string{"\x1b[m"}, result...)
+			if bytes.Equal(ansis[0], resetSeq) {
+				return append([][]byte{resetSeq}, result...)
 			}
 			return result
 		}
@@ -444,9 +447,9 @@ func runesHaveAnsiPrefix(runes []rune) bool {
 	return len(runes) >= 2 && runes[0] == '\x1b' && runes[1] == '['
 }
 
-func findAnsiByteRanges(s string) [][]uint32 {
+func findAnsiByteRanges(s []byte) [][]uint32 {
 	// pre-count to allocate exact size
-	count := strings.Count(s, "\x1b[")
+	count := bytes.Count(s, []byte("\x1b["))
 	if count == 0 {
 		return nil
 	}
@@ -522,16 +525,16 @@ func findAnsiRuneRanges(s string) [][]uint32 {
 }
 
 // getBytesLeftOfWidth returns nBytes of content to the left of startBufferIdx while excluding ANSI codes
-func getBytesLeftOfWidth(nBytes int, buffers []LineBuffer, startBufferIdx int, widthToLeft int) string {
+func getBytesLeftOfWidth(nBytes int, buffers []LineBuffer, startBufferIdx int, widthToLeft int) []byte {
 	if nBytes < 0 {
 		panic("nBytes must be greater than 0")
 	}
 	if nBytes == 0 || len(buffers) == 0 || startBufferIdx >= len(buffers) {
-		return ""
+		return nil
 	}
 
 	// first try to get bytes from the current buffer
-	var result string
+	var result []byte
 	currentBuffer := buffers[startBufferIdx]
 	runeIdx := currentBuffer.findRuneIndexWithWidthToLeft(widthToLeft)
 	if runeIdx > 0 {
@@ -554,10 +557,15 @@ func getBytesLeftOfWidth(nBytes int, buffers []LineBuffer, startBufferIdx int, w
 		prevBuffer := buffers[i]
 		noAnsiContent := prevBuffer.lineNoAnsi
 		if len(noAnsiContent) >= nBytes {
-			result = noAnsiContent[len(noAnsiContent)-nBytes:] + result
-			break
+			newResult := make([]byte, nBytes+len(result))
+			copy(newResult, noAnsiContent[len(noAnsiContent)-nBytes:])
+			copy(newResult[nBytes:], result)
+			return newResult
 		}
-		result = noAnsiContent + result
+		newResult := make([]byte, len(noAnsiContent)+len(result))
+		copy(newResult, noAnsiContent)
+		copy(newResult[len(noAnsiContent):], result)
+		result = newResult
 		nBytes -= len(noAnsiContent)
 	}
 
@@ -565,16 +573,16 @@ func getBytesLeftOfWidth(nBytes int, buffers []LineBuffer, startBufferIdx int, w
 }
 
 // getBytesRightOfWidth returns nBytes of content to the right of endBufferIdx while excluding ANSI codes
-func getBytesRightOfWidth(nBytes int, buffers []LineBuffer, endBufferIdx int, widthToRight int) string {
+func getBytesRightOfWidth(nBytes int, buffers []LineBuffer, endBufferIdx int, widthToRight int) []byte {
 	if nBytes < 0 {
 		panic("nBytes must be greater than 0")
 	}
 	if nBytes == 0 || len(buffers) == 0 || endBufferIdx >= len(buffers) {
-		return ""
+		return nil
 	}
 
 	// first try to get bytes from the current buffer
-	var result string
+	var result []byte
 	currentBuffer := buffers[endBufferIdx]
 	if widthToRight > 0 {
 		currentBufferWidth := currentBuffer.Width()
@@ -596,10 +604,15 @@ func getBytesRightOfWidth(nBytes int, buffers []LineBuffer, endBufferIdx int, wi
 		nextBuffer := buffers[i]
 		noAnsiContent := nextBuffer.lineNoAnsi
 		if len(noAnsiContent) >= nBytes {
-			result += noAnsiContent[:nBytes]
-			break
+			newResult := make([]byte, len(result)+nBytes)
+			copy(newResult, result)
+			copy(newResult[len(result):], noAnsiContent[:nBytes])
+			return newResult
 		}
-		result += noAnsiContent
+		newResult := make([]byte, len(result)+len(noAnsiContent))
+		copy(newResult, result)
+		copy(newResult[len(result):], noAnsiContent)
+		result = newResult
 		nBytes -= len(noAnsiContent)
 	}
 

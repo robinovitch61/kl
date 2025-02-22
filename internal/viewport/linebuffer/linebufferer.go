@@ -8,8 +8,8 @@ import (
 type LineBufferer interface {
 	// Width returns the total width in terminal cells
 	Width() int
-	// Content returns the underlying complete string
-	Content() string
+	// Content returns the underlying complete content
+	Content() []byte
 	// Take returns a substring of the content with a specified widthToLeft and taking takeWidth
 	// continuation replaces the start and end if the content exceeds the bounds of widthToLeft to widthToLeft + takeWidth
 	// toHighlight is a substring to highlight, and highlightStyle is the style to apply to it

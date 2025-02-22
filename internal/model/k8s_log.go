@@ -60,9 +60,9 @@ func (ls LogScanner) StartReadingLogs() {
 			}
 
 			// content is everything after first space, trimmed
-			logContent := string(bs[firstSpace+1:])
-			logContent = strings.TrimRightFunc(logContent, unicode.IsSpace)
-			logContent = strings.ReplaceAll(logContent, "\t", "    ")
+			logContent := bs[firstSpace+1:]
+			logContent = bytes.TrimRightFunc(logContent, unicode.IsSpace)
+			// TODO LEO: removed tab -> space conversion here
 
 			// precompute LogData here as logs come in as logs are immutable. Having the LogData up front helps
 			// to minimize expensive/repeated re-computation later

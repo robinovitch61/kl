@@ -1,6 +1,7 @@
 package linebuffer
 
 import (
+	"bytes"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/filter"
 	"strings"
@@ -38,9 +39,9 @@ func (m MultiLineBuffer) Width() int {
 	return m.totalWidth
 }
 
-func (m MultiLineBuffer) Content() string {
+func (m MultiLineBuffer) Content() []byte {
 	if len(m.buffers) == 0 {
-		return ""
+		return []byte{}
 	}
 
 	if len(m.buffers) == 1 {
@@ -52,14 +53,14 @@ func (m MultiLineBuffer) Content() string {
 		totalLen += len(buf.Content())
 	}
 
-	var builder strings.Builder
-	builder.Grow(totalLen)
+	var buffer bytes.Buffer
+	buffer.Grow(totalLen)
 
 	for _, buf := range m.buffers {
-		builder.WriteString(buf.Content())
+		buffer.Write(buf.Content())
 	}
 
-	return builder.String()
+	return buffer.Bytes()
 }
 
 func (m MultiLineBuffer) Take(
@@ -136,13 +137,17 @@ func (m MultiLineBuffer) Take(
 	}
 
 	// highlight the desired string
-	resNoAnsi := stripAnsi(res)
-	lineNoAnsi := leftContext + resNoAnsi + rightContext
+	resNoAnsi := stripAnsi([]byte(res))
+	var lineNoAnsi strings.Builder
+	lineNoAnsi.Grow(len(leftContext) + len(resNoAnsi) + len(rightContext))
+	lineNoAnsi.Write(leftContext)
+	lineNoAnsi.Write(resNoAnsi)
+	lineNoAnsi.Write(rightContext)
 	res = highlightString(
 		res,
 		toHighlight,
 		highlightStyle,
-		lineNoAnsi,
+		lineNoAnsi.String(),
 		len(leftContext),
 		len(leftContext)+len(resNoAnsi),
 	)
@@ -185,12 +190,11 @@ func (m MultiLineBuffer) WrappedLines(
 func (m MultiLineBuffer) Matches(f filter.Model) bool {
 	// this isn't super efficient - could potentially consider trying to do string matches across
 	// LineBuffer boundaries in the future without allocating new strings every time, but that's tricky
-	var builder strings.Builder
+	var buf bytes.Buffer
 	for i := range m.buffers {
-		builder.WriteString(m.buffers[i].lineNoAnsi)
+		buf.Write(m.buffers[i].lineNoAnsi)
 	}
-	lineNoAnsi := builder.String()
-	return f.Matches(lineNoAnsi)
+	return f.Matches(buf.Bytes())
 }
 
 func (m MultiLineBuffer) Repr() string {

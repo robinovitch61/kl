@@ -1,6 +1,7 @@
 package filter
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/charmbracelet/bubbles/v2/cursor"
 	"github.com/charmbracelet/bubbles/v2/textinput"
@@ -10,7 +11,6 @@ import (
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/style"
 	"regexp"
-	"strings"
 )
 
 type Model struct {
@@ -118,20 +118,20 @@ func (m Model) View() string {
 	return filterStringStyle.Render(filterString)
 }
 
-func (m Model) Matches(s string) bool {
-	if m.Value() == "" {
+func (m Model) Matches(s []byte) bool {
+	if len(m.Value()) == 0 {
 		return true
 	}
 	// if invalid regexp, fallback to string matching
 	if m.isRegex && m.regexp != nil {
-		return m.regexp.MatchString(s)
+		return m.regexp.Match(s)
 	} else {
-		return strings.Contains(s, m.Value())
+		return bytes.Contains(s, m.Value())
 	}
 }
 
-func (m Model) Value() string {
-	return m.textinput.Value()
+func (m Model) Value() []byte {
+	return []byte(m.textinput.Value())
 }
 
 func (m Model) GetContextualMatchIdx() int {
@@ -149,7 +149,7 @@ func (m Model) HasContextualMatches() bool {
 }
 
 func (m Model) HasFilterText() bool {
-	return m.Value() != ""
+	return len(m.Value()) > 0
 }
 
 func (m Model) Focused() bool {
