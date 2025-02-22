@@ -906,32 +906,32 @@ func (m Model) handleNewLogsMsg(msg command.GetNewLogsMsg) (Model, tea.Cmd) {
 
 	var err error
 	var newLogs []model.PageLog
-	for _, log := range msg.NewLogs {
+	for i := range msg.NewLogs {
 		shortName := model.PageLogContainerName{}
 		if m.containerToShortName != nil {
-			shortName, err = m.containerToShortName(log.Container)
+			shortName, err = m.containerToShortName(msg.NewLogs[i].Container)
 			if err != nil {
 				m.err = err
 				return m, nil
 			}
 		}
 		fullName := model.PageLogContainerName{
-			Prefix:        log.Container.IDWithoutContainerName(),
-			ContainerName: log.Container.Name,
+			Prefix:        msg.NewLogs[i].Container.IDWithoutContainerName(),
+			ContainerName: msg.NewLogs[i].Container.Name,
 		}
 		var containerColors model.ContainerColors
 		if m.containerIdToColors != nil {
-			containerColors = m.containerIdToColors[log.Container.ID()]
+			containerColors = m.containerIdToColors[msg.NewLogs[i].Container.ID()]
 		}
-		localTime := log.Timestamp.Local()
+		localTime := msg.NewLogs[i].Timestamp.Local()
 		newLog := model.PageLog{
-			Log:             log,
-			ContainerColors: containerColors,
-			ContainerNames: model.PageLogContainerNames{
+			Log:             &msg.NewLogs[i],
+			ContainerColors: &containerColors,
+			ContainerNames: &model.PageLogContainerNames{
 				Short: shortName,
 				Full:  fullName,
 			},
-			Timestamps: model.PageLogTimestamps{
+			Timestamps: &model.PageLogTimestamps{
 				Short: localTime.Format(time.TimeOnly),
 				Full:  localTime.Format("2006-01-02T15:04:05.000Z07:00"),
 			},

@@ -167,10 +167,10 @@ func (p LogsPage) ScrolledDownByOne() LogsPage {
 func (p LogsPage) WithAppendedLogs(logs []model.PageLog) LogsPage {
 	dev.Debug(fmt.Sprintf("Appending %d logs", len(logs)))
 	defer dev.Debug("Done appending logs")
-	for _, log := range logs {
-		log.CurrentTimestamp = getLogTimestamp(log, timestampFormats[p.timestampFormatIdx])
-		log.CurrentName = getContainerName(log, nameFormats[p.nameFormatIdx])
-		p.logContainer.AppendLog(log, nil)
+	for i := range logs {
+		logs[i].CurrentTimestamp = getLogTimestamp(logs[i], timestampFormats[p.timestampFormatIdx])
+		logs[i].CurrentName = getContainerName(logs[i], nameFormats[p.nameFormatIdx])
+		p.logContainer.AppendLog(logs[i], nil)
 	}
 	p.filterableViewport.SetAllRows(p.logContainer.GetOrderedLogs())
 	return p
@@ -181,7 +181,7 @@ func (p LogsPage) WithContainerColors(containerIdToColor map[string]model.Contai
 	for i := range allLogs {
 		color, ok := containerIdToColor[allLogs[i].Log.Container.ID()]
 		if ok {
-			allLogs[i].ContainerColors = color
+			allLogs[i].ContainerColors = &color
 		}
 	}
 	p.setLogs(allLogs)
@@ -308,7 +308,7 @@ func getLogTimestamp(log model.PageLog, format string) string {
 	return ""
 }
 
-func getContainerName(log model.PageLog, format string) model.PageLogContainerName {
+func getContainerName(log model.PageLog, format string) *model.PageLogContainerName {
 	var name model.PageLogContainerName
 	if format == "short" {
 		name = log.ContainerNames.Short
@@ -319,5 +319,5 @@ func getContainerName(log model.PageLog, format string) model.PageLogContainerNa
 	if log.Terminated && len(name.ContainerName) > 0 {
 		name.ContainerName += " [TERMINATED]"
 	}
-	return name
+	return &name
 }

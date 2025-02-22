@@ -23,12 +23,13 @@ type PageLogTimestamps struct {
 	Full  string
 }
 
+// PageLog is a Log with metadata. It has mostly pointer fields for efficient copying
 type PageLog struct {
-	Log              Log
-	ContainerColors  ContainerColors
-	ContainerNames   PageLogContainerNames
-	CurrentName      PageLogContainerName
-	Timestamps       PageLogTimestamps
+	Log              *Log
+	ContainerColors  *ContainerColors
+	ContainerNames   *PageLogContainerNames
+	CurrentName      *PageLogContainerName
+	Timestamps       *PageLogTimestamps
 	CurrentTimestamp string
 	Terminated       bool
 	Styles           *style.Styles
@@ -44,7 +45,7 @@ func (l PageLog) Render() linebuffer.LineBufferer {
 		if ts != "" {
 			label += " "
 		}
-		label += l.RenderName(l.CurrentName, true)
+		label += l.RenderName(*l.CurrentName, true)
 	}
 
 	prefix := ts + label
