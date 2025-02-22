@@ -34,9 +34,15 @@ func New(line string) LineBuffer {
 		return LineBuffer{line: line}
 	}
 
+	// keep sparsity 1 for short lines
+	sparsity := 1
+	if len(line) > 1000 {
+		sparsity = 10 // tradeoff between memory usage and CPU. 10 seems to be a good balance
+	}
+
 	lb := LineBuffer{
 		line:     line,
-		sparsity: 10, // tradeoff between memory usage and CPU. 10 seems to be a good balance
+		sparsity: sparsity,
 	}
 
 	lb.ansiCodeIndexes = findAnsiByteRanges(line)
