@@ -2,6 +2,7 @@ package model
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/google/uuid"
@@ -42,24 +43,26 @@ func NewLogScanner(container Container, scanner *bufio.Scanner, cancelK8sStream 
 func (ls LogScanner) StartReadingLogs() {
 	go func() {
 		for ls.logLineScanner != nil && ls.logLineScanner.Scan() {
-			// logs are space-separated, so split on spaces
-			vals := strings.Split(ls.logLineScanner.Text(), " ")
+			bs := ls.logLineScanner.Bytes()
 
-			// logs should have at least a timestamp and content - ignore ones that do not
-			if len(vals) < 2 {
-				dev.Debug(fmt.Sprintf("skipping log: %v", ls.logLineScanner.Text()))
+			// parse everything before first space as timestamp
+			firstSpace := bytes.IndexByte(bs, ' ')
+			if firstSpace < 0 {
+				dev.Debug(fmt.Sprintf("skipping log: %s", bs))
 				continue
 			}
 
 			// timestamps should be parseable as RFC3339 - ignore ones that are not
-			parsedTime, err := time.Parse(time.RFC3339, vals[0])
+			parsedTime, err := time.Parse(time.RFC3339, string(bs[:firstSpace]))
 			if err != nil {
+				dev.Debug(fmt.Sprintf("timestamp not parseable as RFC3339: %s", bs))
 				continue
 			}
 
-			logContent := strings.Join(vals[1:], " ")
-			logContent = strings.ReplaceAll(logContent, "\t", "    ")
+			// content is everything after first space, trimmed
+			logContent := string(bs[firstSpace+1:])
 			logContent = strings.TrimRightFunc(logContent, unicode.IsSpace)
+			logContent = strings.ReplaceAll(logContent, "\t", "    ")
 
 			// precompute LogData here as logs come in as logs are immutable. Having the LogData up front helps
 			// to minimize expensive/repeated re-computation later
