@@ -124,8 +124,9 @@ func (lc PageLogContainer) GetOrderedLogs() []PageLog {
 	var allLogs []PageLog
 	dev.Debug("iterating logs")
 	defer dev.Debug("done iterating logs")
-	for _, k := range lc.allLogs.Keys() {
-		allLogs = append(allLogs, k.(PageLog))
+	allKeys := lc.allLogs.Keys()
+	for i := range allKeys {
+		allLogs = append(allLogs, allKeys[i].(PageLog))
 	}
 	return allLogs
 }
