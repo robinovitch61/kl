@@ -17,6 +17,7 @@ type LineBuffer struct {
 	lineNoAnsiRuneWidths []uint8    // terminal cell widths
 	ansiCodeIndexes      [][]uint32 // slice of startByte, endByte indexes of ansi codes
 	numNoAnsiRunes       int        // number of runes in lineNoAnsi
+	totalWidth           int        // total width in terminal cells
 
 	sparsity                        int      // interval for which to store cumulative cell width
 	sparseRuneIdxToNoAnsiByteOffset []uint32 // rune idx to byte offset of lineNoAnsi, stored every sparsity runes
@@ -86,6 +87,9 @@ func New(line string) LineBuffer {
 			lb.sparseRuneIdxToNoAnsiByteOffset[runeIdx/lb.sparsity] = currentOffset
 			lb.sparseLineNoAnsiCumRuneWidths[runeIdx/lb.sparsity] = cumWidth
 		}
+		if runeIdx == numRunes-1 {
+			lb.totalWidth = int(cumWidth)
+		}
 		currentOffset += uint32(runeNumBytes)
 		runeIdx++
 		byteOffset += runeNumBytes
@@ -99,8 +103,7 @@ func (l LineBuffer) Width() int {
 	if len(l.line) == 0 {
 		return 0
 	}
-	lastRuneIdx := len(l.lineNoAnsiRuneWidths) - 1
-	return int(l.getCumulativeWidthAtRuneIdx(lastRuneIdx))
+	return l.totalWidth
 }
 
 func (l LineBuffer) Content() string {

@@ -36,16 +36,28 @@ type PageLog struct {
 }
 
 func (l PageLog) Render() linebuffer.LineBufferer {
+	return l.render(true)
+}
+
+func (l PageLog) RenderWithoutStyle() linebuffer.LineBufferer {
+	return l.render(false)
+}
+
+func (l PageLog) render(includeStyle bool) linebuffer.LineBufferer {
 	ts := ""
 	if l.CurrentTimestamp != "" {
-		ts = l.Styles.Green.Render(l.CurrentTimestamp)
+		if includeStyle {
+			ts = l.Styles.Green.Render(l.CurrentTimestamp)
+		} else {
+			ts = l.CurrentTimestamp
+		}
 	}
 	label := ""
 	if l.CurrentName.ContainerName != "" {
 		if ts != "" {
 			label += " "
 		}
-		label += l.RenderName(*l.CurrentName, true)
+		label += l.RenderName(*l.CurrentName, includeStyle)
 	}
 
 	prefix := ts + label

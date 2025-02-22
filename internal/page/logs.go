@@ -48,7 +48,7 @@ func NewLogsPage(
 			Height:               height,
 			AllRows:              lc.GetOrderedLogs(),
 			MatchesFilter: func(log model.PageLog, filter filter.Model) bool {
-				return log.Render().Matches(filter)
+				return log.RenderWithoutStyle().Matches(filter)
 			},
 			ViewWhenEmpty: "No logs yet",
 			Styles:        styles,
