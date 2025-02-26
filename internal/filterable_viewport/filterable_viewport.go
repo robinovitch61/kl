@@ -2,13 +2,13 @@ package filterable_viewport
 
 import (
 	"github.com/charmbracelet/bubbles/v2/key"
-	"github.com/charmbracelet/bubbles/v2/textinput"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/filter"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/style"
+	"github.com/robinovitch61/kl/internal/textinput"
 	"github.com/robinovitch61/kl/internal/viewport"
 	"strings"
 )
@@ -271,7 +271,7 @@ func (fv *FilterableViewport[T]) updateVisibleRows() {
 	dev.Debug("Updating visible rows")
 	defer dev.Debug("Done updating visible rows")
 
-	if fv.Filter.ShowContext && fv.Filter.Value() != "" {
+	if fv.Filter.ShowContext && !fv.Filter.IsEmpty() {
 		var entityIndexesMatchingFilter []int
 		for i := range fv.allRows {
 			if fv.matchesFilter(fv.allRows[i], fv.Filter) {
@@ -280,7 +280,7 @@ func (fv *FilterableViewport[T]) updateVisibleRows() {
 		}
 		fv.Filter.SetIndexesMatchingFilter(entityIndexesMatchingFilter)
 		fv.viewport.SetContent(fv.allRows)
-	} else if fv.Filter.Value() != "" {
+	} else if !fv.Filter.IsEmpty() {
 		var filtered []T
 		for i := range fv.allRows {
 			if fv.matchesFilter(fv.allRows[i], fv.Filter) {

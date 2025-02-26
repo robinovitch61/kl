@@ -60,7 +60,7 @@ func newFilterableViewport() FilterableViewport[TestItem] {
 	)
 
 	matchesFilter := func(item TestItem, f filter.Model) bool {
-		if f.Value() == "" {
+		if f.IsEmpty() {
 			return true
 		}
 		if f.IsRegex() {

@@ -99,7 +99,7 @@ func (p EntityPage) ContentForFile() []string {
 }
 
 func (p EntityPage) HasAppliedFilter() bool {
-	return p.filterableViewport.Filter.Value() != ""
+	return !p.filterableViewport.Filter.IsEmpty()
 }
 
 func (p EntityPage) ToggleShowContext() GenericPage {

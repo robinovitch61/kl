@@ -88,7 +88,7 @@ func (p SingleLogPage) ToggleShowContext() GenericPage {
 }
 
 func (p SingleLogPage) HasAppliedFilter() bool {
-	return p.filterableViewport.Filter.Value() != ""
+	return !p.filterableViewport.Filter.IsEmpty()
 }
 
 func (p SingleLogPage) ContentForClipboard() []string {

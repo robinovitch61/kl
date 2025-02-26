@@ -109,7 +109,7 @@ func (p LogsPage) ContentForFile() []string {
 }
 
 func (p LogsPage) HasAppliedFilter() bool {
-	return p.filterableViewport.Filter.Value() != ""
+	return !p.filterableViewport.Filter.IsEmpty()
 }
 
 func (p LogsPage) ToggleShowContext() GenericPage {

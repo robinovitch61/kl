@@ -3,12 +3,12 @@ package filter
 import (
 	"fmt"
 	"github.com/charmbracelet/bubbles/v2/cursor"
-	"github.com/charmbracelet/bubbles/v2/textinput"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/style"
+	"github.com/robinovitch61/kl/internal/textinput"
 	"regexp"
 	"strings"
 )
@@ -68,7 +68,7 @@ func (m Model) View() string {
 		m.textinput.TextStyle = m.styles.Inverse
 		m.textinput.Cursor.Style = lipgloss.NewStyle()
 		m.textinput.Cursor.TextStyle = lipgloss.NewStyle()
-		if len(m.textinput.Value()) > 0 {
+		if !m.textinput.IsEmpty() {
 			// editing existing filter
 			if m.isRegex {
 				m.textinput.Prompt = "regex filter: "
@@ -90,7 +90,7 @@ func (m Model) View() string {
 			}
 		}
 	} else {
-		if len(m.textinput.Value()) > 0 {
+		if !m.textinput.IsEmpty() {
 			// filter applied, not editing
 			if m.isRegex {
 				m.textinput.Prompt = "regex filter: "
@@ -119,19 +119,24 @@ func (m Model) View() string {
 }
 
 func (m Model) Matches(s string) bool {
-	if m.Value() == "" {
+	if m.IsEmpty() {
 		return true
 	}
 	// if invalid regexp, fallback to string matching
 	if m.isRegex && m.regexp != nil {
 		return m.regexp.MatchString(s)
 	} else {
+		// TODO LEO: reduce number of calls to .Value() here
 		return strings.Contains(s, m.Value())
 	}
 }
 
 func (m Model) Value() string {
 	return m.textinput.Value()
+}
+
+func (m Model) IsEmpty() bool {
+	return m.textinput.IsEmpty()
 }
 
 func (m Model) GetContextualMatchIdx() int {
@@ -149,7 +154,7 @@ func (m Model) HasContextualMatches() bool {
 }
 
 func (m Model) HasFilterText() bool {
-	return m.Value() != ""
+	return !m.IsEmpty()
 }
 
 func (m Model) Focused() bool {
