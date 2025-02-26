@@ -245,7 +245,7 @@ func (e Entity) Update(tree EntityTree, delta ContainerDelta) (Entity, EntityTre
 	tree.AddOrReplace(e)
 
 	var actions []EntityAction
-	if delta.Container.Status.State == ContainerTerminated {
+	if delta.Container.Status.State == ContainerTerminated && e.State.MayHaveLogs() {
 		actions = append(actions, MarkLogsTerminated)
 	}
 
