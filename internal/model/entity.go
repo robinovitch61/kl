@@ -19,18 +19,23 @@ type Entity struct {
 }
 
 func (e Entity) Render() linebuffer.LineBufferer {
+	return linebuffer.New(e.Repr())
+}
+
+// Repr is a faster equivalent to e.Render().Content()
+func (e Entity) Repr() string {
 	if e.IsCluster {
-		return linebuffer.New(e.Prefix + e.Container.Cluster)
+		return e.Prefix + e.Container.Cluster
 	} else if e.IsNamespace {
-		return linebuffer.New(e.Prefix + e.Container.Namespace)
+		return e.Prefix + e.Container.Namespace
 	} else if e.IsPodOwner {
 		res := e.Prefix + e.Container.PodOwner
 		if e.Container.PodOwnerMetadata.OwnerType != "" {
 			res += " <" + e.Container.PodOwnerMetadata.OwnerType + ">"
 		}
-		return linebuffer.New(res)
+		return res
 	} else if e.IsPod {
-		return linebuffer.New(e.Prefix + e.Container.Pod)
+		return e.Prefix + e.Container.Pod
 	} else {
 		// for containers
 		res := e.Prefix + e.State.StatusIndicator() + " " + e.Container.Name + " (" + e.Container.Status.State.String()
@@ -66,7 +71,7 @@ func (e Entity) Render() linebuffer.LineBufferer {
 		}
 
 		res += ")"
-		return linebuffer.New(res)
+		return res
 	}
 }
 
