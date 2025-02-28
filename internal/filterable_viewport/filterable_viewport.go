@@ -78,6 +78,7 @@ func (fv FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.
 		fv.updateViewportHeader()
 	}()
 
+	// handle key messages
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		// clearing the filter is always available regardless of filter focus
@@ -136,7 +137,11 @@ func (fv FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.
 				return fv, nil
 			}
 		}
+	}
 
+	// some message types along with key presses, like paste, may also update the filter
+	switch msg := msg.(type) {
+	case tea.KeyMsg, tea.PasteStartMsg, tea.PasteMsg, tea.PasteEndMsg:
 		prevFilterString := fv.Filter.Value()
 
 		fv.Filter, cmd = fv.Filter.Update(msg)
@@ -153,12 +158,8 @@ func (fv FilterableViewport[T]) Update(msg tea.Msg) (FilterableViewport[T], tea.
 				fv.scrollViewportToItemIdx(fv.Filter.GetContextualMatchIdx())
 			}
 		}
-
-		return fv, tea.Batch(cmds...)
 	}
 
-	fv.Filter, cmd = fv.Filter.Update(msg)
-	cmds = append(cmds, cmd)
 	return fv, tea.Batch(cmds...)
 }
 
