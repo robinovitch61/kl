@@ -580,7 +580,7 @@ func getBytesRightOfWidth(nBytes int, buffers []LineBuffer, endBufferIdx int, wi
 		currentBufferWidth := currentBuffer.Width()
 		widthToLeft := currentBufferWidth - widthToRight
 		startRuneIdx := currentBuffer.findRuneIndexWithWidthToLeft(widthToLeft)
-		if startRuneIdx < len(currentBuffer.lineNoAnsiRuneWidths) {
+		if startRuneIdx < currentBuffer.numNoAnsiRunes {
 			startByteOffset := currentBuffer.getByteOffsetAtRuneIdx(startRuneIdx)
 			noAnsiContent := currentBuffer.lineNoAnsi[startByteOffset:]
 			if len(noAnsiContent) >= nBytes {

@@ -14,7 +14,7 @@ import (
 type LineBuffer struct {
 	line                 string     // underlying string with ansi codes. utf-8 encoded bytes
 	lineNoAnsi           string     // line without ansi codes. utf-8 encoded bytes
-	lineNoAnsiRuneWidths []uint8    // terminal cell widths
+	lineNoAnsiRuneWidths []uint8    // packed terminal cell widths, 4 widths per byte (2 bits each)
 	ansiCodeIndexes      [][]uint32 // slice of startByte, endByte indexes of ansi codes
 	numNoAnsiRunes       int        // number of runes in lineNoAnsi
 	totalWidth           int        // total width in terminal cells
@@ -73,7 +73,9 @@ func New(line string) LineBuffer {
 	lb.sparseRuneIdxToNoAnsiByteOffset = make([]uint32, sparseLen)
 	lb.sparseLineNoAnsiCumRuneWidths = make([]uint32, sparseLen)
 
-	lb.lineNoAnsiRuneWidths = make([]uint8, numRunes)
+	// calculate size needed for packed rune widths (4 widths per byte)
+	packedLen := (numRunes + 3) / 4
+	lb.lineNoAnsiRuneWidths = make([]uint8, packedLen)
 
 	var currentOffset uint32
 	var cumWidth uint32
@@ -81,7 +83,14 @@ func New(line string) LineBuffer {
 	for byteOffset := 0; byteOffset < len(lb.lineNoAnsi); {
 		r, runeNumBytes := utf8.DecodeRuneInString(lb.lineNoAnsi[byteOffset:])
 		width := uint8(runewidth.RuneWidth(r))
-		lb.lineNoAnsiRuneWidths[runeIdx] = width
+
+		// pack 4 widths per byte (2 bits each)
+		packedIdx := runeIdx / 4
+		bitPos := (runeIdx % 4) * 2
+		// clear the 2 bits at the position and set the new width
+		lb.lineNoAnsiRuneWidths[packedIdx] &= ^(uint8(3) << bitPos)
+		lb.lineNoAnsiRuneWidths[packedIdx] |= width << bitPos
+
 		cumWidth += uint32(width)
 		if runeIdx%lb.sparsity == 0 {
 			lb.sparseRuneIdxToNoAnsiByteOffset[runeIdx/lb.sparsity] = currentOffset
@@ -123,7 +132,7 @@ func (l LineBuffer) Take(
 	widthToLeft = min(widthToLeft, l.Width())
 	startRuneIdx := l.findRuneIndexWithWidthToLeft(widthToLeft)
 
-	if startRuneIdx >= len(l.lineNoAnsiRuneWidths) || takeWidth == 0 {
+	if startRuneIdx >= l.numNoAnsiRunes || takeWidth == 0 {
 		return "", 0
 	}
 
@@ -133,9 +142,9 @@ func (l LineBuffer) Take(
 	startByteOffset := l.getByteOffsetAtRuneIdx(startRuneIdx)
 
 	runesWritten := 0
-	for ; remainingWidth > 0 && leftRuneIdx < len(l.lineNoAnsiRuneWidths); leftRuneIdx++ {
+	for ; remainingWidth > 0 && leftRuneIdx < l.numNoAnsiRunes; leftRuneIdx++ {
 		r := l.runeAt(leftRuneIdx)
-		runeWidth := l.lineNoAnsiRuneWidths[leftRuneIdx]
+		runeWidth := l.getRuneWidth(leftRuneIdx)
 		if int(runeWidth) > remainingWidth {
 			break
 		}
@@ -157,7 +166,7 @@ func (l LineBuffer) Take(
 
 	// write the subsequent zero-width runes, e.g. the accent on an 'e'
 	if result.Len() > 0 {
-		for ; leftRuneIdx < len(l.lineNoAnsiRuneWidths); leftRuneIdx++ {
+		for ; leftRuneIdx < l.numNoAnsiRunes; leftRuneIdx++ {
 			r := l.runeAt(leftRuneIdx)
 			if runewidth.RuneWidth(r) == 0 {
 				result.WriteRune(r)
@@ -175,7 +184,7 @@ func (l LineBuffer) Take(
 	}
 
 	// apply left/right line continuation indicators
-	if len(continuation) > 0 && (startRuneIdx > 0 || leftRuneIdx < len(l.lineNoAnsiRuneWidths)) {
+	if len(continuation) > 0 && (startRuneIdx > 0 || leftRuneIdx < l.numNoAnsiRunes) {
 		continuationRunes := []rune(continuation)
 
 		// if more runes to the left of the result, replace start runes with continuation indicator
@@ -184,7 +193,7 @@ func (l LineBuffer) Take(
 		}
 
 		// if more runes to the right, replace final runes in result with continuation indicator
-		if leftRuneIdx < len(l.lineNoAnsiRuneWidths) {
+		if leftRuneIdx < l.numNoAnsiRunes {
 			res = replaceEndWithContinuation(res, continuationRunes)
 		}
 	}
@@ -223,7 +232,7 @@ func (l LineBuffer) WrappedLines(
 		return []string{l.line}
 	}
 
-	lastRuneIdx := len(l.lineNoAnsiRuneWidths) - 1
+	lastRuneIdx := l.numNoAnsiRunes - 1
 	totalWidth := l.getCumulativeWidthAtRuneIdx(lastRuneIdx)
 	totalLines := (int(totalWidth) + width - 1) / width
 	return getWrappedLines(
@@ -289,6 +298,17 @@ func (l LineBuffer) getByteOffsetAtRuneIdx(runeIdx int) uint32 {
 	return byteOffset
 }
 
+// getRuneWidth extracts the width of a rune from the packed array
+func (l LineBuffer) getRuneWidth(runeIdx int) uint8 {
+	if runeIdx < 0 || runeIdx >= l.numNoAnsiRunes {
+		return 0
+	}
+
+	packedIdx := runeIdx / 4
+	bitPos := (runeIdx % 4) * 2
+	return (l.lineNoAnsiRuneWidths[packedIdx] >> bitPos) & 3
+}
+
 func (l LineBuffer) getCumulativeWidthAtRuneIdx(runeIdx int) uint32 {
 	if runeIdx < 0 {
 		return 0
@@ -308,7 +328,7 @@ func (l LineBuffer) getCumulativeWidthAtRuneIdx(runeIdx int) uint32 {
 	// sum the widths from the last stored point to our target index
 	var additionalWidth uint32
 	for i := baseRuneIdx + 1; i <= runeIdx; i++ {
-		additionalWidth += uint32(l.lineNoAnsiRuneWidths[i])
+		additionalWidth += uint32(l.getRuneWidth(i))
 	}
 
 	return l.sparseLineNoAnsiCumRuneWidths[sparseIdx] + additionalWidth
@@ -319,16 +339,16 @@ func (l LineBuffer) findRuneIndexWithWidthToLeft(widthToLeft int) int {
 	if widthToLeft < 0 {
 		panic("widthToLeft less than 0")
 	}
-	if widthToLeft == 0 || len(l.lineNoAnsiRuneWidths) == 0 {
+	if widthToLeft == 0 || l.numNoAnsiRunes == 0 {
 		return 0
 	}
 	if widthToLeft > l.Width() {
 		panic("widthToLeft greater than total width")
 	}
 
-	left, right := 0, len(l.lineNoAnsiRuneWidths)-1
+	left, right := 0, l.numNoAnsiRunes-1
 	if l.getCumulativeWidthAtRuneIdx(right) < uint32(widthToLeft) {
-		return len(l.lineNoAnsiRuneWidths)
+		return l.numNoAnsiRunes
 	}
 
 	for left < right {
