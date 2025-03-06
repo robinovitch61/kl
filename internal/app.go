@@ -47,7 +47,7 @@ type Model struct {
 	client               client.Client
 	cancel               context.CancelFunc
 	pages                map[page.Type]page.GenericPage
-	containerListeners   []model.ContainerListener
+	containerListeners   []client.ContainerListener
 	focusedPageType      page.Type
 	rightPageType        page.Type
 	fullScreen           bool

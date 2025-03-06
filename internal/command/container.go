@@ -10,7 +10,7 @@ import (
 )
 
 type GetContainerListenerMsg struct {
-	Listener model.ContainerListener
+	Listener client.ContainerListener
 	Err      error
 }
 
@@ -35,14 +35,14 @@ func GetContainerListenerCmd(
 }
 
 type GetContainerDeltasMsg struct {
-	Listener model.ContainerListener
+	Listener client.ContainerListener
 	DeltaSet model.ContainerDeltaSet
 	Err      error
 }
 
 func GetNextContainerDeltasCmd(
 	client client.Client,
-	listener model.ContainerListener,
+	listener client.ContainerListener,
 	duration time.Duration,
 ) tea.Cmd {
 	return func() tea.Msg {

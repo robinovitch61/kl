@@ -26,10 +26,10 @@ type Client interface {
 		matchers model.Matchers,
 		selector labels.Selector,
 		ignorePodOwnerTypes []string,
-	) (model.ContainerListener, error)
+	) (ContainerListener, error)
 
 	// CollectContainerDeltasForDuration collects container deltas from a listener for a given duration
-	CollectContainerDeltasForDuration(listener model.ContainerListener, duration time.Duration) (model.ContainerDeltaSet, error)
+	CollectContainerDeltasForDuration(listener ContainerListener, duration time.Duration) (model.ContainerDeltaSet, error)
 
 	// GetContainerStatus returns the status of a container
 	GetContainerStatus(container model.Container) (model.ContainerStatus, error)
@@ -50,13 +50,20 @@ func NewClient(ctx context.Context, clusterToClientset map[string]*kubernetes.Cl
 	}
 }
 
+type ContainerListener struct {
+	Cluster            string
+	Namespace          string
+	Stop               func()
+	containerDeltaChan chan model.ContainerDelta
+}
+
 func (c clientImpl) GetContainerListener(
 	cluster,
 	namespace string,
 	matchers model.Matchers,
 	selector labels.Selector,
 	ignorePodOwnerTypes []string,
-) (model.ContainerListener, error) {
+) (ContainerListener, error) {
 	deltaChan := make(chan model.ContainerDelta, 100)
 	stopChan := make(chan struct{})
 
@@ -113,7 +120,7 @@ func (c clientImpl) GetContainerListener(
 		},
 	})
 	if err != nil {
-		return model.ContainerListener{}, fmt.Errorf("error adding event handler: %v", err)
+		return ContainerListener{}, fmt.Errorf("error adding event handler: %v", err)
 	}
 
 	go func() {
@@ -122,7 +129,7 @@ func (c clientImpl) GetContainerListener(
 
 	if !cache.WaitForCacheSync(stopChan, podInformer.HasSynced) {
 		close(stopChan)
-		return model.ContainerListener{}, fmt.Errorf("timed out waiting for caches to sync")
+		return ContainerListener{}, fmt.Errorf("timed out waiting for caches to sync")
 	}
 
 	stop := func() {
@@ -130,16 +137,16 @@ func (c clientImpl) GetContainerListener(
 		close(deltaChan)
 	}
 
-	return model.ContainerListener{
+	return ContainerListener{
 		Cluster:            cluster,
 		Namespace:          namespace,
-		ContainerDeltaChan: deltaChan,
+		containerDeltaChan: deltaChan,
 		Stop:               stop,
 	}, nil
 }
 
 func (c clientImpl) CollectContainerDeltasForDuration(
-	listener model.ContainerListener,
+	listener ContainerListener,
 	duration time.Duration,
 ) (model.ContainerDeltaSet, error) {
 	var deltas model.ContainerDeltaSet
@@ -147,7 +154,7 @@ func (c clientImpl) CollectContainerDeltasForDuration(
 
 	for {
 		select {
-		case containerDelta, ok := <-listener.ContainerDeltaChan:
+		case containerDelta, ok := <-listener.containerDeltaChan:
 			if !ok {
 				return model.ContainerDeltaSet{}, fmt.Errorf("add/update pod channel closed")
 			}
