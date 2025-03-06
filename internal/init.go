@@ -52,6 +52,7 @@ func initializedModel(m Model) (Model, tea.Cmd, error) {
 	return m, tea.Batch(cmds...), nil
 }
 
+// TODO LEO: make this part of client initialization
 func initializeKubeConfig(m Model) (Model, error) {
 	rawKubeConfig, loadingRules, err := getKubeConfig(m.config.KubeConfigPath)
 	if err != nil {
