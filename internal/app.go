@@ -12,7 +12,7 @@ import (
 	"github.com/robinovitch61/kl/internal/constants"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/fileio"
-	"github.com/robinovitch61/kl/internal/k8s"
+	"github.com/robinovitch61/kl/internal/k8s/client"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/message"
 	"github.com/robinovitch61/kl/internal/model"
@@ -44,7 +44,7 @@ type Model struct {
 	containerToShortName func(model.Container) (model.PageLogContainerName, error)
 	containerIdToColors  map[string]model.ContainerColors
 	pageLogBuffer        []model.PageLog
-	client               k8s.Client
+	client               client.Client
 	cancel               context.CancelFunc
 	pages                map[page.Type]page.GenericPage
 	containerListeners   []model.ContainerListener
@@ -381,8 +381,8 @@ func (m Model) changeFocusedPage(newPage page.Type) (Model, tea.Cmd) {
 func (m Model) cleanupCmd() tea.Cmd {
 	return func() tea.Msg {
 		for _, cl := range m.containerListeners {
-			if cl.CleanupFunc != nil {
-				cl.CleanupFunc()
+			if cl.Stop != nil {
+				cl.Stop()
 			}
 		}
 
@@ -619,7 +619,7 @@ func (m Model) doSelectionActions(selectionActions map[model.Entity]bool) (Model
 	return m, tea.Batch(cmds...)
 }
 
-func (m Model) getStartLogScannerCmd(client k8s.Client, entity model.Entity, sinceTime time.Time) (Model, tea.Cmd) {
+func (m Model) getStartLogScannerCmd(client client.Client, entity model.Entity, sinceTime time.Time) (Model, tea.Cmd) {
 	// ensure the entity is a container
 	err := entity.AssertIsContainer()
 	if err != nil {

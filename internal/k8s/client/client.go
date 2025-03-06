@@ -1,4 +1,4 @@
-package k8s
+package client
 
 import (
 	"bufio"
@@ -125,7 +125,7 @@ func (c clientImpl) GetContainerListener(
 		return model.ContainerListener{}, fmt.Errorf("timed out waiting for caches to sync")
 	}
 
-	cleanupFunc := func() {
+	stop := func() {
 		close(stopChan)
 		close(deltaChan)
 	}
@@ -134,8 +134,7 @@ func (c clientImpl) GetContainerListener(
 		Cluster:            cluster,
 		Namespace:          namespace,
 		ContainerDeltaChan: deltaChan,
-		StopChan:           stopChan,
-		CleanupFunc:        cleanupFunc,
+		Stop:               stop,
 	}, nil
 }
 

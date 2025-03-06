@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/command"
 	"github.com/robinovitch61/kl/internal/dev"
-	"github.com/robinovitch61/kl/internal/k8s"
+	"github.com/robinovitch61/kl/internal/k8s/client"
 	"github.com/robinovitch61/kl/internal/message"
 	"github.com/robinovitch61/kl/internal/model"
 	"github.com/robinovitch61/kl/internal/page"
@@ -82,7 +82,7 @@ func initializeKubeConfig(m Model) (Model, error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	m.cancel = cancel
-	m.client = k8s.NewClient(ctx, clusterToClientSet)
+	m.client = client.NewClient(ctx, clusterToClientSet)
 	m.entityTree = model.NewEntityTree(m.allClusterNamespaces)
 
 	m.termStyleData = style.NewTermStyleData()

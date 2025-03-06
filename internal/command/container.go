@@ -3,7 +3,7 @@ package command
 import (
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/robinovitch61/kl/internal/k8s"
+	"github.com/robinovitch61/kl/internal/k8s/client"
 	"github.com/robinovitch61/kl/internal/model"
 	"k8s.io/apimachinery/pkg/labels"
 	"time"
@@ -15,7 +15,7 @@ type GetContainerListenerMsg struct {
 }
 
 func GetContainerListenerCmd(
-	client k8s.Client,
+	client client.Client,
 	cluster, namespace string,
 	matchers model.Matchers,
 	selector labels.Selector,
@@ -41,7 +41,7 @@ type GetContainerDeltasMsg struct {
 }
 
 func GetNextContainerDeltasCmd(
-	client k8s.Client,
+	client client.Client,
 	listener model.ContainerListener,
 	duration time.Duration,
 ) tea.Cmd {

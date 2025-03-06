@@ -4,7 +4,7 @@ import (
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/dev"
-	"github.com/robinovitch61/kl/internal/k8s"
+	"github.com/robinovitch61/kl/internal/k8s/client"
 	"github.com/robinovitch61/kl/internal/model"
 	"time"
 )
@@ -15,7 +15,7 @@ type StartedLogScannerMsg struct {
 }
 
 func StartLogScannerCmd(
-	client k8s.Client,
+	client client.Client,
 	container model.Container,
 	sinceTime time.Time,
 ) tea.Cmd {
