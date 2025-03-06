@@ -537,7 +537,43 @@ func (m Model) handleEntitiesPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 	if key.Matches(msg, m.keyMap.Enter) {
 		selected, selectionActions := m.pages[m.focusedPageType].(page.EntityPage).GetSelectionActions()
 		if len(selectionActions) > constants.ConfirmSelectionActionsThreshold {
-			return m.promptToConfirmSelectionActions(selected, selectionActions)
+			// display a prompt to confirm selection actions
+			// use the terminology select & deselect instead of activate, get log scanner, etc.
+			var numToActivate, numToDeactivate int
+			for _, getLogScanner := range selectionActions {
+				if getLogScanner {
+					numToActivate++
+				} else {
+					numToDeactivate++
+				}
+			}
+			topLine := fmt.Sprintf("Select %d visible containers", numToActivate)
+			if numToActivate > 0 && numToDeactivate > 0 {
+				topLine = fmt.Sprintf("Select %d & deselect %d visible containers", numToActivate, numToDeactivate)
+			} else if numToDeactivate > 0 {
+				topLine = fmt.Sprintf("Deselect %d visible containers", numToDeactivate)
+			}
+			topLine = fmt.Sprintf("%s for %s", topLine, selected.Type())
+			bottomLine := fmt.Sprintf("%s?", selected.Container.HumanReadable())
+			text := []string{topLine, bottomLine}
+			return m.promptToConfirmSelectionActions(text, selectionActions)
+		} else {
+			return m.doSelectionActions(selectionActions)
+		}
+	}
+
+	// handle deselecting all containers
+	if key.Matches(msg, m.keyMap.DeselectAll) {
+		selectionActions := make(map[model.Entity]bool)
+		containerEntities := m.entityTree.GetContainerEntities()
+		for i := range containerEntities {
+			if !containerEntities[i].State.ActivatesWhenSelected() {
+				selectionActions[containerEntities[i]] = false
+			}
+		}
+		if len(selectionActions) > constants.ConfirmSelectionActionsThreshold {
+			text := []string{fmt.Sprintf("Deselect all %d containers?", len(selectionActions))}
+			return m.promptToConfirmSelectionActions(text, selectionActions)
 		} else {
 			return m.doSelectionActions(selectionActions)
 		}
@@ -555,26 +591,7 @@ func (m Model) handleEntitiesPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) promptToConfirmSelectionActions(selected model.Entity, selectionActions map[model.Entity]bool) (Model, tea.Cmd) {
-	// display a prompt to confirm selection actions
-	// use the terminology select & deselect instead of activate, get log scanner, etc.
-	var numToActivate, numToDeactivate int
-	for _, getLogScanner := range selectionActions {
-		if getLogScanner {
-			numToActivate++
-		} else {
-			numToDeactivate++
-		}
-	}
-	topLine := fmt.Sprintf("Select %d visible containers", numToActivate)
-	if numToActivate > 0 && numToDeactivate > 0 {
-		topLine = fmt.Sprintf("Select %d & deselect %d visible containers", numToActivate, numToDeactivate)
-	} else if numToDeactivate > 0 {
-		topLine = fmt.Sprintf("Deselect %d visible containers", numToDeactivate)
-	}
-	topLine = fmt.Sprintf("%s for %s", topLine, selected.Type())
-	bottomLine := fmt.Sprintf("%s?", selected.Container.HumanReadable())
-	text := []string{topLine, bottomLine}
+func (m Model) promptToConfirmSelectionActions(text []string, selectionActions map[model.Entity]bool) (Model, tea.Cmd) {
 	m.prompt = prompt.New(true, m.width, m.height-m.topBarHeight, text, m.styles.Inverse)
 	m.whenPromptConfirm = func() (Model, tea.Cmd) { return m.doSelectionActions(selectionActions) }
 	return m, nil

@@ -8,12 +8,12 @@ import (
 
 func MakeHelp(keyMap keymap.KeyMap, keyColStyle lipgloss.Style) string {
 	title := lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1).Render("Help (press any key to hide)")
-	rowsPerCol := 10
+	rowsPerCol := 11
 
 	generalHelp := lipgloss.JoinVertical(
 		lipgloss.Center,
 		"",
-		formatKeyBindings(keymap.GlobalKeyBindings(keyMap), rowsPerCol, keyColStyle),
+		formatKeyBindings(keymap.DescriptiveKeyBindings(keyMap), rowsPerCol, keyColStyle),
 		"",
 		formatKeyBindings(keymap.LookbackKeyBindings(keyMap), 6, keyColStyle),
 	)

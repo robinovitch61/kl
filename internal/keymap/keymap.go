@@ -9,6 +9,7 @@ type KeyMap struct {
 	Copy                key.Binding
 	Context             key.Binding
 	Enter               key.Binding
+	DeselectAll         key.Binding
 	Filter              key.Binding
 	FilterRegex         key.Binding
 	FilterNextRow       key.Binding
@@ -60,6 +61,10 @@ func DefaultKeyMap() KeyMap {
 		Enter: key.NewBinding(
 			key.WithKeys("enter"),
 			key.WithHelp("enter", ""), // means different things on different pages
+		),
+		DeselectAll: key.NewBinding(
+			key.WithKeys("shift+r"),
+			key.WithHelp("R", "deselect all containers"),
 		),
 		Filter: key.NewBinding(
 			key.WithKeys("/"),
@@ -200,9 +205,10 @@ func LookbackKeyBindings(km KeyMap) []key.Binding {
 	}
 }
 
-func GlobalKeyBindings(km KeyMap) []key.Binding {
-	// available from anywhere on the app
+func DescriptiveKeyBindings(km KeyMap) []key.Binding {
 	return []key.Binding{
+		WithDesc(km.Enter, "select/deselect containers"),
+		km.DeselectAll,
 		km.Logs,
 		km.LogsFullScreen,
 		km.Selection,

@@ -120,7 +120,7 @@ func (e Entity) Type() string {
 	} else if e.IsNamespace {
 		return "namespace"
 	} else if e.IsPodOwner {
-		return "podOwner"
+		return "pod owner"
 	} else if e.IsPod {
 		return "pod"
 	} else {

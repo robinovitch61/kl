@@ -61,6 +61,8 @@ Press `?` in any view to see keyboard shortcuts specific to the current view and
 
 | Key            | Action                                          |
 |----------------|-------------------------------------------------|
+| enter          | in container selection view, toggle logs        |
+| R              | deselect all containers and clear logs          |
 | ↓/j            | down one line                                   |
 | ↑/k            | up one line                                     |
 | d              | down half page                                  |
