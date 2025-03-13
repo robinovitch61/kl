@@ -3,7 +3,6 @@ package internal
 import (
 	"context"
 	"flag"
-	"fmt"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/command"
@@ -13,13 +12,8 @@ import (
 	"github.com/robinovitch61/kl/internal/model"
 	"github.com/robinovitch61/kl/internal/page"
 	"github.com/robinovitch61/kl/internal/style"
-	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" // register OIDC auth provider
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/klog/v2"
-	"os"
-	"strings"
 	"time"
 )
 
@@ -40,152 +34,29 @@ func initializedModel(m Model) (Model, tea.Cmd, error) {
 	// - specifying multiple contexts that point to the same cluster
 	//    - I can't imagine a scenario where this is desired other than wanting multiple namespaces per cluster
 
-	m, err := initializeKubeConfig(m)
+	ctx, cancel := context.WithCancel(context.Background())
+	m.cancel = cancel
+	c, err := client.NewClient(
+		ctx,
+		m.config.KubeConfigPath,
+		m.config.Contexts,
+		m.config.Namespaces,
+		m.config.AllNamespaces,
+	)
 	if err != nil {
 		return m, nil, err
 	}
+	m.client = c
+
+	m.entityTree = model.NewEntityTree(m.client.AllClusterNamespaces())
+
+	m.termStyleData = style.NewTermStyleData()
 
 	m = initializePages(m)
 
 	cmds := createInitialCommands(m)
 
 	return m, tea.Batch(cmds...), nil
-}
-
-// TODO LEO: make this part of client initialization
-func initializeKubeConfig(m Model) (Model, error) {
-	rawKubeConfig, loadingRules, err := getKubeConfig(m.config.KubeConfigPath)
-	if err != nil {
-		return m, err
-	}
-
-	contexts, err := getContexts(m.config.Contexts, rawKubeConfig)
-	if err != nil {
-		return m, err
-	}
-	dev.Debug(fmt.Sprintf("using contexts %v", contexts))
-
-	clusters := getClustersFromContexts(contexts, rawKubeConfig)
-
-	clusterToContext, err := validateUniqueClusters(contexts, clusters, rawKubeConfig)
-	if err != nil {
-		return m, err
-	}
-
-	allClusterNamespaces := buildClusterNamespaces(m, clusters, clusterToContext, rawKubeConfig)
-	m.allClusterNamespaces = allClusterNamespaces
-	logClusterNamespaces(allClusterNamespaces)
-
-	clusterToClientSet, err := createClientSets(clusters, clusterToContext, loadingRules)
-	if err != nil {
-		return m, err
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	m.cancel = cancel
-	m.client = client.NewClient(ctx, clusterToClientSet)
-	m.entityTree = model.NewEntityTree(m.allClusterNamespaces)
-
-	m.termStyleData = style.NewTermStyleData()
-
-	return m, nil
-}
-
-func getClustersFromContexts(contexts []string, rawKubeConfig api.Config) []string {
-	var clusters []string
-	for _, contextName := range contexts {
-		clusterName := rawKubeConfig.Contexts[contextName].Cluster
-		clusters = append(clusters, clusterName)
-	}
-	return clusters
-}
-
-func validateUniqueClusters(contexts []string, clusters []string, rawKubeConfig api.Config) (map[string]string, error) {
-	clusterToContext := make(map[string]string)
-	for _, contextName := range contexts {
-		clusterName := rawKubeConfig.Contexts[contextName].Cluster
-		if existingContext, exists := clusterToContext[clusterName]; exists {
-			return nil, fmt.Errorf("contexts %s and %s both specify cluster %s - unclear which auth/namespace to use", existingContext, contextName, clusterName)
-		}
-		clusterToContext[clusterName] = contextName
-	}
-	return clusterToContext, nil
-}
-
-func buildClusterNamespaces(m Model, clusters []string, clusterToContext map[string]string, rawKubeConfig api.Config) []model.ClusterNamespaces {
-	namespacesString := strings.Trim(strings.TrimSpace(m.config.Namespaces), ",")
-	var namespaces []string
-	if len(namespacesString) > 0 {
-		namespaces = strings.Split(namespacesString, ",")
-	}
-
-	var allClusterNamespaces []model.ClusterNamespaces
-	for _, cluster := range clusters {
-		if m.config.AllNamespaces {
-			cn := model.ClusterNamespaces{Cluster: cluster, Namespaces: []string{""}}
-			allClusterNamespaces = append(allClusterNamespaces, cn)
-		} else if len(namespaces) > 0 {
-			cn := model.ClusterNamespaces{Cluster: cluster, Namespaces: namespaces}
-			allClusterNamespaces = append(allClusterNamespaces, cn)
-		} else {
-			contextName := clusterToContext[cluster]
-			namespace := rawKubeConfig.Contexts[contextName].Namespace
-			if namespace == "" {
-				namespace = "default"
-			}
-			cn := model.ClusterNamespaces{Cluster: cluster, Namespaces: []string{namespace}}
-			allClusterNamespaces = append(allClusterNamespaces, cn)
-		}
-	}
-	return allClusterNamespaces
-}
-
-func logClusterNamespaces(allClusterNamespaces []model.ClusterNamespaces) {
-	for _, cn := range allClusterNamespaces {
-		for _, namespace := range cn.Namespaces {
-			dev.Debug(fmt.Sprintf("using cluster '%s' namespace '%s'", cn.Cluster, namespace))
-		}
-	}
-}
-
-func createClientSets(clusters []string, clusterToContext map[string]string, loadingRules *clientcmd.ClientConfigLoadingRules) (map[string]*kubernetes.Clientset, error) {
-	clusterToClientSet := make(map[string]*kubernetes.Clientset)
-	for _, cluster := range clusters {
-		clientset, err := createClientSetForCluster(cluster, clusterToContext, loadingRules)
-		if err != nil {
-			return nil, err
-		}
-		clusterToClientSet[cluster] = clientset
-	}
-	return clusterToClientSet, nil
-}
-
-func createClientSetForCluster(cluster string, clusterToContext map[string]string, loadingRules *clientcmd.ClientConfigLoadingRules) (*kubernetes.Clientset, error) {
-	contextName, exists := clusterToContext[cluster]
-	if !exists {
-		return nil, fmt.Errorf("no context found for cluster %s in kubeconfig", cluster)
-	}
-
-	// create a config override that sets the current context
-	overrides := &clientcmd.ConfigOverrides{
-		CurrentContext: contextName,
-	}
-
-	dev.Debug(fmt.Sprintf("using context %s for cluster %s", contextName, cluster))
-
-	// create client config with the override
-	clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, overrides)
-	config, err := clientConfig.ClientConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client config for cluster %s: %w", cluster, err)
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create clientset for cluster %s: %w", cluster, err)
-	}
-
-	return clientset, nil
 }
 
 func initializePages(m Model) Model {
@@ -216,7 +87,7 @@ func initializePages(m Model) Model {
 
 func createInitialCommands(m Model) []tea.Cmd {
 	var cmds []tea.Cmd
-	for _, clusterNamespaces := range m.allClusterNamespaces {
+	for _, clusterNamespaces := range m.client.AllClusterNamespaces() {
 		for _, namespace := range clusterNamespaces.Namespaces {
 			cmds = append(cmds, command.GetContainerListenerCmd(
 				m.client,
@@ -236,43 +107,4 @@ func createInitialCommands(m Model) []tea.Cmd {
 	cmds = append(cmds, updateSinceTimeTextCmd)
 
 	return cmds
-}
-
-// getKubeConfig gets kubeconfig, accounting for multiple file paths
-func getKubeConfig(kubeConfigPath string) (api.Config, *clientcmd.ClientConfigLoadingRules, error) {
-	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
-	kubeconfigPaths := strings.Split(kubeConfigPath, string(os.PathListSeparator))
-	dev.Debug(fmt.Sprintf("kubeconfig paths: %v", kubeconfigPaths))
-
-	loadingRules.Precedence = kubeconfigPaths
-	clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, nil)
-	rawKubeConfig, err := clientConfig.RawConfig()
-	if err != nil {
-		return api.Config{}, loadingRules, fmt.Errorf("failed to load kubeconfig: %w", err)
-	}
-	return rawKubeConfig, loadingRules, nil
-}
-
-func getContexts(contextString string, config api.Config) ([]string, error) {
-	contextsString := strings.Trim(strings.TrimSpace(contextString), ",")
-	var contexts []string
-	if len(contextsString) > 0 {
-		contexts = strings.Split(contextsString, ",")
-	}
-
-	if len(contexts) == 0 && config.CurrentContext != "" {
-		contexts = []string{config.CurrentContext}
-	}
-
-	if len(contexts) == 0 {
-		return nil, fmt.Errorf("no contexts specified and no current context found in kubeconfig")
-	}
-
-	for _, c := range contexts {
-		if _, exists := config.Contexts[c]; !exists {
-			return nil, fmt.Errorf("context %s not found in kubeconfig", c)
-		}
-	}
-
-	return contexts, nil
 }

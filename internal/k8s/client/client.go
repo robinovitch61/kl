@@ -19,6 +19,9 @@ import (
 
 // Client is an interface for interacting with a Kubernetes cluster
 type Client interface {
+	// AllClusterNamespaces returns all cluster namespaces
+	AllClusterNamespaces() []model.ClusterNamespaces
+
 	// GetContainerListener returns a listener that emits container deltas for a given cluster and namespace
 	GetContainerListener(
 		cluster,
@@ -39,15 +42,58 @@ type Client interface {
 }
 
 type clientImpl struct {
-	ctx                context.Context
-	clusterToClientset map[string]*kubernetes.Clientset
+	ctx                  context.Context
+	clusterToClientset   map[string]*kubernetes.Clientset
+	allClusterNamespaces []model.ClusterNamespaces
 }
 
-func NewClient(ctx context.Context, clusterToClientset map[string]*kubernetes.Clientset) Client {
-	return clientImpl{
-		ctx:                ctx,
-		clusterToClientset: clusterToClientset,
+// TODO LEO: make these not just strings
+func NewClient(
+	ctx context.Context,
+	kubeConfigPath string,
+	contextString string,
+	namespaceString string,
+	useAllNamespaces bool,
+) (Client, error) {
+	rawKubeConfig, loadingRules, err := getKubeConfig(kubeConfigPath)
+	if err != nil {
+		return clientImpl{}, err
 	}
+
+	contexts, err := getContexts(contextString, rawKubeConfig)
+	if err != nil {
+		return clientImpl{}, err
+	}
+	dev.Debug(fmt.Sprintf("using contexts %v", contexts))
+
+	clusters := getClustersFromContexts(contexts, rawKubeConfig)
+
+	clusterToContext, err := validateUniqueClusters(contexts, clusters, rawKubeConfig)
+	if err != nil {
+		return clientImpl{}, err
+	}
+
+	allClusterNamespaces := buildClusterNamespaces(namespaceString, useAllNamespaces, clusters, clusterToContext, rawKubeConfig)
+	for _, cn := range allClusterNamespaces {
+		for _, namespace := range cn.Namespaces {
+			dev.Debug(fmt.Sprintf("using cluster '%s' namespace '%s'", cn.Cluster, namespace))
+		}
+	}
+
+	clusterToClientSet, err := createClientSets(clusters, clusterToContext, loadingRules)
+	if err != nil {
+		return clientImpl{}, err
+	}
+
+	return clientImpl{
+		ctx:                  ctx,
+		clusterToClientset:   clusterToClientSet,
+		allClusterNamespaces: allClusterNamespaces,
+	}, nil
+}
+
+func (c clientImpl) AllClusterNamespaces() []model.ClusterNamespaces {
+	return c.allClusterNamespaces
 }
 
 type ContainerListener struct {

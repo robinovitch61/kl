@@ -30,7 +30,6 @@ import (
 type Model struct {
 	config               Config
 	keyMap               keymap.KeyMap
-	allClusterNamespaces []model.ClusterNamespaces
 	width, height        int
 	initialized          bool
 	stylesLoaded         bool
