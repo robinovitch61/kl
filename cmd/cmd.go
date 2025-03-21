@@ -289,8 +289,14 @@ func getKubeConfigPath(cmd *cobra.Command) string {
 	return filepath.Join(homeDir(), ".kube", "config")
 }
 
-func getKubeContexts(cmd *cobra.Command) string {
-	return cmd.Flags().Lookup("context").Value.String()
+func getKubeContexts(cmd *cobra.Command) []string {
+	contextsString := cmd.Flags().Lookup("context").Value.String()
+	trimmed := strings.Trim(strings.TrimSpace(contextsString), ",")
+	var contexts []string
+	if len(trimmed) > 0 {
+		contexts = strings.Split(trimmed, ",")
+	}
+	return contexts
 }
 
 func getDescending(cmd *cobra.Command) bool {
@@ -353,8 +359,14 @@ func getLogFilter(cmd *cobra.Command) model.LogFilter {
 	return model.LogFilter{}
 }
 
-func getNamespaces(cmd *cobra.Command) string {
-	return cmd.Flags().Lookup("namespace").Value.String()
+func getNamespaces(cmd *cobra.Command) []string {
+	namespacesString := cmd.Flags().Lookup("namespace").Value.String()
+	trimmed := strings.Trim(strings.TrimSpace(namespacesString), ",")
+	var namespaces []string
+	if len(trimmed) > 0 {
+		namespaces = strings.Split(trimmed, ",")
+	}
+	return namespaces
 }
 
 func getSelector(cmd *cobra.Command) labels.Selector {

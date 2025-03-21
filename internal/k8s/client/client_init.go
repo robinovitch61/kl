@@ -1,65 +1,50 @@
 package client
 
 import (
+	"context"
 	"fmt"
-	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/model"
+	"os"
+	"strings"
+
+	"github.com/robinovitch61/kl/internal/dev"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
-	"os"
-	"strings"
 )
 
-// getKubeConfig gets kubeconfig, accounting for multiple file paths
-func getKubeConfig(kubeConfigPath string) (api.Config, *clientcmd.ClientConfigLoadingRules, error) {
-	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
-	kubeconfigPaths := strings.Split(kubeConfigPath, string(os.PathListSeparator))
-	dev.Debug(fmt.Sprintf("kubeconfig paths: %v", kubeconfigPaths))
-
-	loadingRules.Precedence = kubeconfigPaths
-	clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, nil)
-	rawKubeConfig, err := clientConfig.RawConfig()
+func NewClient(
+	ctx context.Context,
+	kubeConfigPath string,
+	contexts []string,
+	namespaces []string,
+	useAllNamespaces bool,
+) (Client, error) {
+	rawKubeConfig, loadingRules, err := getKubeConfig(kubeConfigPath)
 	if err != nil {
-		return api.Config{}, loadingRules, fmt.Errorf("failed to load kubeconfig: %w", err)
-	}
-	return rawKubeConfig, loadingRules, nil
-}
-
-func getContexts(contextString string, config api.Config) ([]string, error) {
-	contextsString := strings.Trim(strings.TrimSpace(contextString), ",")
-	var contexts []string
-	if len(contextsString) > 0 {
-		contexts = strings.Split(contextsString, ",")
-	}
-
-	if len(contexts) == 0 && config.CurrentContext != "" {
-		contexts = []string{config.CurrentContext}
+		return clientImpl{}, err
 	}
 
 	if len(contexts) == 0 {
-		return nil, fmt.Errorf("no contexts specified and no current context found in kubeconfig")
+		if rawKubeConfig.CurrentContext != "" {
+			dev.Debug(fmt.Sprintf("no contexts specified, using current context %s", rawKubeConfig.CurrentContext))
+			contexts = []string{rawKubeConfig.CurrentContext}
+		} else {
+			return nil, fmt.Errorf("no contexts specified and no current context found in kubeconfig")
+		}
 	}
-
 	for _, c := range contexts {
-		if _, exists := config.Contexts[c]; !exists {
+		if _, exists := rawKubeConfig.Contexts[c]; !exists {
 			return nil, fmt.Errorf("context %s not found in kubeconfig", c)
 		}
 	}
+	dev.Debug(fmt.Sprintf("using contexts %v", contexts))
 
-	return contexts, nil
-}
-
-func getClustersFromContexts(contexts []string, rawKubeConfig api.Config) []string {
-	var clusters []string
-	for _, contextName := range contexts {
-		clusterName := rawKubeConfig.Contexts[contextName].Cluster
-		clusters = append(clusters, clusterName)
+	clusters := make([]string, len(contexts))
+	for i := range contexts {
+		clusters[i] = rawKubeConfig.Contexts[contexts[i]].Cluster
 	}
-	return clusters
-}
 
-func validateUniqueClusters(contexts []string, clusters []string, rawKubeConfig api.Config) (map[string]string, error) {
 	clusterToContext := make(map[string]string)
 	for _, contextName := range contexts {
 		clusterName := rawKubeConfig.Contexts[contextName].Cluster
@@ -67,15 +52,6 @@ func validateUniqueClusters(contexts []string, clusters []string, rawKubeConfig 
 			return nil, fmt.Errorf("contexts %s and %s both specify cluster %s - unclear which auth/namespace to use", existingContext, contextName, clusterName)
 		}
 		clusterToContext[clusterName] = contextName
-	}
-	return clusterToContext, nil
-}
-
-func buildClusterNamespaces(allNamespaces string, useAllNamespaces bool, clusters []string, clusterToContext map[string]string, rawKubeConfig api.Config) []model.ClusterNamespaces {
-	namespacesString := strings.Trim(strings.TrimSpace(allNamespaces), ",")
-	var namespaces []string
-	if len(namespacesString) > 0 {
-		namespaces = strings.Split(namespacesString, ",")
 	}
 
 	var allClusterNamespaces []model.ClusterNamespaces
@@ -96,7 +72,37 @@ func buildClusterNamespaces(allNamespaces string, useAllNamespaces bool, cluster
 			allClusterNamespaces = append(allClusterNamespaces, cn)
 		}
 	}
-	return allClusterNamespaces
+	for _, cn := range allClusterNamespaces {
+		for _, namespace := range cn.Namespaces {
+			dev.Debug(fmt.Sprintf("using cluster '%s' namespace '%s'", cn.Cluster, namespace))
+		}
+	}
+
+	clusterToClientSet, err := createClientSets(clusters, clusterToContext, loadingRules)
+	if err != nil {
+		return clientImpl{}, err
+	}
+
+	return clientImpl{
+		ctx:                  ctx,
+		clusterToClientset:   clusterToClientSet,
+		allClusterNamespaces: allClusterNamespaces,
+	}, nil
+}
+
+// getKubeConfig gets kubeconfig, accounting for multiple file paths
+func getKubeConfig(kubeConfigPath string) (api.Config, *clientcmd.ClientConfigLoadingRules, error) {
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+	kubeconfigPaths := strings.Split(kubeConfigPath, string(os.PathListSeparator))
+	dev.Debug(fmt.Sprintf("kubeconfig paths: %v", kubeconfigPaths))
+
+	loadingRules.Precedence = kubeconfigPaths
+	clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, nil)
+	rawKubeConfig, err := clientConfig.RawConfig()
+	if err != nil {
+		return api.Config{}, loadingRules, fmt.Errorf("failed to load kubeconfig: %w", err)
+	}
+	return rawKubeConfig, loadingRules, nil
 }
 
 func createClientSets(clusters []string, clusterToContext map[string]string, loadingRules *clientcmd.ClientConfigLoadingRules) (map[string]*kubernetes.Clientset, error) {
