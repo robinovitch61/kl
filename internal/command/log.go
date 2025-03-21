@@ -15,7 +15,7 @@ type StartedLogScannerMsg struct {
 }
 
 func StartLogScannerCmd(
-	client client.Client,
+	client client.K8sClient,
 	container model.Container,
 	sinceTime time.Time,
 ) tea.Cmd {

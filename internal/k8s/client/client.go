@@ -17,8 +17,8 @@ import (
 	"time"
 )
 
-// Client is an interface for interacting with a Kubernetes cluster
-type Client interface {
+// K8sClient is an interface for interacting with a Kubernetes cluster
+type K8sClient interface {
 	// AllClusterNamespaces returns all cluster namespaces
 	AllClusterNamespaces() []model.ClusterNamespaces
 

@@ -13,13 +13,13 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 )
 
-func NewClient(
+func NewK8sClient(
 	ctx context.Context,
 	kubeConfigPath string,
 	contexts []string,
 	namespaces []string,
 	useAllNamespaces bool,
-) (Client, error) {
+) (K8sClient, error) {
 	rawKubeConfig, loadingRules, err := getKubeConfig(kubeConfigPath)
 	if err != nil {
 		return clientImpl{}, err

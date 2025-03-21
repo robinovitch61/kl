@@ -15,7 +15,7 @@ type GetContainerListenerMsg struct {
 }
 
 func GetContainerListenerCmd(
-	client client.Client,
+	client client.K8sClient,
 	cluster, namespace string,
 	matchers model.Matchers,
 	selector labels.Selector,
@@ -41,7 +41,7 @@ type GetContainerDeltasMsg struct {
 }
 
 func GetNextContainerDeltasCmd(
-	client client.Client,
+	client client.K8sClient,
 	listener client.ContainerListener,
 	duration time.Duration,
 ) tea.Cmd {
