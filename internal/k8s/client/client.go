@@ -1,4 +1,4 @@
-package k8s
+package client
 
 import (
 	"bufio"
@@ -19,6 +19,9 @@ import (
 
 // Client is an interface for interacting with a Kubernetes cluster
 type Client interface {
+	// AllClusterNamespaces returns all cluster namespaces
+	AllClusterNamespaces() []model.ClusterNamespaces
+
 	// GetContainerListener returns a listener that emits container deltas for a given cluster and namespace
 	GetContainerListener(
 		cluster,
@@ -26,10 +29,10 @@ type Client interface {
 		matchers model.Matchers,
 		selector labels.Selector,
 		ignorePodOwnerTypes []string,
-	) (model.ContainerListener, error)
+	) (ContainerListener, error)
 
 	// CollectContainerDeltasForDuration collects container deltas from a listener for a given duration
-	CollectContainerDeltasForDuration(listener model.ContainerListener, duration time.Duration) (model.ContainerDeltaSet, error)
+	CollectContainerDeltasForDuration(listener ContainerListener, duration time.Duration) (model.ContainerDeltaSet, error)
 
 	// GetContainerStatus returns the status of a container
 	GetContainerStatus(container model.Container) (model.ContainerStatus, error)
@@ -39,15 +42,20 @@ type Client interface {
 }
 
 type clientImpl struct {
-	ctx                context.Context
-	clusterToClientset map[string]*kubernetes.Clientset
+	ctx                  context.Context
+	clusterToClientset   map[string]*kubernetes.Clientset
+	allClusterNamespaces []model.ClusterNamespaces
 }
 
-func NewClient(ctx context.Context, clusterToClientset map[string]*kubernetes.Clientset) Client {
-	return clientImpl{
-		ctx:                ctx,
-		clusterToClientset: clusterToClientset,
-	}
+func (c clientImpl) AllClusterNamespaces() []model.ClusterNamespaces {
+	return c.allClusterNamespaces
+}
+
+type ContainerListener struct {
+	Cluster            string
+	Namespace          string
+	Stop               func()
+	containerDeltaChan chan model.ContainerDelta
 }
 
 func (c clientImpl) GetContainerListener(
@@ -56,7 +64,7 @@ func (c clientImpl) GetContainerListener(
 	matchers model.Matchers,
 	selector labels.Selector,
 	ignorePodOwnerTypes []string,
-) (model.ContainerListener, error) {
+) (ContainerListener, error) {
 	deltaChan := make(chan model.ContainerDelta, 100)
 	stopChan := make(chan struct{})
 
@@ -113,7 +121,7 @@ func (c clientImpl) GetContainerListener(
 		},
 	})
 	if err != nil {
-		return model.ContainerListener{}, fmt.Errorf("error adding event handler: %v", err)
+		return ContainerListener{}, fmt.Errorf("error adding event handler: %v", err)
 	}
 
 	go func() {
@@ -122,25 +130,24 @@ func (c clientImpl) GetContainerListener(
 
 	if !cache.WaitForCacheSync(stopChan, podInformer.HasSynced) {
 		close(stopChan)
-		return model.ContainerListener{}, fmt.Errorf("timed out waiting for caches to sync")
+		return ContainerListener{}, fmt.Errorf("timed out waiting for caches to sync")
 	}
 
-	cleanupFunc := func() {
+	stop := func() {
 		close(stopChan)
 		close(deltaChan)
 	}
 
-	return model.ContainerListener{
+	return ContainerListener{
 		Cluster:            cluster,
 		Namespace:          namespace,
-		ContainerDeltaChan: deltaChan,
-		StopChan:           stopChan,
-		CleanupFunc:        cleanupFunc,
+		containerDeltaChan: deltaChan,
+		Stop:               stop,
 	}, nil
 }
 
 func (c clientImpl) CollectContainerDeltasForDuration(
-	listener model.ContainerListener,
+	listener ContainerListener,
 	duration time.Duration,
 ) (model.ContainerDeltaSet, error) {
 	var deltas model.ContainerDeltaSet
@@ -148,7 +155,7 @@ func (c clientImpl) CollectContainerDeltasForDuration(
 
 	for {
 		select {
-		case containerDelta, ok := <-listener.ContainerDeltaChan:
+		case containerDelta, ok := <-listener.containerDeltaChan:
 			if !ok {
 				return model.ContainerDeltaSet{}, fmt.Errorf("add/update pod channel closed")
 			}

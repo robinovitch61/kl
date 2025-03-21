@@ -8,14 +8,14 @@ import (
 type Config struct {
 	AllNamespaces    bool
 	ContainerLimit   int
-	Contexts         string
+	Contexts         []string
 	Descending       bool
 	IgnoreOwnerTypes []string
 	KubeConfigPath   string
 	LogsView         bool
 	LogFilter        model.LogFilter
 	Matchers         model.Matchers
-	Namespaces       string
+	Namespaces       []string
 	Selector         labels.Selector
 	SinceTime        model.SinceTime
 	Version          string
