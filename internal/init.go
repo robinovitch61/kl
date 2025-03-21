@@ -28,12 +28,6 @@ func initializedModel(m Model) (Model, tea.Cmd, error) {
 	_ = flag.Set("stderrthreshold", "FATAL") // Set threshold to FATAL to suppress most kubernetes client logs
 	_ = flag.Set("v", "0")                   // Set verbosity level to 0
 
-	// Currently intentionally unsupported in config, can revisit in the future but will make config more complicated:
-	// - specifying a specific set of namespaces per context/cluster
-	//    - could potentially edit `--contexts` to have form of `context1[ns1,ns2],context2[ns3,ns4]`
-	// - specifying multiple contexts that point to the same cluster
-	//    - I can't imagine a scenario where this is desired other than wanting multiple namespaces per cluster
-
 	ctx, cancel := context.WithCancel(context.Background())
 	m.cancel = cancel
 	c, err := client.NewClient(

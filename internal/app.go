@@ -3,6 +3,11 @@ package internal
 import (
 	"context"
 	"fmt"
+	"math"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/charmbracelet/bubbles/v2/key"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
@@ -21,10 +26,6 @@ import (
 	"github.com/robinovitch61/kl/internal/style"
 	"github.com/robinovitch61/kl/internal/toast"
 	"github.com/robinovitch61/kl/internal/util"
-	"math"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type Model struct {
@@ -1009,9 +1010,16 @@ func (m Model) doActions(entity model.Entity, actions []model.EntityAction) (Mod
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
-	// TODO: could sanity check here that actions are unique
-
+	// ensure actions are unique to avoid duplicate processing
+	actionSet := make(map[model.EntityAction]bool)
 	for _, action := range actions {
+		if actionSet[action] {
+			dev.Debug(fmt.Sprintf("duplicate action detected: %s", action))
+		}
+		actionSet[action] = true
+	}
+
+	for action := range actionSet {
 		switch action {
 		case model.StartScanner:
 			m, cmd = m.getStartLogScannerCmd(m.client, entity, m.sinceTime.Time)
