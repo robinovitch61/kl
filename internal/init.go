@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"flag"
+	"github.com/robinovitch61/kl/internal/k8s/entity"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
@@ -11,7 +12,6 @@ import (
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/k8s/client"
 	"github.com/robinovitch61/kl/internal/message"
-	"github.com/robinovitch61/kl/internal/model"
 	"github.com/robinovitch61/kl/internal/page"
 	"github.com/robinovitch61/kl/internal/style"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" // register OIDC auth provider
@@ -43,7 +43,7 @@ func initializedModel(m Model) (Model, tea.Cmd, error) {
 	}
 	m.k8sClient = c
 
-	m.components.entityTree = model.NewEntityTree(m.k8sClient.AllClusterNamespaces())
+	m.components.entityTree = entity.NewEntityTree(m.k8sClient.AllClusterNamespaces())
 
 	m.data.termStyleData = style.NewTermStyleData()
 

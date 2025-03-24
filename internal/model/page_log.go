@@ -4,18 +4,16 @@ import (
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/emirpasic/gods/trees/redblacktree"
 	"github.com/robinovitch61/kl/internal/dev"
+	"github.com/robinovitch61/kl/internal/k8s/container"
+	"github.com/robinovitch61/kl/internal/k8s/k8s_log"
+	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 	"github.com/robinovitch61/kl/internal/style"
 	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
 )
 
-type PageLogContainerName struct {
-	Prefix        string
-	ContainerName string
-}
-
 type PageLogContainerNames struct {
-	Short PageLogContainerName
-	Full  PageLogContainerName
+	Short k8s_model.ContainerNameAndPrefix
+	Full  k8s_model.ContainerNameAndPrefix
 }
 
 type PageLogTimestamps struct {
@@ -25,10 +23,10 @@ type PageLogTimestamps struct {
 
 // PageLog is a Log with metadata. It has mostly pointer fields for efficient copying
 type PageLog struct {
-	Log              *Log
-	ContainerColors  *ContainerColors
+	Log              *k8s_log.Log
+	ContainerColors  *container.ContainerColors
 	ContainerNames   *PageLogContainerNames
-	CurrentName      *PageLogContainerName
+	CurrentName      *k8s_model.ContainerNameAndPrefix
 	Timestamps       *PageLogTimestamps
 	CurrentTimestamp string
 	Terminated       bool
@@ -77,7 +75,7 @@ func (l PageLog) Equals(other interface{}) bool {
 	return l.Log.LineBuffer.Content() == otherLog.Log.LineBuffer.Content() && l.Timestamps.Full == otherLog.Timestamps.Full
 }
 
-func (l PageLog) RenderName(name PageLogContainerName, includeStyle bool) string {
+func (l PageLog) RenderName(name k8s_model.ContainerNameAndPrefix, includeStyle bool) string {
 	var renderedPrefix, renderedName string
 	if includeStyle {
 		renderedPrefix = lipgloss.NewStyle().Background(l.ContainerColors.ID).Foreground(lipgloss.Color("#000000")).Render(name.Prefix)

@@ -1,4 +1,4 @@
-package model
+package k8s_log
 
 import (
 	"bufio"
@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/robinovitch61/kl/internal/dev"
+	"github.com/robinovitch61/kl/internal/k8s/container"
 	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
 	"strings"
 	"time"
@@ -16,11 +17,11 @@ import (
 type Log struct {
 	Timestamp  time.Time
 	LineBuffer linebuffer.LineBuffer
-	Container  Container
+	Container  container.Container
 }
 
 type LogScanner struct {
-	Container      Container
+	Container      container.Container
 	LogChan        chan Log
 	ErrChan        chan error
 	cancel         context.CancelFunc
@@ -28,9 +29,9 @@ type LogScanner struct {
 	logLineScanner *bufio.Scanner
 }
 
-func NewLogScanner(container Container, scanner *bufio.Scanner, cancelK8sStream context.CancelFunc) LogScanner {
+func NewLogScanner(ct container.Container, scanner *bufio.Scanner, cancelK8sStream context.CancelFunc) LogScanner {
 	return LogScanner{
-		Container:      container,
+		Container:      ct,
 		LogChan:        make(chan Log, 1), // this value doesn't seem to affect performance much
 		ErrChan:        make(chan error, 1),
 		cancel:         cancelK8sStream,

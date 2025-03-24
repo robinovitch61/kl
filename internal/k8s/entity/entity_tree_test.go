@@ -1,8 +1,10 @@
-package model
+package entity
 
 import (
 	"fmt"
 	"github.com/robinovitch61/kl/internal/filter"
+	"github.com/robinovitch61/kl/internal/k8s/container"
+	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"strings"
 	"testing"
@@ -10,48 +12,48 @@ import (
 
 var (
 	cluster1 = Entity{
-		Container: Container{Cluster: "cluster1"},
+		Container: container.Container{Cluster: "cluster1"},
 		IsCluster: true,
 	}
 	cluster2 = Entity{
-		Container: Container{Cluster: "cluster2"},
+		Container: container.Container{Cluster: "cluster2"},
 		IsCluster: true,
 	}
 	namespace1 = Entity{
-		Container:   Container{Cluster: "cluster1", Namespace: "namespace1"},
+		Container:   container.Container{Cluster: "cluster1", Namespace: "namespace1"},
 		IsNamespace: true,
 	}
 	namespace2 = Entity{
-		Container:   Container{Cluster: "cluster2", Namespace: "namespace2"},
+		Container:   container.Container{Cluster: "cluster2", Namespace: "namespace2"},
 		IsNamespace: true,
 	}
 	podOwner1 = Entity{
-		Container:  Container{Cluster: "cluster1", Namespace: "namespace1", PodOwner: "podOwner1"},
+		Container:  container.Container{Cluster: "cluster1", Namespace: "namespace1", PodOwner: "podOwner1"},
 		IsPodOwner: true,
 	}
 	podOwner2 = Entity{
-		Container:  Container{Cluster: "cluster2", Namespace: "namespace2", PodOwner: "podOwner2"},
+		Container:  container.Container{Cluster: "cluster2", Namespace: "namespace2", PodOwner: "podOwner2"},
 		IsPodOwner: true,
 	}
 	pod1 = Entity{
-		Container: Container{Cluster: "cluster1", Namespace: "namespace1", PodOwner: "podOwner1", Pod: "pod1"},
+		Container: container.Container{Cluster: "cluster1", Namespace: "namespace1", PodOwner: "podOwner1", Pod: "pod1"},
 		IsPod:     true,
 	}
 	pod2 = Entity{
-		Container: Container{Cluster: "cluster2", Namespace: "namespace2", PodOwner: "podOwner2", Pod: "pod2"},
+		Container: container.Container{Cluster: "cluster2", Namespace: "namespace2", PodOwner: "podOwner2", Pod: "pod2"},
 		IsPod:     true,
 	}
 	container1Cluster1 = Entity{
-		Container: Container{Cluster: "cluster1", Namespace: "namespace1", PodOwner: "podOwner1", Pod: "pod1", Name: "container1"},
+		Container: container.Container{Cluster: "cluster1", Namespace: "namespace1", PodOwner: "podOwner1", Pod: "pod1", Name: "container1"},
 	}
 	container2Cluster1 = Entity{
-		Container: Container{Cluster: "cluster1", Namespace: "namespace1", PodOwner: "podOwner1", Pod: "pod1", Name: "container2"},
+		Container: container.Container{Cluster: "cluster1", Namespace: "namespace1", PodOwner: "podOwner1", Pod: "pod1", Name: "container2"},
 	}
 	container3Cluster1 = Entity{
-		Container: Container{Cluster: "cluster1", Namespace: "namespace1", PodOwner: "podOwner1", Pod: "pod1", Name: "container3"},
+		Container: container.Container{Cluster: "cluster1", Namespace: "namespace1", PodOwner: "podOwner1", Pod: "pod1", Name: "container3"},
 	}
 	container1Cluster2 = Entity{
-		Container: Container{Cluster: "cluster2", Namespace: "namespace2", PodOwner: "podOwner2", Pod: "pod2", Name: "container1"},
+		Container: container.Container{Cluster: "cluster2", Namespace: "namespace2", PodOwner: "podOwner2", Pod: "pod2", Name: "container1"},
 	}
 	emptyFilter           = newFilter("", false)
 	container1Filter      = newFilter("container1", false)
@@ -62,7 +64,7 @@ var (
 )
 
 func newTree() EntityTree {
-	allContextNameSpaces := []ClusterNamespaces{
+	allContextNameSpaces := []k8s_model.ClusterNamespaces{
 		{
 			Cluster:    "cluster1",
 			Namespaces: []string{"namespace1", "namespace2"},
@@ -92,7 +94,7 @@ func TestEntityTreeImpl_AddOrReplaceContainerWithPodMetadata(t *testing.T) {
 	tree := newTree()
 
 	cm := container1Cluster1
-	pomd := PodOwnerMetadata{OwnerType: "PodOwner"}
+	pomd := k8s_model.PodOwnerMetadata{OwnerType: "PodOwner"}
 	cm.Container.PodOwnerMetadata = pomd
 	tree.AddOrReplace(cm)
 
@@ -148,7 +150,7 @@ func TestEntityTreeImpl_AddOrReplaceUpdate(t *testing.T) {
 func TestEntityTreeImpl_GetVisibleEntities(t *testing.T) {
 	tree := newTree()
 	c1c2 := container1Cluster2
-	c1c2.Container.PodOwnerMetadata = PodOwnerMetadata{OwnerType: "Deployment"}
+	c1c2.Container.PodOwnerMetadata = k8s_model.PodOwnerMetadata{OwnerType: "Deployment"}
 	tree.AddOrReplace(container1Cluster1)
 	tree.AddOrReplace(container2Cluster1)
 	tree.AddOrReplace(c1c2)
@@ -205,7 +207,7 @@ func TestEntityTreeImpl_GetClusterNamespaces_SetExplicitly(t *testing.T) {
 	tree.AddOrReplace(container1Cluster2)
 
 	got := tree.GetClusterNamespaces()
-	expected := []ClusterNamespaces{
+	expected := []k8s_model.ClusterNamespaces{
 		{
 			Cluster:    "cluster1",
 			Namespaces: []string{"namespace1", "namespace2"},
@@ -234,12 +236,12 @@ func TestEntityTreeImpl_GetClusterNamespaces_SetExplicitly(t *testing.T) {
 }
 
 func TestEntityTreeImpl_GetClusterNamespaces_SetImplicitly(t *testing.T) {
-	tree := NewEntityTree([]ClusterNamespaces{{Cluster: "cluster1"}, {Cluster: "cluster2"}})
+	tree := NewEntityTree([]k8s_model.ClusterNamespaces{{Cluster: "cluster1"}, {Cluster: "cluster2"}})
 	tree.AddOrReplace(container1Cluster1)
 	tree.AddOrReplace(container1Cluster2)
 
 	got := tree.GetClusterNamespaces()
-	expected := []ClusterNamespaces{
+	expected := []k8s_model.ClusterNamespaces{
 		{
 			Cluster:    "cluster1",
 			Namespaces: []string{"namespace1"},
@@ -399,7 +401,7 @@ func TestEntityTreeImpl_GetSelectionActions(t *testing.T) {
 	selectedContainer1Cluster1.State = Scanning
 	deselectedButRunningContainer1Cluster2 := container1Cluster2
 	deselectedButRunningContainer1Cluster2.State = Inactive
-	deselectedButRunningContainer1Cluster2.Container.Status.State = ContainerRunning
+	deselectedButRunningContainer1Cluster2.Container.Status.State = container.ContainerRunning
 	tree.AddOrReplace(selectedContainer1Cluster1)
 	tree.AddOrReplace(container2Cluster1)
 	tree.AddOrReplace(deselectedButRunningContainer1Cluster2)
@@ -579,7 +581,7 @@ func TestEntityTreeImpl_UpdatePrettyPrintPrefixes_Multi(t *testing.T) {
 }
 
 func TestEntityTreeImpl_ContainerToShortName(t *testing.T) {
-	compare := func(f func(Container) (PageLogContainerName, error), expected map[Container]PageLogContainerName) {
+	compare := func(f func(container.Container) (k8s_model.ContainerNameAndPrefix, error), expected map[container.Container]k8s_model.ContainerNameAndPrefix) {
 		for c, short := range expected {
 			n, err := f(c)
 			if err != nil {
@@ -596,7 +598,7 @@ func TestEntityTreeImpl_ContainerToShortName(t *testing.T) {
 	c1cl1.State = Scanning
 	tree.AddOrReplace(c1cl1)
 	f := tree.ContainerToShortName(3)
-	expected := map[Container]PageLogContainerName{
+	expected := map[container.Container]k8s_model.ContainerNameAndPrefix{
 		c1cl1.Container: {
 			Prefix:        "",
 			ContainerName: "container1",
@@ -608,7 +610,7 @@ func TestEntityTreeImpl_ContainerToShortName(t *testing.T) {
 	c2cl1.State = Scanning
 	tree.AddOrReplace(c2cl1)
 	f = tree.ContainerToShortName(3)
-	expected = map[Container]PageLogContainerName{
+	expected = map[container.Container]k8s_model.ContainerNameAndPrefix{
 		c1cl1.Container: {
 			Prefix:        "",
 			ContainerName: "container1",
@@ -624,7 +626,7 @@ func TestEntityTreeImpl_ContainerToShortName(t *testing.T) {
 	c1cl2.State = Scanning
 	tree.AddOrReplace(c1cl2)
 	f = tree.ContainerToShortName(3)
-	expected = map[Container]PageLogContainerName{
+	expected = map[container.Container]k8s_model.ContainerNameAndPrefix{
 		c1cl1.Container: {
 			Prefix:        "clu..er1/nam..ce1/pod..er1/pod1",
 			ContainerName: "container1",
@@ -639,7 +641,7 @@ func TestEntityTreeImpl_ContainerToShortName(t *testing.T) {
 		},
 	}
 	compare(f, expected)
-	_, err := f(Container{Name: "doesntexist"})
+	_, err := f(container.Container{Name: "doesntexist"})
 	if err == nil {
 		t.Errorf("Expected error, got nil")
 	}

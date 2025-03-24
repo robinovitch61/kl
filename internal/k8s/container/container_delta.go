@@ -1,4 +1,4 @@
-package model
+package container
 
 import (
 	"github.com/emirpasic/gods/trees/redblacktree"

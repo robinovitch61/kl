@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"github.com/robinovitch61/kl/internal/k8s/container"
 	"regexp"
 )
 
@@ -22,6 +23,7 @@ type Matchers struct {
 	IgnoreMatcher     Matcher
 }
 
+// TODO LEO: make this more generic, remove specific k8s references
 type Matcher struct {
 	isEmpty   bool
 	cluster   *ValidRegex
@@ -71,7 +73,8 @@ func NewMatcher(args NewMatcherArgs) (*Matcher, error) {
 	}, nil
 }
 
-func (m Matcher) MatchesContainer(c Container) bool {
+// TODO LEO: move this to k8s
+func (m Matcher) MatchesContainer(c container.Container) bool {
 	return !m.isEmpty &&
 		m.cluster.MatchString(c.Cluster) &&
 		m.namespace.MatchString(c.Namespace) &&

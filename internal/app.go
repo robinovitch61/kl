@@ -3,6 +3,10 @@ package internal
 import (
 	"context"
 	"fmt"
+	"github.com/robinovitch61/kl/internal/k8s/container"
+	"github.com/robinovitch61/kl/internal/k8s/entity"
+	"github.com/robinovitch61/kl/internal/k8s/k8s_log"
+	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 	"math"
 	"strconv"
 	"strings"
@@ -56,10 +60,10 @@ type components struct {
 	whenPromptConfirm func() (Model, tea.Cmd)
 	toast             toast.Model
 	// TODO: move entitytree to own package
-	entityTree model.EntityTree
+	entityTree entity.EntityTree
 	// TODO: put these in entity tree?
-	containerToShortName func(model.Container) (model.PageLogContainerName, error)
-	containerIdToColors  map[string]model.ContainerColors
+	containerToShortName func(container.Container) (k8s_model.ContainerNameAndPrefix, error)
+	containerIdToColors  map[string]container.ContainerColors
 }
 
 type Model struct {
@@ -315,7 +319,7 @@ func (m Model) topBar() string {
 	var numPending, numSelected int
 	containerEntities := m.components.entityTree.GetContainerEntities()
 	for _, e := range containerEntities {
-		if e.State == model.ScannerStarting || e.State == model.WantScanning {
+		if e.State == entity.ScannerStarting || e.State == entity.WantScanning {
 			numPending++
 		}
 		if e.State.MayHaveLogs() {
@@ -581,7 +585,7 @@ func (m Model) handleEntitiesPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	// handle deselecting all containers
 	if key.Matches(msg, m.keyMap.DeselectAll) {
-		selectionActions := make(map[model.Entity]bool)
+		selectionActions := make(map[entity.Entity]bool)
 		containerEntities := m.components.entityTree.GetContainerEntities()
 		for i := range containerEntities {
 			if !containerEntities[i].State.ActivatesWhenSelected() {
@@ -608,24 +612,24 @@ func (m Model) handleEntitiesPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) promptToConfirmSelectionActions(text []string, selectionActions map[model.Entity]bool) (Model, tea.Cmd) {
+func (m Model) promptToConfirmSelectionActions(text []string, selectionActions map[entity.Entity]bool) (Model, tea.Cmd) {
 	m.components.prompt = prompt.New(true, m.state.width, m.state.height-m.data.topBarHeight, text, m.data.styles.Inverse)
 	m.components.whenPromptConfirm = func() (Model, tea.Cmd) { return m.doSelectionActions(selectionActions) }
 	return m, nil
 }
 
-func (m Model) doSelectionActions(selectionActions map[model.Entity]bool) (Model, tea.Cmd) {
+func (m Model) doSelectionActions(selectionActions map[entity.Entity]bool) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
-	for entity, startLogScanner := range selectionActions {
+	for ent, startLogScanner := range selectionActions {
 		if startLogScanner {
-			newEntity, newTree, actions := entity.Activate(m.components.entityTree)
+			newEntity, newTree, actions := ent.Activate(m.components.entityTree)
 			m.components.entityTree = newTree
 			m, cmd = m.doActions(newEntity, actions)
 			cmds = append(cmds, cmd)
 		} else {
-			newEntity, newTree, actions := entity.Deactivate(m.components.entityTree)
+			newEntity, newTree, actions := ent.Deactivate(m.components.entityTree)
 			m.components.entityTree = newTree
 			m, cmd = m.doActions(newEntity, actions)
 			cmds = append(cmds, cmd)
@@ -636,16 +640,16 @@ func (m Model) doSelectionActions(selectionActions map[model.Entity]bool) (Model
 	return m, tea.Batch(cmds...)
 }
 
-func (m Model) getStartLogScannerCmd(client client.K8sClient, entity model.Entity, sinceTime time.Time) (Model, tea.Cmd) {
+func (m Model) getStartLogScannerCmd(client client.K8sClient, ent entity.Entity, sinceTime time.Time) (Model, tea.Cmd) {
 	// ensure the entity is a container
-	err := entity.AssertIsContainer()
+	err := ent.AssertIsContainer()
 	if err != nil {
 		m.state.err = err
 		return m, nil
 	}
 
 	// ensure the entity does not already have an active log scanner
-	if entity.LogScanner != nil {
+	if ent.LogScanner != nil {
 		return m, nil
 	}
 
@@ -653,7 +657,7 @@ func (m Model) getStartLogScannerCmd(client client.K8sClient, entity model.Entit
 	numPendingOrActive := 0
 	for _, ce := range m.components.entityTree.GetContainerEntities() {
 		switch ce.State {
-		case model.WantScanning, model.ScannerStarting, model.Scanning, model.ScannerStopping, model.Deleted:
+		case entity.WantScanning, entity.ScannerStarting, entity.Scanning, entity.ScannerStopping, entity.Deleted:
 			numPendingOrActive++
 		default:
 		}
@@ -664,7 +668,7 @@ func (m Model) getStartLogScannerCmd(client client.K8sClient, entity model.Entit
 		return m, tea.Tick(time.Second*5, func(t time.Time) tea.Msg { return toast.TimeoutMsg{ID: newToast.ID} })
 	}
 
-	return m, command.StartLogScannerCmd(client, entity.Container, sinceTime)
+	return m, command.StartLogScannerCmd(client, ent.Container, sinceTime)
 }
 
 func (m Model) handleLogsPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
@@ -822,7 +826,7 @@ func (m Model) handleContainerDeltasMsg(msg command.GetContainerDeltasMsg) (Mode
 
 	for _, delta := range msg.DeltaSet.OrderedDeltas() {
 		// get the existing entity for the container, if it exists
-		var existingContainerEntity *model.Entity
+		var existingContainerEntity *entity.Entity
 		for _, containerEntity := range existingContainerEntities {
 			if containerEntity.Container.Equals(delta.Container) {
 				existingContainerEntity = &containerEntity
@@ -832,24 +836,24 @@ func (m Model) handleContainerDeltasMsg(msg command.GetContainerDeltasMsg) (Mode
 
 		if delta.ToDelete {
 			if existingContainerEntity != nil {
-				entity, newTree, actions := existingContainerEntity.Delete(m.components.entityTree, delta)
+				ent, newTree, actions := existingContainerEntity.Delete(m.components.entityTree, delta)
 				m.components.entityTree = newTree
-				m, cmd = m.doActions(entity, actions)
+				m, cmd = m.doActions(ent, actions)
 				cmds = append(cmds, cmd)
 			}
 		} else {
 			if existingContainerEntity == nil {
-				entity := model.Entity{
+				ent := entity.Entity{
 					Container: delta.Container,
 				}
-				newEntity, newTree, actions := entity.Create(m.components.entityTree, delta)
+				newEntity, newTree, actions := ent.Create(m.components.entityTree, delta)
 				m.components.entityTree = newTree
 				m, cmd = m.doActions(newEntity, actions)
 				cmds = append(cmds, cmd)
 			} else {
-				entity, newTree, actions := existingContainerEntity.Update(m.components.entityTree, delta)
+				ent, newTree, actions := existingContainerEntity.Update(m.components.entityTree, delta)
 				m.components.entityTree = newTree
-				m, cmd = m.doActions(entity, actions)
+				m, cmd = m.doActions(ent, actions)
 				cmds = append(cmds, cmd)
 			}
 		}
@@ -864,7 +868,7 @@ func (m Model) handleStartedLogScannerMsg(msg command.StartedLogScannerMsg) (Mod
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 	existingContainerEntities := m.components.entityTree.GetContainerEntities()
-	var startedContainerEntity *model.Entity
+	var startedContainerEntity *entity.Entity
 	for _, containerEntity := range existingContainerEntities {
 		if msg.LogScanner.Container.Equals(containerEntity.Container) {
 			startedContainerEntity = &containerEntity
@@ -876,9 +880,9 @@ func (m Model) handleStartedLogScannerMsg(msg command.StartedLogScannerMsg) (Mod
 		return m, nil
 	}
 
-	entity, newTree, actions := startedContainerEntity.ScannerStarted(m.components.entityTree, msg.Err, msg.LogScanner)
+	ent, newTree, actions := startedContainerEntity.ScannerStarted(m.components.entityTree, msg.Err, msg.LogScanner)
 	m.components.entityTree = newTree
-	m, cmd = m.doActions(entity, actions)
+	m, cmd = m.doActions(ent, actions)
 	cmds = append(cmds, cmd)
 
 	m.pages[page.EntitiesPageType] = m.pages[page.EntitiesPageType].(page.EntityPage).WithEntityTree(m.components.entityTree)
@@ -896,14 +900,14 @@ func (m Model) handleStoppedLogScannersMsg(msg command.StoppedLogScannersMsg) (M
 	for _, existingEntity := range existingEntities {
 		for _, stoppedContainer := range msg.Containers {
 			if existingEntity.Container.Equals(stoppedContainer) {
-				entity, newTree, actions := existingEntity.ScannerStopped(m.components.entityTree)
+				ent, newTree, actions := existingEntity.ScannerStopped(m.components.entityTree)
 				m.components.entityTree = newTree
-				m, cmd = m.doActions(entity, actions)
+				m, cmd = m.doActions(ent, actions)
 				cmds = append(cmds, cmd)
 				if msg.Restart {
-					entity, newTree, actions = entity.Activate(m.components.entityTree)
+					ent, newTree, actions = ent.Activate(m.components.entityTree)
 					m.components.entityTree = newTree
-					m, cmd = m.doActions(entity, actions)
+					m, cmd = m.doActions(ent, actions)
 					cmds = append(cmds, cmd)
 				}
 			}
@@ -928,20 +932,20 @@ func (m Model) handleNewLogsMsg(msg command.GetNewLogsMsg) (Model, tea.Cmd) {
 	}
 
 	// ignore logs if logScanner has already been closed
-	entity := m.components.entityTree.GetEntity(msg.LogScanner.Container)
-	if entity == nil || entity.LogScanner == nil {
+	ent := m.components.entityTree.GetEntity(msg.LogScanner.Container)
+	if ent == nil || ent.LogScanner == nil {
 		return m, nil
 	}
 
 	// ignore logs if its from an old logScanner for a container that has been removed and reactivated
-	if !entity.LogScanner.Equals(msg.LogScanner) {
+	if !ent.LogScanner.Equals(msg.LogScanner) {
 		return m, nil
 	}
 
 	var err error
 	var newLogs []model.PageLog
 	for i := range msg.NewLogs {
-		shortName := model.PageLogContainerName{}
+		shortName := k8s_model.ContainerNameAndPrefix{}
 		if m.components.containerToShortName != nil {
 			shortName, err = m.components.containerToShortName(msg.NewLogs[i].Container)
 			if err != nil {
@@ -949,11 +953,11 @@ func (m Model) handleNewLogsMsg(msg command.GetNewLogsMsg) (Model, tea.Cmd) {
 				return m, nil
 			}
 		}
-		fullName := model.PageLogContainerName{
+		fullName := k8s_model.ContainerNameAndPrefix{
 			Prefix:        msg.NewLogs[i].Container.IDWithoutContainerName(),
 			ContainerName: msg.NewLogs[i].Container.Name,
 		}
-		var containerColors model.ContainerColors
+		var containerColors container.ContainerColors
 		if m.components.containerIdToColors != nil {
 			containerColors = m.components.containerIdToColors[msg.NewLogs[i].Container.ID()]
 		}
@@ -969,7 +973,7 @@ func (m Model) handleNewLogsMsg(msg command.GetNewLogsMsg) (Model, tea.Cmd) {
 				Short: localTime.Format(time.TimeOnly),
 				Full:  localTime.Format("2006-01-02T15:04:05.000Z07:00"),
 			},
-			Terminated: entity.Container.Status.State == model.ContainerTerminated,
+			Terminated: ent.Container.Status.State == container.ContainerTerminated,
 			Styles:     &m.data.styles,
 		}
 		newLogs = append(newLogs, newLog)
@@ -1008,14 +1012,14 @@ func (m Model) doUpdateSinceTime() (Model, tea.Cmd) {
 	m.state.pendingSinceTime = nil
 
 	// stop all scanning entities and signal to restart them with the new since time
-	var logScannersToStopAndRestart []model.LogScanner
+	var logScannersToStopAndRestart []k8s_log.LogScanner
 	for _, containerEntity := range m.components.entityTree.GetContainerEntities() {
-		if containerEntity.State == model.Scanning {
-			entity, newTree, actions := containerEntity.Restart(m.components.entityTree)
+		if containerEntity.State == entity.Scanning {
+			ent, newTree, actions := containerEntity.Restart(m.components.entityTree)
 			m.components.entityTree = newTree
-			m, cmd = m.doActions(entity, actions)
+			m, cmd = m.doActions(ent, actions)
 			cmds = append(cmds, cmd)
-			logScannersToStopAndRestart = append(logScannersToStopAndRestart, *entity.LogScanner)
+			logScannersToStopAndRestart = append(logScannersToStopAndRestart, *ent.LogScanner)
 		}
 	}
 	// bulk stop log scanners together so they begin restarting one by one only after all have stopped
@@ -1023,12 +1027,12 @@ func (m Model) doUpdateSinceTime() (Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m Model) doActions(entity model.Entity, actions []model.EntityAction) (Model, tea.Cmd) {
+func (m Model) doActions(ent entity.Entity, actions []entity.EntityAction) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
 	// ensure actions are unique to avoid duplicate processing
-	actionSet := make(map[model.EntityAction]bool)
+	actionSet := make(map[entity.EntityAction]bool)
 	for _, action := range actions {
 		if actionSet[action] {
 			dev.Debug(fmt.Sprintf("duplicate action detected: %s", action))
@@ -1038,19 +1042,19 @@ func (m Model) doActions(entity model.Entity, actions []model.EntityAction) (Mod
 
 	for action := range actionSet {
 		switch action {
-		case model.StartScanner:
-			m, cmd = m.getStartLogScannerCmd(m.k8sClient, entity, m.state.sinceTime.Time)
+		case entity.StartScanner:
+			m, cmd = m.getStartLogScannerCmd(m.k8sClient, ent, m.state.sinceTime.Time)
 			cmds = append(cmds, cmd)
-		case model.StopScanner:
-			cmds = append(cmds, command.StopLogScannerCmd(entity, false))
-		case model.StopScannerKeepLogs:
-			cmds = append(cmds, command.StopLogScannerCmd(entity, true))
-		case model.RemoveEntity:
-			m.components.entityTree.Remove(entity)
-		case model.RemoveLogs:
-			m.removeLogsForContainer(entity.Container)
-		case model.MarkLogsTerminated:
-			m.markLogsTerminatedForContainer(entity.Container)
+		case entity.StopScanner:
+			cmds = append(cmds, command.StopLogScannerCmd(ent, false))
+		case entity.StopScannerKeepLogs:
+			cmds = append(cmds, command.StopLogScannerCmd(ent, true))
+		case entity.RemoveEntity:
+			m.components.entityTree.Remove(ent)
+		case entity.RemoveLogs:
+			m.removeLogsForContainer(ent.Container)
+		case entity.MarkLogsTerminated:
+			m.markLogsTerminatedForContainer(ent.Container)
 		default:
 			panic(fmt.Sprintf("unknown entity action: %s", action))
 		}
@@ -1062,9 +1066,9 @@ func (m Model) doActions(entity model.Entity, actions []model.EntityAction) (Mod
 // it should be called every time the set of active containers changes
 func (m Model) withUpdatedContainerShortNames() Model {
 	containers := m.components.entityTree.GetContainerEntities()
-	m.components.containerIdToColors = make(map[string]model.ContainerColors)
+	m.components.containerIdToColors = make(map[string]container.ContainerColors)
 	for _, containerEntity := range containers {
-		m.components.containerIdToColors[containerEntity.Container.ID()] = model.ContainerColors{
+		m.components.containerIdToColors[containerEntity.Container.ID()] = container.ContainerColors{
 			ID:   color.GetColor(containerEntity.Container.ID()),
 			Name: color.GetColor(containerEntity.Container.Name),
 		}
@@ -1102,12 +1106,12 @@ func (m *Model) updateShortNamesInBuffer() error {
 	return nil
 }
 
-func (m *Model) removeLogsForContainer(container model.Container) {
+func (m *Model) removeLogsForContainer(container container.Container) {
 	m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithLogsRemovedForContainer(container)
 	m.removeContainerLogsFromBuffer(container)
 }
 
-func (m *Model) removeContainerLogsFromBuffer(container model.Container) {
+func (m *Model) removeContainerLogsFromBuffer(container container.Container) {
 	bufferedLogs := m.pageLogBuffer
 	m.pageLogBuffer = nil
 	for _, bufferedLog := range bufferedLogs {
@@ -1117,12 +1121,12 @@ func (m *Model) removeContainerLogsFromBuffer(container model.Container) {
 	}
 }
 
-func (m *Model) markLogsTerminatedForContainer(container model.Container) {
+func (m *Model) markLogsTerminatedForContainer(container container.Container) {
 	m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithLogsTerminatedForContainer(container)
 	m.markContainerLogsTerminatedInBuffer(container)
 }
 
-func (m *Model) markContainerLogsTerminatedInBuffer(container model.Container) {
+func (m *Model) markContainerLogsTerminatedInBuffer(container container.Container) {
 	for i := range m.pageLogBuffer {
 		if m.pageLogBuffer[i].Log.Container.Equals(container) {
 			m.pageLogBuffer[i].Terminated = true
