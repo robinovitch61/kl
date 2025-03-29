@@ -33,9 +33,6 @@ type K8sClient interface {
 		ignorePodOwnerTypes []string,
 	) (ContainerListener, error)
 
-	// CollectContainerDeltasForDuration collects container deltas from a listener for a given duration
-	CollectContainerDeltasForDuration(listener ContainerListener, duration time.Duration) (container.ContainerDeltaSet, error)
-
 	// GetContainerStatus returns the status of a container
 	GetContainerStatus(container container.Container) (container.ContainerStatus, error)
 
@@ -146,27 +143,6 @@ func (c clientImpl) GetContainerListener(
 		containerDeltaChan: deltaChan,
 		Stop:               stop,
 	}, nil
-}
-
-func (c clientImpl) CollectContainerDeltasForDuration(
-	listener ContainerListener,
-	duration time.Duration,
-) (container.ContainerDeltaSet, error) {
-	var deltas container.ContainerDeltaSet
-	timeout := time.After(duration)
-
-	for {
-		select {
-		case containerDelta, ok := <-listener.containerDeltaChan:
-			if !ok {
-				return container.ContainerDeltaSet{}, fmt.Errorf("add/update pod channel closed")
-			}
-			deltas.Add(containerDelta)
-
-		case <-timeout:
-			return deltas, nil
-		}
-	}
 }
 
 func (c clientImpl) GetContainerStatus(
@@ -350,4 +326,25 @@ func getState(status corev1.ContainerStatus) (container.ContainerState, error) {
 		return container.ContainerWaiting, nil
 	}
 	return container.ContainerUnknown, fmt.Errorf("unknown container status %+v", status)
+}
+
+func CollectContainerDeltasForDuration(
+	listener ContainerListener,
+	duration time.Duration,
+) (container.ContainerDeltaSet, error) {
+	var deltas container.ContainerDeltaSet
+	timeout := time.After(duration)
+
+	for {
+		select {
+		case containerDelta, ok := <-listener.containerDeltaChan:
+			if !ok {
+				return container.ContainerDeltaSet{}, fmt.Errorf("add/update pod channel closed")
+			}
+			deltas.Add(containerDelta)
+
+		case <-timeout:
+			return deltas, nil
+		}
+	}
 }

@@ -78,7 +78,8 @@ type Model struct {
 	containerIdToColors  map[string]container.ContainerColors
 
 	k8sClient client.K8sClient
-	// TODO: put this on k8sClient?
+
+	// containerListeners contains a container update listener for each cluster and namespace combo
 	containerListeners []client.ContainerListener
 
 	cancel context.CancelFunc
@@ -803,7 +804,7 @@ func (m Model) handleContainerListenerMsg(msg command.GetContainerListenerMsg) (
 
 	// add the container listener and start collecting container deltas in batches for performance
 	m.containerListeners = append(m.containerListeners, msg.Listener)
-	cmd = command.GetNextContainerDeltasCmd(m.k8sClient, msg.Listener, constants.GetNextContainerDeltasDuration)
+	cmd = command.GetNextContainerDeltasCmd(msg.Listener, constants.GetNextContainerDeltasDuration)
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
 }
@@ -861,7 +862,7 @@ func (m Model) handleContainerDeltasMsg(msg command.GetContainerDeltasMsg) (Mode
 	}
 
 	m.pages[page.EntitiesPageType] = m.pages[page.EntitiesPageType].(page.EntityPage).WithEntityTree(m.entityTree)
-	cmds = append(cmds, command.GetNextContainerDeltasCmd(m.k8sClient, msg.Listener, constants.GetNextContainerDeltasDuration))
+	cmds = append(cmds, command.GetNextContainerDeltasCmd(msg.Listener, constants.GetNextContainerDeltasDuration))
 	return m, tea.Batch(cmds...)
 }
 

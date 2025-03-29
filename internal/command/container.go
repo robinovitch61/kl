@@ -16,14 +16,14 @@ type GetContainerListenerMsg struct {
 }
 
 func GetContainerListenerCmd(
-	client client.K8sClient,
+	k8sClient client.K8sClient,
 	cluster, namespace string,
 	matchers model.Matchers,
 	selector labels.Selector,
 	ignorePodOwnerTypes []string,
 ) tea.Cmd {
 	return func() tea.Msg {
-		listener, err := client.GetContainerListener(cluster, namespace, matchers, selector, ignorePodOwnerTypes)
+		listener, err := k8sClient.GetContainerListener(cluster, namespace, matchers, selector, ignorePodOwnerTypes)
 		if err != nil {
 			return GetContainerListenerMsg{
 				Err: fmt.Errorf("error subscribing to cluster %s, namespace %s: %v", cluster, namespace, err),
@@ -42,7 +42,6 @@ type GetContainerDeltasMsg struct {
 }
 
 func GetNextContainerDeltasCmd(
-	client client.K8sClient,
 	listener client.ContainerListener,
 	duration time.Duration,
 ) tea.Cmd {
