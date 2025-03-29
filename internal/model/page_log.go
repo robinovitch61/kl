@@ -4,32 +4,24 @@ import (
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/emirpasic/gods/trees/redblacktree"
 	"github.com/robinovitch61/kl/internal/dev"
+	"github.com/robinovitch61/kl/internal/k8s/container"
+	"github.com/robinovitch61/kl/internal/k8s/k8s_log"
+	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 	"github.com/robinovitch61/kl/internal/style"
 	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
 )
 
-type PageLogContainerName struct {
-	Prefix        string
-	ContainerName string
-}
-
 type PageLogContainerNames struct {
-	Short PageLogContainerName
-	Full  PageLogContainerName
-}
-
-type PageLogTimestamps struct {
-	Short string
-	Full  string
+	Short k8s_model.ContainerNameAndPrefix
+	Full  k8s_model.ContainerNameAndPrefix
 }
 
 // PageLog is a Log with metadata. It has mostly pointer fields for efficient copying
 type PageLog struct {
-	Log              *Log
-	ContainerColors  *ContainerColors
+	Log              *k8s_log.Log
+	ContainerColors  *container.ContainerColors
 	ContainerNames   *PageLogContainerNames
-	CurrentName      *PageLogContainerName
-	Timestamps       *PageLogTimestamps
+	CurrentName      *k8s_model.ContainerNameAndPrefix
 	CurrentTimestamp string
 	Terminated       bool
 	Styles           *style.Styles
@@ -77,13 +69,11 @@ func (l PageLog) Equals(other interface{}) bool {
 	if l.Log == nil || otherLog.Log == nil {
 		return false
 	}
-	if l.Timestamps == nil || otherLog.Timestamps == nil {
-		return false
-	}
-	return l.Log.LineBuffer.Content() == otherLog.Log.LineBuffer.Content() && l.Timestamps.Full == otherLog.Timestamps.Full
+	// TODO LEO: make this method on Log
+	return l.Log.LineBuffer.Content() == otherLog.Log.LineBuffer.Content() && l.Log.Timestamps.Full == otherLog.Log.Timestamps.Full
 }
 
-func (l PageLog) RenderName(name PageLogContainerName, includeStyle bool) string {
+func (l PageLog) RenderName(name k8s_model.ContainerNameAndPrefix, includeStyle bool) string {
 	var renderedPrefix, renderedName string
 	if includeStyle {
 		renderedPrefix = lipgloss.NewStyle().Background(l.ContainerColors.ID).Foreground(lipgloss.Color("#000000")).Render(name.Prefix)

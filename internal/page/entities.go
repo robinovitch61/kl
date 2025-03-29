@@ -6,15 +6,15 @@ import (
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/filterable_viewport"
 	"github.com/robinovitch61/kl/internal/help"
+	"github.com/robinovitch61/kl/internal/k8s/entity"
 	"github.com/robinovitch61/kl/internal/keymap"
-	"github.com/robinovitch61/kl/internal/model"
 	"github.com/robinovitch61/kl/internal/style"
 	"strings"
 )
 
 type EntityPage struct {
-	filterableViewport filterable_viewport.FilterableViewport[model.Entity]
-	entityTree         model.EntityTree
+	filterableViewport filterable_viewport.FilterableViewport[entity.Entity]
+	entityTree         entity.Tree
 	keyMap             keymap.KeyMap
 	styles             style.Styles
 }
@@ -25,7 +25,7 @@ var _ GenericPage = EntityPage{}
 func NewEntitiesPage(
 	keyMap keymap.KeyMap,
 	width, height int,
-	entityTree model.EntityTree,
+	entityTree entity.Tree,
 	styles style.Styles,
 ) EntityPage {
 	viewWhenEmptyLines := []string{"Subscribing to updates for:"}
@@ -41,8 +41,8 @@ func NewEntitiesPage(
 	}
 	viewWhenEmpty := strings.Join(viewWhenEmptyLines, "\n")
 
-	filterableViewport := filterable_viewport.NewFilterableViewport[model.Entity](
-		filterable_viewport.FilterableViewportConfig[model.Entity]{
+	filterableViewport := filterable_viewport.NewFilterableViewport[entity.Entity](
+		filterable_viewport.FilterableViewportConfig[entity.Entity]{
 			TopHeader:            "(S)election",
 			StartShowContext:     false,
 			CanToggleShowContext: false,
@@ -132,7 +132,7 @@ func (p EntityPage) Help() string {
 	return help.MakeHelp(p.keyMap, p.styles.InverseUnderline)
 }
 
-func (p EntityPage) WithEntityTree(entityTree model.EntityTree) EntityPage {
+func (p EntityPage) WithEntityTree(entityTree entity.Tree) EntityPage {
 	p.entityTree = entityTree
 	p.entityTree.UpdatePrettyPrintPrefixes(p.filterableViewport.Filter)
 	p.filterableViewport.SetAllRowsAndMatchesFilter(p.entityTree.GetEntities(), p.entityTree.IsVisibleGivenFilter)
@@ -144,15 +144,15 @@ func (p EntityPage) WithMaintainSelection(maintainSelection bool) EntityPage {
 	return p
 }
 
-func (p EntityPage) GetSelectionActions() (model.Entity, map[model.Entity]bool) {
+func (p EntityPage) GetSelectionActions() (entity.Entity, map[entity.Entity]bool) {
 	selectedEntity := p.filterableViewport.GetSelection()
 	if selectedEntity == nil {
-		return model.Entity{}, nil
+		return entity.Entity{}, nil
 	}
 	return *selectedEntity, p.entityTree.GetSelectionActions(*selectedEntity, p.filterableViewport.Filter)
 }
 
-func (p EntityPage) getVisibleEntities() []model.Entity {
+func (p EntityPage) getVisibleEntities() []entity.Entity {
 	if p.filterableViewport.Filter.ShowContext {
 		return p.entityTree.GetEntities()
 	}

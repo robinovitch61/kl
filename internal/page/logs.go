@@ -7,6 +7,8 @@ import (
 	"github.com/robinovitch61/kl/internal/filter"
 	"github.com/robinovitch61/kl/internal/filterable_viewport"
 	"github.com/robinovitch61/kl/internal/help"
+	"github.com/robinovitch61/kl/internal/k8s/container"
+	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/model"
 	"github.com/robinovitch61/kl/internal/style"
@@ -176,7 +178,7 @@ func (p LogsPage) WithAppendedLogs(logs []model.PageLog) LogsPage {
 	return p
 }
 
-func (p LogsPage) WithContainerColors(containerIdToColor map[string]model.ContainerColors) LogsPage {
+func (p LogsPage) WithContainerColors(containerIdToColor map[string]container.ContainerColors) LogsPage {
 	allLogs := p.logContainer.GetOrderedLogs()
 	for i := range allLogs {
 		color, ok := containerIdToColor[allLogs[i].Log.Container.ID()]
@@ -188,7 +190,7 @@ func (p LogsPage) WithContainerColors(containerIdToColor map[string]model.Contai
 	return p
 }
 
-func (p LogsPage) WithUpdatedShortNames(f func(model.Container) (model.PageLogContainerName, error)) (LogsPage, error) {
+func (p LogsPage) WithUpdatedShortNames(f func(container.Container) (k8s_model.ContainerNameAndPrefix, error)) (LogsPage, error) {
 	allLogs := p.logContainer.GetOrderedLogs()
 	for i := range allLogs {
 		short, err := f(allLogs[i].Log.Container)
@@ -202,7 +204,7 @@ func (p LogsPage) WithUpdatedShortNames(f func(model.Container) (model.PageLogCo
 	return p, nil
 }
 
-func (p LogsPage) WithLogsRemovedForContainer(containerSpec model.Container) LogsPage {
+func (p LogsPage) WithLogsRemovedForContainer(containerSpec container.Container) LogsPage {
 	allLogs := p.logContainer.GetOrderedLogs()
 	var newLogs []model.PageLog
 	for _, log := range allLogs {
@@ -214,7 +216,7 @@ func (p LogsPage) WithLogsRemovedForContainer(containerSpec model.Container) Log
 	return p
 }
 
-func (p LogsPage) WithLogsTerminatedForContainer(containerSpec model.Container) LogsPage {
+func (p LogsPage) WithLogsTerminatedForContainer(containerSpec container.Container) LogsPage {
 	allLogs := p.logContainer.GetOrderedLogs()
 	for i := range allLogs {
 		if allLogs[i].Log.Container.Equals(containerSpec) {
@@ -300,16 +302,16 @@ func getOrder(ascending bool) string {
 
 func getLogTimestamp(log model.PageLog, format string) string {
 	if format == "short" {
-		return log.Timestamps.Short
+		return log.Log.Timestamps.Short
 	}
 	if format == "full" {
-		return log.Timestamps.Full
+		return log.Log.Timestamps.Full
 	}
 	return ""
 }
 
-func getContainerName(log model.PageLog, format string) *model.PageLogContainerName {
-	var name model.PageLogContainerName
+func getContainerName(log model.PageLog, format string) *k8s_model.ContainerNameAndPrefix {
+	var name k8s_model.ContainerNameAndPrefix
 	if format == "short" {
 		name = log.ContainerNames.Short
 	}

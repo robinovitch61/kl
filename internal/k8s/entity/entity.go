@@ -1,9 +1,11 @@
-package model
+package entity
 
 import (
 	"fmt"
 	"github.com/robinovitch61/kl/internal/constants"
 	"github.com/robinovitch61/kl/internal/dev"
+	"github.com/robinovitch61/kl/internal/k8s/container"
+	"github.com/robinovitch61/kl/internal/k8s/k8s_log"
 	"github.com/robinovitch61/kl/internal/util"
 	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
 	"time"
@@ -11,9 +13,9 @@ import (
 
 // Entity represents a renderable & selectable kubernetes entity (cluster, namespace, pod owner, pod, or container)
 type Entity struct {
-	Container                                 Container
+	Container                                 container.Container
 	IsCluster, IsNamespace, IsPodOwner, IsPod bool
-	LogScanner                                *LogScanner
+	LogScanner                                *k8s_log.LogScanner
 	Prefix                                    string
 	State                                     EntityState
 }
@@ -41,12 +43,12 @@ func (e Entity) Repr() string {
 		res := e.Prefix + e.State.StatusIndicator() + " " + e.Container.Name + " (" + e.Container.Status.State.String()
 
 		// running container with started at time, show "for X time"
-		if e.Container.Status.State == ContainerRunning && !e.Container.Status.StartedAt.IsZero() {
+		if e.Container.Status.State == container.ContainerRunning && !e.Container.Status.StartedAt.IsZero() {
 			res += " for " + util.TimeSince(e.Container.Status.StartedAt)
 		}
 
 		// terminated containers with terminated at time
-		if e.Container.Status.State == ContainerTerminated && !e.Container.Status.TerminatedAt.IsZero() {
+		if e.Container.Status.State == container.ContainerTerminated && !e.Container.Status.TerminatedAt.IsZero() {
 			if e.Container.Status.StartedAt.IsZero() {
 				// terminated container with just terminated at time, show "for X time"
 				res += " for " + util.TimeSince(e.Container.Status.TerminatedAt)
@@ -61,12 +63,12 @@ func (e Entity) Repr() string {
 		}
 
 		// waiting container with waiting for reason, show "waiting for X"
-		if e.Container.Status.State == ContainerWaiting && e.Container.Status.WaitingFor != "" {
+		if e.Container.Status.State == container.ContainerWaiting && e.Container.Status.WaitingFor != "" {
 			res += ": " + e.Container.Status.WaitingFor
 		}
 
 		// add "NEW" to newly started containers
-		if e.Container.Status.State == ContainerRunning && e.Container.Status.StartedAt.After(time.Now().Add(-constants.NewContainerThreshold)) {
+		if e.Container.Status.State == container.ContainerRunning && e.Container.Status.StartedAt.After(time.Now().Add(-constants.NewContainerThreshold)) {
 			res += " - NEW"
 		}
 
@@ -99,19 +101,19 @@ func (e Entity) AssertIsContainer() error {
 }
 
 func (e Entity) IsChildContainerOfCluster(cluster Entity) bool {
-	return e.IsContainer() && e.Container.inClusterOf(cluster.Container)
+	return e.IsContainer() && e.Container.InClusterOf(cluster.Container)
 }
 
 func (e Entity) IsChildContainerOfNamespace(namespace Entity) bool {
-	return e.IsContainer() && e.Container.inNamespaceOf(namespace.Container)
+	return e.IsContainer() && e.Container.InNamespaceOf(namespace.Container)
 }
 
 func (e Entity) IsChildContainerOfPodOwner(podOwner Entity) bool {
-	return e.IsContainer() && e.Container.inPodOwnerOf(podOwner.Container)
+	return e.IsContainer() && e.Container.InPodOwnerOf(podOwner.Container)
 }
 
 func (e Entity) IsChildContainerOfPod(pod Entity) bool {
-	return e.IsContainer() && e.Container.inPodOf(pod.Container)
+	return e.IsContainer() && e.Container.InPodOf(pod.Container)
 }
 
 func (e Entity) Type() string {
@@ -128,14 +130,14 @@ func (e Entity) Type() string {
 	}
 }
 
-func (e Entity) Activate(tree EntityTree) (Entity, EntityTree, []EntityAction) {
+func (e Entity) Activate(tree Tree) (Entity, Tree, []EntityAction) {
 	dev.Debug(fmt.Sprintf("Activate %v starts %v with container %v", e.Container.HumanReadable(), e.State, e.Container.Status.State))
 	defer func() {
 		dev.Debug(fmt.Sprintf("Activate %v ends %v", e.Container.HumanReadable(), e.State))
 	}()
 	switch e.State {
 	case Inactive:
-		if e.Container.Status.State == ContainerWaiting {
+		if e.Container.Status.State == container.ContainerWaiting {
 			e.State = WantScanning
 			tree.AddOrReplace(e)
 			return e, tree, []EntityAction{}
@@ -149,7 +151,7 @@ func (e Entity) Activate(tree EntityTree) (Entity, EntityTree, []EntityAction) {
 	}
 }
 
-func (e Entity) Deactivate(tree EntityTree) (Entity, EntityTree, []EntityAction) {
+func (e Entity) Deactivate(tree Tree) (Entity, Tree, []EntityAction) {
 	dev.Debug(fmt.Sprintf("Deactivate %v starts %v", e.Container.HumanReadable(), e.State))
 	defer func() {
 		dev.Debug(fmt.Sprintf("Deactivate %v ends %v", e.Container.HumanReadable(), e.State))
@@ -170,7 +172,7 @@ func (e Entity) Deactivate(tree EntityTree) (Entity, EntityTree, []EntityAction)
 	}
 }
 
-func (e Entity) Restart(tree EntityTree) (Entity, EntityTree, []EntityAction) {
+func (e Entity) Restart(tree Tree) (Entity, Tree, []EntityAction) {
 	dev.Debug(fmt.Sprintf("Restart %v starts %v", e.Container.HumanReadable(), e.State))
 	defer func() {
 		dev.Debug(fmt.Sprintf("Restart %v ends %v", e.Container.HumanReadable(), e.State))
@@ -186,7 +188,7 @@ func (e Entity) Restart(tree EntityTree) (Entity, EntityTree, []EntityAction) {
 	}
 }
 
-func (e Entity) Delete(tree EntityTree, delta ContainerDelta) (Entity, EntityTree, []EntityAction) {
+func (e Entity) Delete(tree Tree, delta container.ContainerDelta) (Entity, Tree, []EntityAction) {
 	dev.Debug(fmt.Sprintf("Delete %v starts %v", e.Container.HumanReadable(), e.State))
 	defer func() {
 		dev.Debug(fmt.Sprintf("Delete %v ends %v", e.Container.HumanReadable(), e.State))
@@ -214,17 +216,17 @@ func (e Entity) Delete(tree EntityTree, delta ContainerDelta) (Entity, EntityTre
 	}
 }
 
-func (e Entity) Create(tree EntityTree, delta ContainerDelta) (Entity, EntityTree, []EntityAction) {
+func (e Entity) Create(tree Tree, delta container.ContainerDelta) (Entity, Tree, []EntityAction) {
 	defer func() {
 		dev.Debug(fmt.Sprintf("CreateEntity %v ends %v", e.Container.HumanReadable(), delta.ToActivate))
 	}()
 	if delta.ToActivate {
 		switch e.Container.Status.State {
-		case ContainerUnknown, ContainerWaiting:
+		case container.ContainerUnknown, container.ContainerWaiting:
 			e.State = WantScanning
 			tree.AddOrReplace(e)
 			return e, tree, []EntityAction{}
-		case ContainerRunning, ContainerTerminated:
+		case container.ContainerRunning, container.ContainerTerminated:
 			e.State = ScannerStarting
 			tree.AddOrReplace(e)
 			return e, tree, []EntityAction{StartScanner}
@@ -240,31 +242,31 @@ func (e Entity) Create(tree EntityTree, delta ContainerDelta) (Entity, EntityTre
 
 type UpdateResult struct {
 	Entity             Entity
-	Tree               EntityTree
+	Tree               Tree
 	StartScanner       bool
 	MarkLogsTerminated bool
 }
 
-func (e Entity) Update(tree EntityTree, delta ContainerDelta) (Entity, EntityTree, []EntityAction) {
+func (e Entity) Update(tree Tree, delta container.ContainerDelta) (Entity, Tree, []EntityAction) {
 	e.Container = delta.Container
 	tree.AddOrReplace(e)
 
 	var actions []EntityAction
-	if delta.Container.Status.State == ContainerTerminated && e.State.MayHaveLogs() {
+	if delta.Container.Status.State == container.ContainerTerminated && e.State.MayHaveLogs() {
 		actions = append(actions, MarkLogsTerminated)
 	}
 
 	switch e.State {
 	case WantScanning:
 		containerState := e.Container.Status.State
-		if containerState == ContainerRunning || containerState == ContainerTerminated {
+		if containerState == container.ContainerRunning || containerState == container.ContainerTerminated {
 			e.State = ScannerStarting
 			tree.AddOrReplace(e)
 			actions = append(actions, StartScanner)
 		}
 		return e, tree, actions
 	case Scanning:
-		if e.Container.Status.State == ContainerTerminated {
+		if e.Container.Status.State == container.ContainerTerminated {
 			e.State = WantScanning
 			tree.AddOrReplace(e)
 			actions = append(actions, StopScannerKeepLogs)
@@ -276,7 +278,7 @@ func (e Entity) Update(tree EntityTree, delta ContainerDelta) (Entity, EntityTre
 	}
 }
 
-func (e Entity) ScannerStarted(tree EntityTree, startErr error, scanner LogScanner) (Entity, EntityTree, []EntityAction) {
+func (e Entity) ScannerStarted(tree Tree, startErr error, scanner k8s_log.LogScanner) (Entity, Tree, []EntityAction) {
 	dev.Debug(fmt.Sprintf("ScannerStarted %v starts %v", e.Container.HumanReadable(), e.State))
 	defer func() {
 		dev.Debug(fmt.Sprintf("ScannerStarted %v ends %v", e.Container.HumanReadable(), e.State))
@@ -300,7 +302,7 @@ func (e Entity) ScannerStarted(tree EntityTree, startErr error, scanner LogScann
 	}
 }
 
-func (e Entity) ScannerStopped(tree EntityTree) (Entity, EntityTree, []EntityAction) {
+func (e Entity) ScannerStopped(tree Tree) (Entity, Tree, []EntityAction) {
 	dev.Debug(fmt.Sprintf("ScannerStopped %v starts %v", e.Container.HumanReadable(), e.State))
 	defer func() {
 		dev.Debug(fmt.Sprintf("ScannerStopped %v ends %v", e.Container.HumanReadable(), e.State))

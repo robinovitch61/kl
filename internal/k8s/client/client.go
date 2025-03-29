@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/robinovitch61/kl/internal/dev"
+	"github.com/robinovitch61/kl/internal/k8s/container"
+	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 	"github.com/robinovitch61/kl/internal/model"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -17,10 +19,10 @@ import (
 	"time"
 )
 
-// Client is an interface for interacting with a Kubernetes cluster
-type Client interface {
+// K8sClient is an interface for interacting with a Kubernetes cluster
+type K8sClient interface {
 	// AllClusterNamespaces returns all cluster namespaces
-	AllClusterNamespaces() []model.ClusterNamespaces
+	AllClusterNamespaces() []k8s_model.ClusterNamespaces
 
 	// GetContainerListener returns a listener that emits container deltas for a given cluster and namespace
 	GetContainerListener(
@@ -32,22 +34,22 @@ type Client interface {
 	) (ContainerListener, error)
 
 	// CollectContainerDeltasForDuration collects container deltas from a listener for a given duration
-	CollectContainerDeltasForDuration(listener ContainerListener, duration time.Duration) (model.ContainerDeltaSet, error)
+	CollectContainerDeltasForDuration(listener ContainerListener, duration time.Duration) (container.ContainerDeltaSet, error)
 
 	// GetContainerStatus returns the status of a container
-	GetContainerStatus(container model.Container) (model.ContainerStatus, error)
+	GetContainerStatus(container container.Container) (container.ContainerStatus, error)
 
 	// GetLogStream returns a scanner that reads lines from a container's log stream
-	GetLogStream(container model.Container, sinceTime time.Time) (*bufio.Scanner, context.CancelFunc, error)
+	GetLogStream(container container.Container, sinceTime time.Time) (*bufio.Scanner, context.CancelFunc, error)
 }
 
 type clientImpl struct {
 	ctx                  context.Context
 	clusterToClientset   map[string]*kubernetes.Clientset
-	allClusterNamespaces []model.ClusterNamespaces
+	allClusterNamespaces []k8s_model.ClusterNamespaces
 }
 
-func (c clientImpl) AllClusterNamespaces() []model.ClusterNamespaces {
+func (c clientImpl) AllClusterNamespaces() []k8s_model.ClusterNamespaces {
 	return c.allClusterNamespaces
 }
 
@@ -55,7 +57,7 @@ type ContainerListener struct {
 	Cluster            string
 	Namespace          string
 	Stop               func()
-	containerDeltaChan chan model.ContainerDelta
+	containerDeltaChan chan container.ContainerDelta
 }
 
 func (c clientImpl) GetContainerListener(
@@ -65,7 +67,7 @@ func (c clientImpl) GetContainerListener(
 	selector labels.Selector,
 	ignorePodOwnerTypes []string,
 ) (ContainerListener, error) {
-	deltaChan := make(chan model.ContainerDelta, 100)
+	deltaChan := make(chan container.ContainerDelta, 100)
 	stopChan := make(chan struct{})
 
 	// every 10 minutes, informer will resync, emitting new events for all discrepancies
@@ -110,7 +112,7 @@ func (c clientImpl) GetContainerListener(
 			// sometimes the listener will receive a delete event for pods whose container statuses are not terminated
 			// since we keep these around for a while, manually override the status to terminated
 			for i := range deltas {
-				deltas[i].Container.Status.State = model.ContainerTerminated
+				deltas[i].Container.Status.State = container.ContainerTerminated
 				deltas[i].Container.Status.StartedAt = time.Time{}
 			}
 
@@ -149,15 +151,15 @@ func (c clientImpl) GetContainerListener(
 func (c clientImpl) CollectContainerDeltasForDuration(
 	listener ContainerListener,
 	duration time.Duration,
-) (model.ContainerDeltaSet, error) {
-	var deltas model.ContainerDeltaSet
+) (container.ContainerDeltaSet, error) {
+	var deltas container.ContainerDeltaSet
 	timeout := time.After(duration)
 
 	for {
 		select {
 		case containerDelta, ok := <-listener.containerDeltaChan:
 			if !ok {
-				return model.ContainerDeltaSet{}, fmt.Errorf("add/update pod channel closed")
+				return container.ContainerDeltaSet{}, fmt.Errorf("add/update pod channel closed")
 			}
 			deltas.Add(containerDelta)
 
@@ -168,22 +170,22 @@ func (c clientImpl) CollectContainerDeltasForDuration(
 }
 
 func (c clientImpl) GetContainerStatus(
-	container model.Container,
-) (model.ContainerStatus, error) {
-	clientset := c.clusterToClientset[container.Cluster]
+	ct container.Container,
+) (container.ContainerStatus, error) {
+	clientset := c.clusterToClientset[ct.Cluster]
 	if clientset == nil {
-		return model.ContainerStatus{}, fmt.Errorf("clientset for cluster %s not found", container.Cluster)
+		return container.ContainerStatus{}, fmt.Errorf("clientset for cluster %s not found", ct.Cluster)
 	}
 
-	pod, err := clientset.CoreV1().Pods(container.Namespace).Get(c.ctx, container.Pod, metav1.GetOptions{})
+	pod, err := clientset.CoreV1().Pods(ct.Namespace).Get(c.ctx, ct.Pod, metav1.GetOptions{})
 	if err != nil {
-		return model.ContainerStatus{}, fmt.Errorf("error getting pod %s in namespace %s: %v", container.Pod, container.Namespace, err)
+		return container.ContainerStatus{}, fmt.Errorf("error getting pod %s in namespace %s: %v", ct.Pod, ct.Namespace, err)
 	}
-	return getStatus(pod.Status.ContainerStatuses, container.Name)
+	return getStatus(pod.Status.ContainerStatuses, ct.Name)
 }
 
 func (c clientImpl) GetLogStream(
-	container model.Container,
+	container container.Container,
 	sinceTime time.Time,
 ) (*bufio.Scanner, context.CancelFunc, error) {
 	clientset := c.clusterToClientset[container.Cluster]
@@ -220,12 +222,12 @@ func getContainerDeltas(
 	matchers model.Matchers,
 	selector labels.Selector,
 	ignorePodOwnerTypes []string,
-) []model.ContainerDelta {
+) []container.ContainerDelta {
 	if pod == nil {
 		return nil
 	}
 	now := time.Now()
-	var deltas []model.ContainerDelta
+	var deltas []container.ContainerDelta
 	containers := getContainers(*pod, cluster, ignorePodOwnerTypes)
 	for i := range containers {
 		if matchers.IgnoreMatcher.MatchesContainer(containers[i]) {
@@ -233,7 +235,7 @@ func getContainerDeltas(
 		}
 		matcherSelectsContainer := matchers.AutoSelectMatcher.MatchesContainer(containers[i])
 		labelSelectorSelectsContainer := !selector.Empty() && selector.Matches(labels.Set(pod.Labels))
-		delta := model.ContainerDelta{
+		delta := container.ContainerDelta{
 			Time:       now,
 			Container:  containers[i],
 			ToDelete:   delete,
@@ -244,8 +246,8 @@ func getContainerDeltas(
 	return deltas
 }
 
-func getContainers(pod corev1.Pod, cluster string, ignorePodOwnerTypes []string) []model.Container {
-	var containers []model.Container
+func getContainers(pod corev1.Pod, cluster string, ignorePodOwnerTypes []string) []container.Container {
+	var containers []container.Container
 
 	podOwnerName, ownerRefType := getPodOwnerNameAndOwnerRefType(pod)
 	for _, ignored := range ignorePodOwnerTypes {
@@ -259,16 +261,16 @@ func getContainers(pod corev1.Pod, cluster string, ignorePodOwnerTypes []string)
 		return containers
 	}
 
-	metadata := model.PodOwnerMetadata{OwnerType: ownerRefType}
+	metadata := k8s_model.PodOwnerMetadata{OwnerType: ownerRefType}
 
-	for _, container := range pod.Spec.Containers {
-		status, _ := getStatus(pod.Status.ContainerStatuses, container.Name)
-		newContainer := model.Container{
+	for _, c := range pod.Spec.Containers {
+		status, _ := getStatus(pod.Status.ContainerStatuses, c.Name)
+		newContainer := container.Container{
 			Cluster:          cluster,
 			Namespace:        pod.Namespace,
 			PodOwner:         podOwnerName,
 			Pod:              pod.Name,
-			Name:             container.Name,
+			Name:             c.Name,
 			Status:           status,
 			PodOwnerMetadata: metadata,
 		}
@@ -296,36 +298,36 @@ func getPodOwnerNameAndOwnerRefType(pod corev1.Pod) (string, string) {
 	return podOwnerRef.Name, podOwnerRef.Kind
 }
 
-func getStatus(podContainerStatuses []v1.ContainerStatus, containerName string) (model.ContainerStatus, error) {
+func getStatus(podContainerStatuses []v1.ContainerStatus, containerName string) (container.ContainerStatus, error) {
 	for _, status := range podContainerStatuses {
 		if status.Name == containerName {
 			state, err := getState(status)
 			if err != nil {
-				return model.ContainerStatus{}, err
+				return container.ContainerStatus{}, err
 			}
 
 			var startedAt time.Time
 			var terminatedAt time.Time
 			var waitingFor, terminatedFor string
 			switch state {
-			case model.ContainerRunning:
+			case container.ContainerRunning:
 				if status.State.Running != nil {
 					startedAt = status.State.Running.StartedAt.Time
 				}
-			case model.ContainerTerminated:
+			case container.ContainerTerminated:
 				if status.State.Terminated != nil {
 					startedAt = status.State.Terminated.StartedAt.Time
 					terminatedAt = status.State.Terminated.FinishedAt.Time
 					terminatedFor = status.State.Terminated.Reason
 				}
-			case model.ContainerWaiting:
+			case container.ContainerWaiting:
 				if status.State.Waiting != nil {
 					waitingFor = status.State.Waiting.Reason
 				}
 			default:
 			}
 
-			return model.ContainerStatus{
+			return container.ContainerStatus{
 				State:         state,
 				StartedAt:     startedAt,
 				TerminatedAt:  terminatedAt,
@@ -334,18 +336,18 @@ func getStatus(podContainerStatuses []v1.ContainerStatus, containerName string) 
 			}, nil
 		}
 	}
-	return model.ContainerStatus{}, fmt.Errorf("container %s status not found", containerName)
+	return container.ContainerStatus{}, fmt.Errorf("container %s status not found", containerName)
 }
 
-func getState(status corev1.ContainerStatus) (model.ContainerState, error) {
+func getState(status corev1.ContainerStatus) (container.ContainerState, error) {
 	if status.State.Running != nil {
-		return model.ContainerRunning, nil
+		return container.ContainerRunning, nil
 	}
 	if status.State.Terminated != nil {
-		return model.ContainerTerminated, nil
+		return container.ContainerTerminated, nil
 	}
 	if status.State.Waiting != nil {
-		return model.ContainerWaiting, nil
+		return container.ContainerWaiting, nil
 	}
-	return model.ContainerUnknown, fmt.Errorf("unknown container status %+v", status)
+	return container.ContainerUnknown, fmt.Errorf("unknown container status %+v", status)
 }

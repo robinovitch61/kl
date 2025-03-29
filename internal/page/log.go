@@ -145,7 +145,7 @@ func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
 }
 
 func veryNicelyFormatThisLog(log model.PageLog, styleHeader bool) (string, []string) {
-	header := fmt.Sprintf("%s | %s", log.Timestamps.Full, log.RenderName(log.ContainerNames.Full, styleHeader))
+	header := fmt.Sprintf("%s | %s", log.Log.Timestamps.Full, log.RenderName(log.ContainerNames.Full, styleHeader))
 	return header, formatJSON(log.Log.LineBuffer.Content())
 }
 

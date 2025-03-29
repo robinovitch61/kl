@@ -3,7 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
-	"github.com/robinovitch61/kl/internal/model"
+	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 	"os"
 	"strings"
 
@@ -13,13 +13,13 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 )
 
-func NewClient(
+func NewK8sClient(
 	ctx context.Context,
 	kubeConfigPath string,
 	contexts []string,
 	namespaces []string,
 	useAllNamespaces bool,
-) (Client, error) {
+) (K8sClient, error) {
 	rawKubeConfig, loadingRules, err := getKubeConfig(kubeConfigPath)
 	if err != nil {
 		return clientImpl{}, err
@@ -54,13 +54,13 @@ func NewClient(
 		clusterToContext[clusterName] = contextName
 	}
 
-	var allClusterNamespaces []model.ClusterNamespaces
+	var allClusterNamespaces []k8s_model.ClusterNamespaces
 	for _, cluster := range clusters {
 		if useAllNamespaces {
-			cn := model.ClusterNamespaces{Cluster: cluster, Namespaces: []string{""}}
+			cn := k8s_model.ClusterNamespaces{Cluster: cluster, Namespaces: []string{""}}
 			allClusterNamespaces = append(allClusterNamespaces, cn)
 		} else if len(namespaces) > 0 {
-			cn := model.ClusterNamespaces{Cluster: cluster, Namespaces: namespaces}
+			cn := k8s_model.ClusterNamespaces{Cluster: cluster, Namespaces: namespaces}
 			allClusterNamespaces = append(allClusterNamespaces, cn)
 		} else {
 			contextName := clusterToContext[cluster]
@@ -68,7 +68,7 @@ func NewClient(
 			if namespace == "" {
 				namespace = "default"
 			}
-			cn := model.ClusterNamespaces{Cluster: cluster, Namespaces: []string{namespace}}
+			cn := k8s_model.ClusterNamespaces{Cluster: cluster, Namespaces: []string{namespace}}
 			allClusterNamespaces = append(allClusterNamespaces, cn)
 		}
 	}

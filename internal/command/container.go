@@ -4,6 +4,7 @@ import (
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/k8s/client"
+	"github.com/robinovitch61/kl/internal/k8s/container"
 	"github.com/robinovitch61/kl/internal/model"
 	"k8s.io/apimachinery/pkg/labels"
 	"time"
@@ -15,7 +16,7 @@ type GetContainerListenerMsg struct {
 }
 
 func GetContainerListenerCmd(
-	client client.Client,
+	client client.K8sClient,
 	cluster, namespace string,
 	matchers model.Matchers,
 	selector labels.Selector,
@@ -36,12 +37,12 @@ func GetContainerListenerCmd(
 
 type GetContainerDeltasMsg struct {
 	Listener client.ContainerListener
-	DeltaSet model.ContainerDeltaSet
+	DeltaSet container.ContainerDeltaSet
 	Err      error
 }
 
 func GetNextContainerDeltasCmd(
-	client client.Client,
+	client client.K8sClient,
 	listener client.ContainerListener,
 	duration time.Duration,
 ) tea.Cmd {
@@ -51,7 +52,7 @@ func GetNextContainerDeltasCmd(
 			if err != nil {
 				return GetContainerDeltasMsg{
 					Listener: listener,
-					DeltaSet: model.ContainerDeltaSet{},
+					DeltaSet: container.ContainerDeltaSet{},
 					Err:      err,
 				}
 			}

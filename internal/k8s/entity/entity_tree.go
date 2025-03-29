@@ -1,16 +1,18 @@
-package model
+package entity
 
 import (
 	"fmt"
 	"github.com/robinovitch61/kl/internal/filter"
+	"github.com/robinovitch61/kl/internal/k8s/container"
+	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 	"github.com/robinovitch61/kl/internal/util"
 	"sort"
 	"strings"
 )
 
-// EntityTree is a tree of entities with hierarchy Cluster > Namespace > PodOwner > Pod > Container
+// Tree is a tree of entities with hierarchy Cluster > Namespace > PodOwner > Pod > Container
 // can contain multiple clusters
-type EntityTree interface {
+type Tree interface {
 	// AddOrReplace adds or updates an entity in the tree
 	// if a Container entity is added that doesn't have the relevant parents in the tree already,
 	// the parents are also added
@@ -27,7 +29,7 @@ type EntityTree interface {
 	GetVisibleEntities(filter filter.Model) []Entity
 
 	// GetClusterNamespaces returns all cluster namespaces
-	GetClusterNamespaces() []ClusterNamespaces
+	GetClusterNamespaces() []k8s_model.ClusterNamespaces
 
 	// AnyScannerStarting returns true if any entity in the tree is in the ScannerStarting state
 	AnyScannerStarting() bool
@@ -51,7 +53,7 @@ type EntityTree interface {
 	GetSelectionActions(selectedEntity Entity, filter filter.Model) map[Entity]bool
 
 	// GetEntity gets an entity by its Container
-	GetEntity(container Container) *Entity
+	GetEntity(container container.Container) *Entity
 
 	// UpdatePrettyPrintPrefixes updates the Prefix field of all entities in the tree
 	// such that the tree renders as a nice visual tree given the current filter
@@ -59,7 +61,7 @@ type EntityTree interface {
 
 	// ContainerToShortName returns a function mapping a container to its short name
 	// Short names are unique identifiers given all the other containers in the tree
-	ContainerToShortName(minCharsEachSide int) func(Container) (PageLogContainerName, error)
+	ContainerToShortName(minCharsEachSide int) func(container.Container) (k8s_model.ContainerNameAndPrefix, error)
 }
 
 type entityNode struct {
@@ -94,12 +96,12 @@ func (c isVisibleCache) SetAndReturn(e Entity, v bool) bool {
 }
 
 type entityTreeImpl struct {
-	allClusterNamespaces []ClusterNamespaces
+	allClusterNamespaces []k8s_model.ClusterNamespaces
 	root                 map[string]*entityNode
 	isVisibleCache       isVisibleCache
 }
 
-func NewEntityTree(allClusterNamespaces []ClusterNamespaces) EntityTree {
+func NewEntityTree(allClusterNamespaces []k8s_model.ClusterNamespaces) Tree {
 	return &entityTreeImpl{
 		allClusterNamespaces: allClusterNamespaces,
 		root:                 make(map[string]*entityNode),
@@ -160,7 +162,7 @@ func (et *entityTreeImpl) addCluster(entity Entity, replace bool) {
 func (et *entityTreeImpl) addNamespace(entity Entity, replace bool) {
 	clusterID := entity.Container.Cluster
 	namespaceID := entity.Container.Namespace
-	et.addCluster(Entity{Container: Container{Cluster: clusterID}, IsCluster: true}, false)
+	et.addCluster(Entity{Container: container.Container{Cluster: clusterID}, IsCluster: true}, false)
 
 	cluster := et.root[clusterID]
 	if _, exists := cluster.children[namespaceID]; !exists {
@@ -178,7 +180,7 @@ func (et *entityTreeImpl) addPodOwner(entity Entity, replace bool) {
 	namespaceID := entity.Container.Namespace
 	podOwnerId := entity.Container.PodOwner
 	et.addNamespace(
-		Entity{Container: Container{Cluster: clusterID, Namespace: namespaceID}, IsNamespace: true},
+		Entity{Container: container.Container{Cluster: clusterID, Namespace: namespaceID}, IsNamespace: true},
 		false,
 	)
 
@@ -199,7 +201,7 @@ func (et *entityTreeImpl) addOrReplacePod(entity Entity, replace bool) {
 	podOwnerId := entity.Container.PodOwner
 	podID := entity.Container.Pod
 	et.addPodOwner(
-		Entity{Container: Container{Cluster: clusterID, Namespace: namespaceID, PodOwner: podOwnerId, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsPodOwner: true},
+		Entity{Container: container.Container{Cluster: clusterID, Namespace: namespaceID, PodOwner: podOwnerId, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsPodOwner: true},
 		false,
 	)
 
@@ -221,7 +223,7 @@ func (et *entityTreeImpl) addOrReplaceContainer(entity Entity, replace bool) {
 	podID := entity.Container.Pod
 	containerID := entity.Container.Name
 	et.addOrReplacePod(
-		Entity{Container: Container{Cluster: clusterID, Namespace: namespaceID, PodOwner: podOwnerId, Pod: podID, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsPod: true},
+		Entity{Container: container.Container{Cluster: clusterID, Namespace: namespaceID, PodOwner: podOwnerId, Pod: podID, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsPod: true},
 		false,
 	)
 
@@ -298,7 +300,7 @@ func (et entityTreeImpl) GetVisibleEntities(filter filter.Model) []Entity {
 	return visibleEntities
 }
 
-func (et entityTreeImpl) GetClusterNamespaces() []ClusterNamespaces {
+func (et entityTreeImpl) GetClusterNamespaces() []k8s_model.ClusterNamespaces {
 	return et.allClusterNamespaces
 }
 
@@ -489,24 +491,24 @@ func (et *entityTreeImpl) findNode(entity Entity) *entityNode {
 
 func (et *entityTreeImpl) getParentEntity(entity Entity) Entity {
 	if entity.IsNamespace {
-		return Entity{Container: Container{Cluster: entity.Container.Cluster}, IsCluster: true}
+		return Entity{Container: container.Container{Cluster: entity.Container.Cluster}, IsCluster: true}
 	} else if entity.IsPodOwner {
-		return Entity{Container: Container{Cluster: entity.Container.Cluster, Namespace: entity.Container.Namespace}, IsNamespace: true}
+		return Entity{Container: container.Container{Cluster: entity.Container.Cluster, Namespace: entity.Container.Namespace}, IsNamespace: true}
 	} else if entity.IsPod {
-		return Entity{Container: Container{Cluster: entity.Container.Cluster, Namespace: entity.Container.Namespace, PodOwner: entity.Container.PodOwner, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsPodOwner: true}
+		return Entity{Container: container.Container{Cluster: entity.Container.Cluster, Namespace: entity.Container.Namespace, PodOwner: entity.Container.PodOwner, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsPodOwner: true}
 	} else if entity.IsContainer() {
-		return Entity{Container: Container{Cluster: entity.Container.Cluster, Namespace: entity.Container.Namespace, PodOwner: entity.Container.PodOwner, Pod: entity.Container.Pod, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsPod: true}
+		return Entity{Container: container.Container{Cluster: entity.Container.Cluster, Namespace: entity.Container.Namespace, PodOwner: entity.Container.PodOwner, Pod: entity.Container.Pod, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsPod: true}
 	}
 	return Entity{}
 }
 
-func (et *entityTreeImpl) GetEntity(container Container) *Entity {
+func (et *entityTreeImpl) GetEntity(ct container.Container) *Entity {
 	for _, cluster := range et.root {
 		for _, namespace := range cluster.children {
 			for _, podOwner := range namespace.children {
 				for _, pod := range podOwner.children {
 					for _, containerNode := range pod.children {
-						if containerNode.entity.Container.Equals(container) {
+						if containerNode.entity.Container.Equals(ct) {
 							return &containerNode.entity
 						}
 					}
@@ -596,7 +598,7 @@ func (et *entityTreeImpl) UpdatePrettyPrintPrefixes(filter filter.Model) {
 	}
 }
 
-func (et entityTreeImpl) ContainerToShortName(minCharsEachSide int) func(Container) (PageLogContainerName, error) {
+func (et entityTreeImpl) ContainerToShortName(minCharsEachSide int) func(container.Container) (k8s_model.ContainerNameAndPrefix, error) {
 	entities := et.GetContainerEntities()
 
 	activeClusters := make(map[string]bool)
@@ -617,15 +619,15 @@ func (et entityTreeImpl) ContainerToShortName(minCharsEachSide int) func(Contain
 	shortNameFromNamespace := util.GetUniqueShortNamesFromEdges(activeNamespaces, minCharsEachSide)
 	shortNameFromPodOwner := util.GetUniqueShortNamesFromEdges(activePodOwners, minCharsEachSide)
 	shortNameFromPod := util.GetUniqueShortNamesFromEdges(activePods, minCharsEachSide)
-	specFromContainerId := make(map[string]Container)
+	specFromContainerId := make(map[string]container.Container)
 	for _, e := range entities {
 		specFromContainerId[e.Container.ID()] = e.Container
 	}
 
-	return func(container Container) (PageLogContainerName, error) {
+	return func(container container.Container) (k8s_model.ContainerNameAndPrefix, error) {
 		c, ok := specFromContainerId[container.ID()]
 		if !ok {
-			return PageLogContainerName{}, fmt.Errorf("container not found when getting short name: %s", container.HumanReadable())
+			return k8s_model.ContainerNameAndPrefix{}, fmt.Errorf("container not found when getting short name: %s", container.HumanReadable())
 		}
 
 		shortCluster := shortNameFromCluster[c.Cluster]
@@ -650,7 +652,7 @@ func (et entityTreeImpl) ContainerToShortName(minCharsEachSide int) func(Contain
 				toJoin = append(toJoin, v)
 			}
 		}
-		name := PageLogContainerName{
+		name := k8s_model.ContainerNameAndPrefix{
 			Prefix:        strings.Join(toJoin, "/"),
 			ContainerName: container.Name,
 		}
