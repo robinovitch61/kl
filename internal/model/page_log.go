@@ -74,6 +74,12 @@ func (l PageLog) Equals(other interface{}) bool {
 	if !ok {
 		return false
 	}
+	if l.Log == nil || otherLog.Log == nil {
+		return false
+	}
+	if l.Timestamps == nil || otherLog.Timestamps == nil {
+		return false
+	}
 	return l.Log.LineBuffer.Content() == otherLog.Log.LineBuffer.Content() && l.Timestamps.Full == otherLog.Timestamps.Full
 }
 
