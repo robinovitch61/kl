@@ -19,7 +19,7 @@ builds:
 archives:
   - format_overrides:
       - goos: windows
-        format: zip
+        formats: [ 'zip' ]
     name_template: >-
       {{ .ProjectName }}_{{ .Version }}_
       {{- if eq .Os "darwin" }}Darwin
