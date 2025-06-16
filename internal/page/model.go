@@ -1,4 +1,4 @@
-package model
+package page
 
 import (
 	"github.com/charmbracelet/lipgloss/v2"
@@ -11,31 +11,31 @@ import (
 	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
 )
 
-type PageLogContainerNames struct {
+type logContainerNames struct {
 	Short k8s_model.ContainerNameAndPrefix
 	Full  k8s_model.ContainerNameAndPrefix
 }
 
-// PageLog is a Log with metadata. It has mostly pointer fields for efficient copying
-type PageLog struct {
+// pageLog is a k8s_log.Log with metadata. It has mostly pointer fields for efficient copying
+type pageLog struct {
 	Log              *k8s_log.Log
 	ContainerColors  *container.ContainerColors
-	ContainerNames   *PageLogContainerNames
+	ContainerNames   *logContainerNames
 	CurrentName      *k8s_model.ContainerNameAndPrefix
 	CurrentTimestamp string
 	Terminated       bool
 	Styles           *style.Styles
 }
 
-func (l PageLog) Render() linebuffer.LineBufferer {
+func (l pageLog) Render() linebuffer.LineBufferer {
 	return l.render(true)
 }
 
-func (l PageLog) RenderWithoutStyle() linebuffer.LineBufferer {
+func (l pageLog) RenderWithoutStyle() linebuffer.LineBufferer {
 	return l.render(false)
 }
 
-func (l PageLog) render(includeStyle bool) linebuffer.LineBufferer {
+func (l pageLog) render(includeStyle bool) linebuffer.LineBufferer {
 	ts := ""
 	if l.CurrentTimestamp != "" {
 		if includeStyle {
@@ -61,8 +61,8 @@ func (l PageLog) render(includeStyle bool) linebuffer.LineBufferer {
 	return linebuffer.NewMulti(linebuffer.New(prefix), l.Log.LineBuffer)
 }
 
-func (l PageLog) Equals(other interface{}) bool {
-	otherLog, ok := other.(PageLog)
+func (l pageLog) Equals(other interface{}) bool {
+	otherLog, ok := other.(pageLog)
 	if !ok {
 		return false
 	}
@@ -73,7 +73,7 @@ func (l PageLog) Equals(other interface{}) bool {
 	return l.Log.LineBuffer.Content() == otherLog.Log.LineBuffer.Content() && l.Log.Timestamps.Full == otherLog.Log.Timestamps.Full
 }
 
-func (l PageLog) RenderName(name k8s_model.ContainerNameAndPrefix, includeStyle bool) string {
+func (l pageLog) RenderName(name k8s_model.ContainerNameAndPrefix, includeStyle bool) string {
 	var renderedPrefix, renderedName string
 	if includeStyle {
 		renderedPrefix = lipgloss.NewStyle().Background(l.ContainerColors.ID).Foreground(lipgloss.Color("#000000")).Render(name.Prefix)
@@ -88,14 +88,14 @@ func (l PageLog) RenderName(name k8s_model.ContainerNameAndPrefix, includeStyle 
 	return renderedPrefix + "/" + renderedName
 }
 
-type PageLogContainer struct {
+type pageLogContainer struct {
 	allLogs   *redblacktree.Tree
 	ascending bool
 }
 
 func pageLogComparatorAsc(a, b interface{}) int {
-	e1 := a.(PageLog)
-	e2 := b.(PageLog)
+	e1 := a.(pageLog)
+	e2 := b.(pageLog)
 	switch {
 	case e1.Log.Timestamp.Before(e2.Log.Timestamp):
 		return -1
@@ -110,41 +110,41 @@ func pageLogComparatorDesc(a, b interface{}) int {
 	return -pageLogComparatorAsc(a, b)
 }
 
-func NewPageLogContainer(ascending bool) *PageLogContainer {
+func newPageLogContainer(ascending bool) *pageLogContainer {
 	comparator := pageLogComparatorAsc
 	if !ascending {
 		comparator = pageLogComparatorDesc
 	}
-	return &PageLogContainer{
+	return &pageLogContainer{
 		allLogs:   redblacktree.NewWith(comparator),
 		ascending: ascending,
 	}
 }
 
-func (lc *PageLogContainer) AppendLog(log PageLog, _ interface{}) {
+func (lc *pageLogContainer) AppendLog(log pageLog, _ interface{}) {
 	lc.allLogs.Put(log, nil)
 }
 
-func (lc *PageLogContainer) RemoveAllLogs() {
+func (lc *pageLogContainer) RemoveAllLogs() {
 	lc.allLogs.Clear()
 }
 
-func (lc PageLogContainer) GetOrderedLogs() []PageLog {
-	var allLogs []PageLog
+func (lc pageLogContainer) GetOrderedLogs() []pageLog {
+	var allLogs []pageLog
 	dev.Debug("iterating logs")
 	defer dev.Debug("done iterating logs")
 	allKeys := lc.allLogs.Keys()
 	for i := range allKeys {
-		allLogs = append(allLogs, allKeys[i].(PageLog))
+		allLogs = append(allLogs, allKeys[i].(pageLog))
 	}
 	return allLogs
 }
 
-func (lc PageLogContainer) Ascending() bool {
+func (lc pageLogContainer) Ascending() bool {
 	return lc.ascending
 }
 
-func (lc *PageLogContainer) ToggleAscending() {
+func (lc *pageLogContainer) ToggleAscending() {
 	if lc.ascending {
 		lc.allLogs.Comparator = pageLogComparatorDesc
 	} else {

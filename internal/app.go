@@ -70,9 +70,7 @@ type Model struct {
 	pages      map[page.Type]page.GenericPage
 
 	// more complex state
-	// TODO: push this down into the logs page model?
-	pageLogBuffer []model.PageLog
-	entityTree    entity.Tree
+	entityTree entity.Tree
 	// TODO: put these in entity tree?
 	containerToShortName func(container.Container) (k8s_model.ContainerNameAndPrefix, error)
 	containerIdToColors  map[string]container.ContainerColors
@@ -203,10 +201,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 
 	case message.BatchUpdateLogsMsg:
-		if len(m.pageLogBuffer) > 0 && !m.state.pauseState {
-			m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithAppendedLogs(m.pageLogBuffer)
-			m.pageLogBuffer = nil
-		}
+		// TODO LEO: handle
+		//if len(m.pageLogBuffer) > 0 && !m.state.pauseState {
+		//	m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithAppendedLogs(m.pageLogBuffer)
+		//	m.pageLogBuffer = nil
+		//}
 		return m, tea.Tick(constants.BatchUpdateLogsInterval, func(t time.Time) tea.Msg { return message.BatchUpdateLogsMsg{} })
 
 	case command.StoppedLogScannersMsg:
@@ -944,39 +943,40 @@ func (m Model) handleNewLogsMsg(msg command.GetNewLogsMsg) (Model, tea.Cmd) {
 		return m, nil
 	}
 
-	var err error
-	var newLogs []model.PageLog
-	for i := range msg.NewLogs {
-		shortName := k8s_model.ContainerNameAndPrefix{}
-		if m.containerToShortName != nil {
-			shortName, err = m.containerToShortName(msg.NewLogs[i].Container)
-			if err != nil {
-				m.state.err = err
-				return m, nil
-			}
-		}
-		fullName := k8s_model.ContainerNameAndPrefix{
-			Prefix:        msg.NewLogs[i].Container.IDWithoutContainerName(),
-			ContainerName: msg.NewLogs[i].Container.Name,
-		}
-		var containerColors container.ContainerColors
-		if m.containerIdToColors != nil {
-			containerColors = m.containerIdToColors[msg.NewLogs[i].Container.ID()]
-		}
-		newLog := model.PageLog{
-			Log:             &msg.NewLogs[i],
-			ContainerColors: &containerColors,
-			ContainerNames: &model.PageLogContainerNames{
-				Short: shortName,
-				Full:  fullName,
-			},
-			Terminated: ent.Container.Status.State == container.ContainerTerminated,
-			Styles:     &m.data.styles,
-		}
-		newLogs = append(newLogs, newLog)
-	}
-
-	m.pageLogBuffer = append(m.pageLogBuffer, newLogs...)
+	// TODO LEO: handle
+	//var err error
+	//var newLogs []model.PageLog
+	//for i := range msg.NewLogs {
+	//	shortName := k8s_model.ContainerNameAndPrefix{}
+	//	if m.containerToShortName != nil {
+	//		shortName, err = m.containerToShortName(msg.NewLogs[i].Container)
+	//		if err != nil {
+	//			m.state.err = err
+	//			return m, nil
+	//		}
+	//	}
+	//	fullName := k8s_model.ContainerNameAndPrefix{
+	//		Prefix:        msg.NewLogs[i].Container.IDWithoutContainerName(),
+	//		ContainerName: msg.NewLogs[i].Container.Name,
+	//	}
+	//	var containerColors container.ContainerColors
+	//	if m.containerIdToColors != nil {
+	//		containerColors = m.containerIdToColors[msg.NewLogs[i].Container.ID()]
+	//	}
+	//	newLog := model.PageLog{
+	//		Log:             &msg.NewLogs[i],
+	//		ContainerColors: &containerColors,
+	//		ContainerNames: &model.PageLogContainerNames{
+	//			Short: shortName,
+	//			Full:  fullName,
+	//		},
+	//		Terminated: ent.Container.Status.State == container.ContainerTerminated,
+	//		Styles:     &m.data.styles,
+	//	}
+	//	newLogs = append(newLogs, newLog)
+	//}
+	//
+	//m.pageLogBuffer = append(m.pageLogBuffer, newLogs...)
 
 	if msg.DoneScanning {
 		return m, nil
@@ -1079,57 +1079,57 @@ func (m Model) withUpdatedContainerShortNames() Model {
 		return m
 	}
 
-	err = m.updateShortNamesInBuffer()
-	if err != nil {
-		m.state.err = err
-		return m
-	}
+	//err = m.updateShortNamesInBuffer()
+	//if err != nil {
+	//	m.state.err = err
+	//	return m
+	//}
 
 	m.pages[page.LogsPageType] = newLogsPage
 	return m
 }
 
-func (m *Model) updateShortNamesInBuffer() error {
-	bufferedLogs := m.pageLogBuffer
-	m.pageLogBuffer = nil
-	for i := range bufferedLogs {
-		short, err := m.containerToShortName(bufferedLogs[i].Log.Container)
-		if err != nil {
-			return err
-		}
-		bufferedLogs[i].ContainerNames.Short = short
-	}
-	m.pageLogBuffer = bufferedLogs
-	return nil
-}
+//func (m *Model) updateShortNamesInBuffer() error {
+//	bufferedLogs := m.pageLogBuffer
+//	m.pageLogBuffer = nil
+//	for i := range bufferedLogs {
+//		short, err := m.containerToShortName(bufferedLogs[i].Log.Container)
+//		if err != nil {
+//			return err
+//		}
+//		bufferedLogs[i].ContainerNames.Short = short
+//	}
+//	m.pageLogBuffer = bufferedLogs
+//	return nil
+//}
 
 func (m *Model) removeLogsForContainer(container container.Container) {
 	m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithLogsRemovedForContainer(container)
-	m.removeContainerLogsFromBuffer(container)
+	//m.removeContainerLogsFromBuffer(container)
 }
 
-func (m *Model) removeContainerLogsFromBuffer(container container.Container) {
-	bufferedLogs := m.pageLogBuffer
-	m.pageLogBuffer = nil
-	for _, bufferedLog := range bufferedLogs {
-		if !bufferedLog.Log.Container.Equals(container) {
-			m.pageLogBuffer = append(m.pageLogBuffer, bufferedLog)
-		}
-	}
-}
+//func (m *Model) removeContainerLogsFromBuffer(container container.Container) {
+//	bufferedLogs := m.pageLogBuffer
+//	m.pageLogBuffer = nil
+//	for _, bufferedLog := range bufferedLogs {
+//		if !bufferedLog.Log.Container.Equals(container) {
+//			m.pageLogBuffer = append(m.pageLogBuffer, bufferedLog)
+//		}
+//	}
+//}
 
 func (m *Model) markLogsTerminatedForContainer(container container.Container) {
 	m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithLogsTerminatedForContainer(container)
-	m.markContainerLogsTerminatedInBuffer(container)
+	//m.markContainerLogsTerminatedInBuffer(container)
 }
 
-func (m *Model) markContainerLogsTerminatedInBuffer(container container.Container) {
-	for i := range m.pageLogBuffer {
-		if m.pageLogBuffer[i].Log.Container.Equals(container) {
-			m.pageLogBuffer[i].Terminated = true
-		}
-	}
-}
+//func (m *Model) markContainerLogsTerminatedInBuffer(container container.Container) {
+//	for i := range m.pageLogBuffer {
+//		if m.pageLogBuffer[i].Log.Container.Equals(container) {
+//			m.pageLogBuffer[i].Terminated = true
+//		}
+//	}
+//}
 
 func (m *Model) setFullscreen(fullscreen bool) {
 	m.state.fullScreen = fullscreen

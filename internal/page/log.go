@@ -10,7 +10,6 @@ import (
 	"github.com/robinovitch61/kl/internal/filterable_viewport"
 	"github.com/robinovitch61/kl/internal/help"
 	"github.com/robinovitch61/kl/internal/keymap"
-	"github.com/robinovitch61/kl/internal/model"
 	"github.com/robinovitch61/kl/internal/style"
 	"github.com/robinovitch61/kl/internal/viewport"
 	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
@@ -19,7 +18,7 @@ import (
 
 type SingleLogPage struct {
 	filterableViewport filterable_viewport.FilterableViewport[viewport.RenderableString]
-	log                model.PageLog
+	log                pageLog
 	keyMap             keymap.KeyMap
 	styles             style.Styles
 }
@@ -123,7 +122,7 @@ func (p SingleLogPage) Help() string {
 	return help.MakeHelp(p.keyMap, p.styles.InverseUnderline)
 }
 
-func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
+func (p SingleLogPage) WithLog(log pageLog) SingleLogPage {
 	needsUpdate := true
 
 	if log.Log != nil && p.log.Log != nil {
@@ -144,7 +143,7 @@ func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
 	return p
 }
 
-func veryNicelyFormatThisLog(log model.PageLog, styleHeader bool) (string, []string) {
+func veryNicelyFormatThisLog(log pageLog, styleHeader bool) (string, []string) {
 	header := fmt.Sprintf("%s | %s", log.Log.Timestamps.Full, log.RenderName(log.ContainerNames.Full, styleHeader))
 	return header, formatJSON(log.Log.LineBuffer.Content())
 }

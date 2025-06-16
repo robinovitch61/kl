@@ -20,9 +20,9 @@ var (
 )
 
 type LogsPage struct {
-	filterableViewport filterable_viewport.FilterableViewport[model.PageLog]
+	filterableViewport filterable_viewport.FilterableViewport[pageLog]
 	keyMap             keymap.KeyMap
-	logContainer       *model.PageLogContainer
+	logContainer       *pageLogContainer
 	timestampFormatIdx int
 	nameFormatIdx      int
 	styles             style.Styles
@@ -37,9 +37,9 @@ func NewLogsPage(
 	descending bool,
 	styles style.Styles,
 ) LogsPage {
-	lc := model.NewPageLogContainer(!descending)
-	filterableViewport := filterable_viewport.NewFilterableViewport[model.PageLog](
-		filterable_viewport.FilterableViewportConfig[model.PageLog]{
+	lc := newPageLogContainer(!descending)
+	filterableViewport := filterable_viewport.NewFilterableViewport[pageLog](
+		filterable_viewport.FilterableViewportConfig[pageLog]{
 			TopHeader:            fmt.Sprintf("(L)ogs, %s", getOrder(!descending)),
 			StartShowContext:     true,
 			CanToggleShowContext: true,
@@ -49,7 +49,7 @@ func NewLogsPage(
 			Width:                width,
 			Height:               height,
 			AllRows:              lc.GetOrderedLogs(),
-			MatchesFilter: func(log model.PageLog, filter filter.Model) bool {
+			MatchesFilter: func(log pageLog, filter filter.Model) bool {
 				return log.RenderWithoutStyle().Matches(filter)
 			},
 			ViewWhenEmpty: "No logs yet",
@@ -150,7 +150,7 @@ func (p LogsPage) WithLogFilter(lf model.LogFilter) LogsPage {
 	return p
 }
 
-func (p LogsPage) GetSelectedLog() *model.PageLog {
+func (p LogsPage) GetSelectedLog() *pageLog {
 	return p.filterableViewport.GetSelection()
 }
 
@@ -166,7 +166,7 @@ func (p LogsPage) ScrolledDownByOne() LogsPage {
 	return p
 }
 
-func (p LogsPage) WithAppendedLogs(logs []model.PageLog) LogsPage {
+func (p LogsPage) WithAppendedLogs(logs []pageLog) LogsPage {
 	dev.Debug(fmt.Sprintf("Appending %d logs", len(logs)))
 	defer dev.Debug("Done appending logs")
 	for i := range logs {
@@ -206,7 +206,7 @@ func (p LogsPage) WithUpdatedShortNames(f func(container.Container) (k8s_model.C
 
 func (p LogsPage) WithLogsRemovedForContainer(containerSpec container.Container) LogsPage {
 	allLogs := p.logContainer.GetOrderedLogs()
-	var newLogs []model.PageLog
+	var newLogs []pageLog
 	for _, log := range allLogs {
 		if !log.Log.Container.Equals(containerSpec) {
 			newLogs = append(newLogs, log)
@@ -269,7 +269,7 @@ func (p LogsPage) WithNoStickyness() LogsPage {
 	return p
 }
 
-func (p *LogsPage) setLogs(newLogs []model.PageLog) {
+func (p *LogsPage) setLogs(newLogs []pageLog) {
 	p.logContainer.RemoveAllLogs()
 	for i := range newLogs {
 		p.logContainer.AppendLog(newLogs[i], nil)
@@ -300,7 +300,7 @@ func getOrder(ascending bool) string {
 	return "Descending"
 }
 
-func getLogTimestamp(log model.PageLog, format string) string {
+func getLogTimestamp(log pageLog, format string) string {
 	if format == "short" {
 		return log.Log.Timestamps.Short
 	}
@@ -310,7 +310,7 @@ func getLogTimestamp(log model.PageLog, format string) string {
 	return ""
 }
 
-func getContainerName(log model.PageLog, format string) *k8s_model.ContainerNameAndPrefix {
+func getContainerName(log pageLog, format string) *k8s_model.ContainerNameAndPrefix {
 	var name k8s_model.ContainerNameAndPrefix
 	if format == "short" {
 		name = log.ContainerNames.Short
