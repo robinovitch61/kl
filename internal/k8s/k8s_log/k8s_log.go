@@ -84,7 +84,7 @@ func (ls LogScanner) StartReadingLogs() {
 				LineBuffer: linebuffer.New(logContent),
 				Container:  ls.Container,
 			}
-		
+
 			ls.LogChan <- newLog
 		}
 
