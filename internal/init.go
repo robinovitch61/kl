@@ -37,6 +37,7 @@ func initializedModel(m Model) (Model, tea.Cmd, error) {
 		m.config.Contexts,
 		m.config.Namespaces,
 		m.config.AllNamespaces,
+		m.config.GkeAuthPluginDir,
 	)
 	if err != nil {
 		return m, nil, err

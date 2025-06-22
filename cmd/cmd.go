@@ -136,6 +136,10 @@ var (
 			cfgFileEnvVar: "since",
 			description:   `Show logs since startup time minus this duration. E.g. 5s, 2m, 1.5h, 2h45m. Default 1m`,
 		},
+		"gke-auth-plugin": {
+			cfgFileEnvVar: "gke-auth-plugin",
+			description:   `Path to the directory containing gke-gcloud-auth-plugin. Use this if the plugin is not in your system PATH when authenticating to GKE.`,
+		},
 	}
 
 	description = fmt.Sprintf(`kl %s
@@ -174,6 +178,7 @@ func init() {
 		"all-namespaces",
 		"context",
 		"desc",
+		"gke-auth-plugin",
 		"ic",
 		"iclust",
 		"ignore-owner-types",
@@ -417,12 +422,17 @@ func getAutoSelectMatchers(cmd *cobra.Command) model.Matcher {
 	return *autoSelectMatchers
 }
 
+func getGkeAuthPluginDir(cmd *cobra.Command) string {
+	return cmd.Flags().Lookup("gke-auth-plugin").Value.String()
+}
+
 func getConfig(cmd *cobra.Command) internal.Config {
 	return internal.Config{
 		AllNamespaces:    getAllNamespaces(cmd),
 		ContainerLimit:   getContainerLimit(cmd),
 		Contexts:         getKubeContexts(cmd),
 		Descending:       getDescending(cmd),
+		GkeAuthPluginDir: getGkeAuthPluginDir(cmd),
 		IgnoreOwnerTypes: getIgnoreOwnerTypes(cmd),
 		KubeConfigPath:   getKubeConfigPath(cmd),
 		LogsView:         getLogsView(cmd),

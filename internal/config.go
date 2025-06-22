@@ -10,6 +10,7 @@ type Config struct {
 	ContainerLimit   int
 	Contexts         []string
 	Descending       bool
+	GkeAuthPluginDir string
 	IgnoreOwnerTypes []string
 	KubeConfigPath   string
 	LogsView         bool
