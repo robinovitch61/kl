@@ -19,7 +19,6 @@ func NewK8sClient(
 	contexts []string,
 	namespaces []string,
 	useAllNamespaces bool,
-	gkeAuthPluginDir string,
 ) (K8sClient, error) {
 	rawKubeConfig, loadingRules, err := getKubeConfig(kubeConfigPath)
 	if err != nil {
@@ -43,7 +42,7 @@ func NewK8sClient(
 		authInfo := rawKubeConfig.AuthInfos[contextObj.AuthInfo]
 		// If the authInfo is not for gke-gcloud-auth-plugin, continues.
 		// Otherwise, check for the plugin's presence.
-		if err := ValidateAuthPlugin(authInfo, c, gkeAuthPluginDir); err != nil {
+		if err := ValidateAuthPlugin(authInfo, c); err != nil {
 			return nil, err
 		}
 	}
