@@ -2,6 +2,8 @@ kl
 .idea
 .run
 .DS_Store
+.env
+.claude
 *.log
 *.txt
 *.prof
