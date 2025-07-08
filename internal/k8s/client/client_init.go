@@ -37,6 +37,14 @@ func NewK8sClient(
 		if _, exists := rawKubeConfig.Contexts[c]; !exists {
 			return nil, fmt.Errorf("context %s not found in kubeconfig", c)
 		}
+
+		contextObj := rawKubeConfig.Contexts[c]
+		authInfo := rawKubeConfig.AuthInfos[contextObj.AuthInfo]
+		// If the authInfo is not for gke-gcloud-auth-plugin, continues.
+		// Otherwise, check for the plugin's presence.
+		if err := ValidateAuthPlugin(authInfo, c); err != nil {
+			return nil, err
+		}
 	}
 	dev.Debug(fmt.Sprintf("using contexts %v", contexts))
 
