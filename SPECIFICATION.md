@@ -65,21 +65,21 @@ The application has three main views:
 │ (S)election                 │ (L)ogs Ascending                                       │
 │─────────────────────────────│────────────────────────────────────────────────────────│
 │                             │                                                        │
-│ ▼ prod-cluster              │ 14:23:01.123 api-server     Starting HTTP server...    │
-│   ▼ default                 │ 14:23:01.456 api-server     Listening on :8080         │
-│     ▼ api-deployment        │ 14:23:02.789 worker-1       Processing batch job       │
-│       ▼ api-pod-abc123      │ 14:23:03.012 api-server     GET /health 200 2ms        │
-│         [x] api-server      │ 14:23:03.234 worker-1       Batch complete: 150 items  │
-│       ▼ api-pod-def456      │ 14:23:04.567 api-server     GET /api/users 200 45ms    │
-│         [ ] api-server      │ 14:23:05.890 worker-1       Starting next batch        │
-│     ▼ worker-statefulset    │ 14:23:06.123 api-server     POST /api/data 201 89ms    │
-│       ▼ worker-0            │ 14:23:07.456 worker-1       Connected to database      │
-│         [x] worker-1        │ 14:23:08.789 api-server     GET /metrics 200 5ms       │
-│         [ ] sidecar         │ 14:23:09.012 worker-1       Query executed: 23ms       │
-│   ▼ kube-system             │ 14:23:10.345 api-server     WebSocket connected        │
-│     ▼ coredns               │                                                        │
-│       ▼ coredns-xyz789      │                                                        │
-│         [ ] coredns         │                                                        │
+│ prod-cluster                │ 14:23:01.123 api-server     Starting HTTP server...    │
+│   default                   │ 14:23:01.456 api-server     Listening on :8080         │
+│   ├─api-deployment          │ 14:23:02.789 worker-1       Processing batch job       │
+│   │ ├─api-pod-abc123        │ 14:23:03.012 api-server     GET /health 200 2ms        │
+│   │ │ └─[x] api-server      │ 14:23:03.234 worker-1       Batch complete: 150 items  │
+│   │ └─api-pod-def456        │ 14:23:04.567 api-server     GET /api/users 200 45ms    │
+│   │   └─[ ] api-server      │ 14:23:05.890 worker-1       Starting next batch        │
+│   └─worker-statefulset      │ 14:23:06.123 api-server     POST /api/data 201 89ms    │
+│     └─worker-0              │ 14:23:07.456 worker-1       Connected to database      │
+│       ├─[x] worker-1        │ 14:23:08.789 api-server     GET /metrics 200 5ms       │
+│       └─[ ] sidecar         │ 14:23:09.012 worker-1       Query executed: 23ms       │
+│   kube-system               │ 14:23:10.345 api-server     WebSocket connected        │
+│   └─coredns                 │                                                        │
+│     └─coredns-xyz789        │                                                        │
+│       └─[ ] coredns         │                                                        │
 │                             │                                                        │
 │                             │────────────────────────────────────────────────────────│
 │ '/' or 'r' to filter        │ '/' or 'r' to filter                                   │
@@ -94,27 +94,27 @@ The currently selected row is shown with inverse colors (highlighted):
 │ (S)election                 │
 │─────────────────────────────│
 │                             │
-│ ▼ prod-cluster              │
-│   ▼ default                 │
-│     ▼ api-deployment        │
-│       ▼ api-pod-abc123      │
-│ ████████[x] api-server██████│  ← Highlighted row (inverse colors)
-│       ▼ api-pod-def456      │
-│         [ ] api-server      │
+│ prod-cluster                │
+│   default                   │
+│   └─api-deployment          │
+│     ├─api-pod-abc123        │
+│ ████│ └─[x] api-server██████│  ← Highlighted row (inverse colors)
+│     └─api-pod-def456        │
+│       └─[ ] api-server      │
 ```
 
 ### Container State Indicators in Entity List
 
 ```
-│     ▼ various-deployment        │
-│       ▼ pod-running-abc         │
-│         [ ] container-inactive  │  ← Not selected
-│         [.] container-waiting   │  ← Selected, container pending/waiting
-│         [^] container-starting  │  ← Scanner initializing
-│         [x] container-scanning  │  ← Actively streaming logs
-│         [v] container-stopping  │  ← Scanner shutting down
-│       ▼ pod-deleted-xyz         │
-│         [d] container-deleted   │  ← Container gone but logs retained
+│   └─various-deployment          │
+│     ├─pod-running-abc           │
+│     │ ├─[ ] container-inactive  │  ← Not selected
+│     │ ├─[.] container-waiting   │  ← Selected, container pending/waiting
+│     │ ├─[^] container-starting  │  ← Scanner initializing
+│     │ ├─[x] container-scanning  │  ← Actively streaming logs
+│     │ └─[v] container-stopping  │  ← Scanner shutting down
+│     └─pod-deleted-xyz           │
+│       └─[d] container-deleted   │  ← Container gone but logs retained
 ```
 
 ### Logs View - Ascending Order (Default)
@@ -204,11 +204,13 @@ Newest logs at top, oldest at bottom. Selection sticks to top as new logs arrive
 
 ### Logs View - Terminated Container
 
+The `[TERMINATED]` suffix appears on the container name, not the log content:
+
 ```
-│ 14:23:01.123 api-server     Starting HTTP server on port 8080                 │
-│ 14:23:02.789 api-server     Received SIGTERM                                  │
-│ 14:23:03.012 api-server     Graceful shutdown initiated [TERMINATED]          │
-│ 14:23:04.567 api-server-new Starting HTTP server on port 8080                 │
+│ 14:23:01.123 api-server [TERMINATED]  Starting HTTP server on port 8080       │
+│ 14:23:02.789 api-server [TERMINATED]  Received SIGTERM                        │
+│ 14:23:03.012 api-server [TERMINATED]  Graceful shutdown initiated             │
+│ 14:23:04.567 api-server-new           Starting HTTP server on port 8080       │
 ```
 
 ### Logs View - With Active Filter (Matches Only)
@@ -229,7 +231,7 @@ Filter hides non-matching lines:
 │                                                                               │
 │                                                                               │
 │───────────────────────────────────────────────────────────────────────────────│
-│ filter: GET  (5/47 matches)                                                   │
+│ filter: GET (matches only)                                                    │
 ```
 
 ### Logs View - With Active Filter (Context Mode - x toggled)
@@ -250,7 +252,7 @@ All lines shown, matches highlighted, navigable with n/N:
 │ 14:23:09.345 api-server     [GET] /api/health 200 2ms                         │  ← "GET" highlighted
 │                                                                               │
 │───────────────────────────────────────────────────────────────────────────────│
-│ filter: GET  (2/5 matches)                                                    │
+│ filter: GET (2/5, n/N to cycle)                                               │
 ```
 
 ### Logs View - Regex Filter
@@ -350,21 +352,21 @@ Error occurred:\n\tFile: /app/handler.go\n\tLine: 142\n\tMessage: Connection ref
 │ (S)election                                                                          │
 │──────────────────────────────────────────────────────────────────────────────────────│
 │                                                                                      │
-│ ▼ prod-cluster                                                                       │
-│   ▼ default                                                                          │
-│     ▼ api-deployment                                                                 │
-│       ▼ api-pod-abc123                                                               │
-│         [x] api-server                                                               │
-│       ▼ api-pod-def456                                                               │
-│         [ ] api-server                                                               │
-│     ▼ worker-statefulset                                                             │
-│       ▼ worker-0                                                                     │
-│         [x] worker-1                                                                 │
-│         [ ] sidecar                                                                  │
-│   ▼ kube-system                                                                      │
-│     ▼ coredns                                                                        │
-│       ▼ coredns-xyz789                                                               │
-│         [ ] coredns                                                                  │
+│ prod-cluster                                                                         │
+│   default                                                                            │
+│   ├─api-deployment                                                                   │
+│   │ ├─api-pod-abc123                                                                 │
+│   │ │ └─[x] api-server                                                               │
+│   │ └─api-pod-def456                                                                 │
+│   │   └─[ ] api-server                                                               │
+│   └─worker-statefulset                                                               │
+│     └─worker-0                                                                       │
+│       ├─[x] worker-1                                                                 │
+│       └─[ ] sidecar                                                                  │
+│   kube-system                                                                        │
+│   └─coredns                                                                          │
+│     └─coredns-xyz789                                                                 │
+│       └─[ ] coredns                                                                  │
 │                                                                                      │
 │──────────────────────────────────────────────────────────────────────────────────────│
 │ '/' or 'r' to filter                                                                 │
@@ -450,8 +452,8 @@ Error occurred:\n\tFile: /app/handler.go\n\tLine: 142\n\tMessage: Connection ref
 │         ║  d/ctrl+d Half page down       p       Pause/resume            ║           │
 │         ║  b/ctrl+b Full page up         ctrl+s  Save to file            ║           │
 │         ║  f/ctrl+f Full page down       ctrl+y  Copy to clipboard       ║           │
-│         ║  ←/h      Pan left                                             ║           │
-│         ║  →/l      Pan right            Filtering                       ║           │
+│         ║  ←        Pan left                                             ║           │
+│         ║  →        Pan right            Filtering                       ║           │
 │         ║                                ─────────                       ║           │
 │         ║  Views                         /       Text filter             ║           │
 │         ║  ─────                         r       Regex filter            ║           │
@@ -461,7 +463,7 @@ Error occurred:\n\tFile: /app/handler.go\n\tLine: 142\n\tMessage: Connection ref
 │         ║  L        Fullscreen logs      esc     Clear filter            ║           │
 │         ║  F        Toggle fullscreen                                    ║           │
 │         ║                                                                ║           │
-│         ║  Time Range: 1=1m 2=5m 3=15m 4=30m 5=1h 6=3h 7=12h 8=1d 9=3d 0=all         ║           │
+│         ║  Time Range: 0=now 1=1m 2=5m 3=15m 4=30m 5=1h 6=3h 7=12h 8=1d 9=all         ║           │
 │         ║                                                                ║           │
 │         ╚════════════════════════════════════════════════════════════════╝           │
 │                                                                                      │
@@ -628,23 +630,23 @@ The prefix portion (e.g., "api", "wrk", "svc") uses one color, and the full name
 
 #### Entity Tree Display
 
-Each level of the hierarchy displays differently:
+Each level of the hierarchy displays using box-drawing characters:
 
 ```
-▼ k3d-test                                          ← Cluster (collapsible)
-  ▼ default                                         ← Namespace (collapsible)
-    ▼ flask-deployment <Deployment>                 ← Owner with type label
-      ▼ flask-deployment-5477db84c5-w2dn7           ← Pod name
-        [x] flask-1 (running for 5m23s)             ← Container with state & duration
-        [ ] flask-2 (running for 3m - NEW!)         ← New container annotation
+k3d-test                                            ← Cluster
+  default                                           ← Namespace
+  └─flask-deployment <Deployment>                   ← Owner with type label
+    └─flask-deployment-5477db84c5-w2dn7             ← Pod name
+      ├─[x] flask-1 (running for 5m23s)             ← Container with state & duration
+      └─[ ] flask-2 (running for 3m - NEW!)         ← New container annotation
 ```
 
 **Tree Node Elements**:
-- `▼` - Expanded node indicator (collapsible nodes)
+- `├─` / `└─` / `│` - Box-drawing characters showing tree hierarchy (tree is always fully expanded; use filtering to reduce visible items)
 - `<Deployment>`, `<StatefulSet>`, etc. - Owner type label
 - `(running for Xm)` - Container running duration
-- `NEW!` - Containers discovered within last 3 minutes
-- State indicators: `[ ]`, `[.]`, `[^]`, `[x]`, `[v]`
+- `- NEW` - Containers started within last 3 minutes
+- State indicators: `[ ]`, `[.]`, `[^]`, `[x]`, `[v]`, `[d]`
 
 #### Auto-Selection (via CLI)
 - Match/ignore patterns for: clusters, namespaces, pods, pod owners, containers
@@ -676,7 +678,7 @@ Container state indicators in the entity list:
 - Streams logs from all selected containers in real-time
 - Logs are interleaved by timestamp into unified timeline
 - Supports ascending (oldest first) or descending (newest first) order
-- Batches log updates (100ms intervals) for performance
+- Batches log updates (200ms intervals) for performance
 - Can be paused to freeze the current view
 
 #### Log Line Format
@@ -705,13 +707,19 @@ Each log line displays:
 
 #### Terminated Container Handling
 - When a container terminates, its logs remain visible
-- Log lines from terminated containers display `[TERMINATED]` suffix
+- The container name in log lines displays `[TERMINATED]` suffix (e.g., `api-server [TERMINATED]`)
 - If container restarts, new logs stream in
 
 #### Visual Features
 - Each container gets unique color coding (ID and name portions)
 - Line wrapping toggle (wrapped vs horizontal scroll)
 - Sticky scroll: stays at bottom (descending) or top (ascending) as new logs arrive
+
+#### Scroll Position Indicator
+When content overflows the viewport, a scroll position indicator appears at the bottom:
+- Format: `X% (N/M)` where X is percentage through content, N is current position, M is total items
+- Example: `25% (5/20)` - showing item 5 of 20, 25% through the list
+- Only shown when scrolling has begun or content exceeds viewport height
 
 #### Interactions
 | Action | Behavior |
@@ -782,9 +790,12 @@ Container path components are color-coded:
 - Text filter active: `filter: [query]`
 - Regex filter active: `regex filter: [pattern]`
 - Invalid regex: `invalid regex: [pattern]`
-- With matches: `filter: [query] X% (N/M)` where X is percentage, N is current match, M is total
+- Context mode OFF (matches only): `filter: [query] (matches only)`
+- Context mode ON with matches: `filter: [query] (N/M, n/N to cycle)`
+- Context mode ON while editing: `filter: [query] (N/M, enter to apply)`
+- Context mode ON with no matches: `filter: [query] (no matches)`
 
-Example: `filter: error 5% (1/217)` - showing match 1 of 217, which is 5% through the results.
+Example: `filter: error (3/217, n/N to cycle)` - showing match 3 of 217, use n/N keys to navigate.
 
 #### Interactions
 | Action | Behavior |
@@ -904,48 +915,55 @@ kl demo   Logs for the Last 1m34s   0/4/11 Pending/Selected/Total       ctrl+c t
 - Dismissed by pressing any key (including `?` again)
 
 #### Visual Design
-- Double-bordered box centered on screen
-- Header: "Help (press any key to hide)"
-- Two-column layout for efficient space usage
-- Fixed width regardless of terminal size
-- If terminal too small, content may be clipped
+- Bordered title: "Help (press any key to hide)"
+- Key bindings displayed in multi-column layout (11 items per column)
+- Time range bindings displayed below in separate columns (6 items per column)
+- Dynamically generated from keymap definitions
 
-#### Help Content Layout
+#### Help Content
 
+The help overlay displays two sections of key bindings:
+
+**General Key Bindings** (displayed in columns of 11 rows):
 ```
-╔════════════════════════════════════════════════════════════════╗
-║                Help (press any key to hide)                    ║
-╠════════════════════════════════════════════════════════════════╣
-║                                                                ║
-║  Navigation                    Actions                         ║
-║  ───────────                   ───────                         ║
-║  ↑/k      Move up              enter   Select/zoom             ║
-║  ↓/j      Move down            o       Toggle order            ║
-║  g        Jump to top          t       Cycle timestamp         ║
-║  G        Jump to bottom       c       Cycle container name    ║
-║  u/ctrl+u Half page up         w       Toggle wrap             ║
-║  d/ctrl+d Half page down       p       Pause/resume            ║
-║  b/ctrl+b Full page up         ctrl+s  Save to file            ║
-║  f/ctrl+f Full page down       ctrl+y  Copy to clipboard       ║
-║  ←        Pan left                                              ║
-║  →        Pan right            Filtering                        ║
-║                                ─────────                       ║
-║  Views                         /       Text filter             ║
-║  ─────                         r       Regex filter            ║
-║  s        Focus selection      n       Next match              ║
-║  l        Focus logs           N       Previous match          ║
-║  S        Fullscreen selection x       Toggle context          ║
-║  L        Fullscreen logs      esc     Clear filter            ║
-║  F        Toggle fullscreen                                    ║
-║                                                                ║
-║  Time Range: 0=now 1=1m 2=5m 3=15m 4=30m 5=1h 6=3h 7=12h 8=1d 9=all ║
-║                                                                ║
-╚════════════════════════════════════════════════════════════════╝
+ enter  select/deselect containers    ↑/k   scroll up
+ R      deselect all containers       ↓/j   scroll down
+ l      focus logs                    b     pgup
+ L      logs fullscreen               f     pgdn
+ s      focus selection               g     top
+ S      selection fullscreen          G     bottom
+ F      toggle fullscreen             ctrl+s save focus to file
+ w      toggle line wrap              p     pause/resume logs
+ t      show short/full/no timestamps enter zoom on log
+ c      show short/full/no names      esc   back to all logs
+ o      reverse timestamp order       ctrl+y copy zoomed log
+ /      edit filter                   ctrl+c quit
+ r      regex filter                  ?     show/hide help
+ esc    discard filter
+ enter  apply filter
+ n      next filter match
+ N      prev filter match
+ x      filter matches only
 ```
 
-#### Section Details
+**Time Range Bindings** (displayed below):
+```
+ 0-9    change log start time
+ 0      now onwards
+ 1      1m
+ 2      5m
+ 3      15m
+ 4      30m
+ 5      1h
+ 6      3h
+ 7      12h
+ 8      1d
+ 9      all time
+```
 
-**Navigation Section (Left Column, Top)**
+#### Key Binding Reference (by category)
+
+**Navigation**
 | Key | Action |
 |-----|--------|
 | ↑/k | Move up one line |
@@ -959,7 +977,7 @@ kl demo   Logs for the Last 1m34s   0/4/11 Pending/Selected/Total       ctrl+c t
 | ← | Pan left (unwrapped mode) |
 | → | Pan right (unwrapped mode) |
 
-**Views Section (Left Column, Bottom)**
+**Views**
 | Key | Action |
 |-----|--------|
 | s | Focus selection/entities panel |
@@ -968,7 +986,7 @@ kl demo   Logs for the Last 1m34s   0/4/11 Pending/Selected/Total       ctrl+c t
 | L | Fullscreen logs view |
 | F | Toggle fullscreen mode |
 
-**Actions Section (Right Column, Top)**
+**Actions**
 | Key | Action |
 |-----|--------|
 | enter | Select container or zoom into log |
@@ -980,7 +998,7 @@ kl demo   Logs for the Last 1m34s   0/4/11 Pending/Selected/Total       ctrl+c t
 | ctrl+s | Save to file |
 | ctrl+y | Copy to clipboard |
 
-**Filtering Section (Right Column, Bottom)**
+**Filtering**
 | Key | Action |
 |-----|--------|
 | / | Text filter |
@@ -990,8 +1008,8 @@ kl demo   Logs for the Last 1m34s   0/4/11 Pending/Selected/Total       ctrl+c t
 | x | Toggle context display |
 | esc | Clear filter |
 
-**Time Range Section (Bottom)**
-Compact single-line reference: `0=now 1=1m 2=5m 3=15m 4=30m 5=1h 6=3h 7=12h 8=1d 9=all`
+**Time Range**
+Reference: `0=now 1=1m 2=5m 3=15m 4=30m 5=1h 6=3h 7=12h 8=1d 9=all`
 
 - `0` = From now onwards (only new logs)
 - `9` = All available logs (no time limit)
@@ -1133,7 +1151,7 @@ Auto-transitions:
 Display: [x] container-name
 Behavior:
   - Actively receiving log lines from Kubernetes
-  - New logs appear in real-time (batched every 100ms for performance)
+  - New logs appear in real-time (batched every 200ms for performance)
   - Logs are interleaved by timestamp with other streaming containers
   - Maintains connection health via periodic heartbeat
 
@@ -1363,7 +1381,7 @@ Transitions:
 
 ```
 Unpaused (default):
-  - Log buffer flushed to view every 100ms
+  - Log buffer flushed to view every 200ms
   - New logs appear in real-time
 
 Paused:
@@ -1531,7 +1549,7 @@ Example:     --iclust ".*-backup$"
 #### `-n, --namespace`
 ```
 Type:        String (comma-separated list)
-Default:     "default"
+Default:     Current namespace from kubeconfig context
 Env:         KL_NAMESPACE
 Example:     -n kube-system,monitoring,app
 ```
@@ -1539,6 +1557,7 @@ Example:     -n kube-system,monitoring,app
 **Description**: Specifies which namespaces to watch for containers.
 
 **Behavior**:
+- If not specified, uses the default namespace from the current kubeconfig context
 - Limits container discovery to specified namespaces
 - Reduces API load compared to all-namespaces
 - Multiple namespaces can be specified
@@ -1808,7 +1827,7 @@ kl --ignore-owner-types Job,CronJob
 #### `--limit`
 ```
 Type:        Integer
-Default:     0 (unlimited)
+Default:     -1 (unlimited)
 Env:         KL_LIMIT
 Example:     --limit 20
 ```
@@ -1820,7 +1839,7 @@ Example:     --limit 20
 - Applied in discovery order (not deterministic across runs)
 - Toast notification shown when limit is reached
 - User can manually select additional containers beyond limit
-- Set to 0 for unlimited
+- Set to -1 or omit for unlimited; any positive value sets the limit
 
 **Use Case**: Prevents overwhelming the system when patterns match many containers.
 
