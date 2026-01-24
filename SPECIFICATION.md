@@ -37,7 +37,7 @@ The application has three main views:
 │ Top Bar                                             │
 ├────────────────────┬────────────────────────────────┤
 │ Entities View      │ Logs View / Single Log View    │
-│ (~30% width)       │ (~70% width)                   │
+│ (~40% width)       │ (~60% width)                   │
 └────────────────────┴────────────────────────────────┘
 │ Toast notification (when visible)                   │
 ```
@@ -60,7 +60,7 @@ The application has three main views:
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────┐
-│ kl v0.5.0  Logs for the Last 5m  0/3/12                  ctrl+c to quit / ? for help │
+│ kl v0.5.0  Logs for the Last 1m  0/3/12                  ctrl+c to quit / ? for help │
 ├─────────────────────────────┬────────────────────────────────────────────────────────┤
 │ (S)election                 │ (L)ogs Ascending                                       │
 │─────────────────────────────│────────────────────────────────────────────────────────│
@@ -114,7 +114,7 @@ The currently selected row is shown with inverse colors (highlighted):
 │         [x] container-scanning  │  ← Actively streaming logs
 │         [v] container-stopping  │  ← Scanner shutting down
 │       ▼ pod-deleted-xyz         │
-│         [x] container-deleted   │  ← Container gone but logs retained
+│         [d] container-deleted   │  ← Container gone but logs retained
 ```
 
 ### Logs View - Ascending Order (Default)
@@ -271,7 +271,7 @@ All lines shown, matches highlighted, navigable with n/N:
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────┐
-│ kl v0.5.0  Logs for the Last 5m  0/3/12                  ctrl+c to quit / ? for help │
+│ kl v0.5.0  Logs for the Last 1m  0/3/12                  ctrl+c to quit / ? for help │
 ├──────────────────────────────────────────────────────────────────────────────────────┤
 │ Single Log                                                                           │
 │ 2024-01-15T14:23:01.123Z  prod-cluster/default/api-pod-abc123/api-server             │
@@ -345,7 +345,7 @@ Error occurred:\n\tFile: /app/handler.go\n\tLine: 142\n\tMessage: Connection ref
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────┐
-│ kl v0.5.0  Logs for the Last 5m  0/3/12                  ctrl+c to quit / ? for help │
+│ kl v0.5.0  Logs for the Last 1m  0/3/12                  ctrl+c to quit / ? for help │
 ├──────────────────────────────────────────────────────────────────────────────────────┤
 │ (S)election                                                                          │
 │──────────────────────────────────────────────────────────────────────────────────────│
@@ -375,7 +375,7 @@ Error occurred:\n\tFile: /app/handler.go\n\tLine: 142\n\tMessage: Connection ref
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────┐
-│ kl v0.5.0  Logs for the Last 5m  0/3/12                  ctrl+c to quit / ? for help │
+│ kl v0.5.0  Logs for the Last 1m  0/3/12                  ctrl+c to quit / ? for help │
 ├──────────────────────────────────────────────────────────────────────────────────────┤
 │ (L)ogs Ascending                                                                     │
 │──────────────────────────────────────────────────────────────────────────────────────│
@@ -403,7 +403,7 @@ Error occurred:\n\tFile: /app/handler.go\n\tLine: 142\n\tMessage: Connection ref
 
 **Normal State:**
 ```
-│ kl v0.5.0  Logs for the Last 5m  0/3/12                        ctrl+c to quit / ? for help │
+│ kl v0.5.0  Logs for the Last 1m  0/3/12                        ctrl+c to quit / ? for help │
 ```
 
 **With Pending Containers:**
@@ -415,7 +415,7 @@ Error occurred:\n\tFile: /app/handler.go\n\tLine: 142\n\tMessage: Connection ref
 
 **Paused State:**
 ```
-│ kl v0.5.0  Logs for the Last 5m  0/3/12  [PAUSED]              ctrl+c to quit / ? for help │
+│ kl v0.5.0  Logs for the Last 1m  0/3/12  [PAUSED]              ctrl+c to quit / ? for help │
                                            ↑
                                            Highlighted/inverse text
 ```
@@ -427,7 +427,7 @@ Error occurred:\n\tFile: /app/handler.go\n\tLine: 142\n\tMessage: Connection ref
 
 **Narrow Terminal (help text hidden):**
 ```
-│ kl v0.5.0  Logs for the Last 5m  0/3/12                                                    │
+│ kl v0.5.0  Logs for the Last 1m  0/3/12                                                    │
 ```
 
 ### Help Overlay
@@ -542,7 +542,7 @@ Error occurred:\n\tFile: /app/handler.go\n\tLine: 142\n\tMessage: Connection ref
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────┐
-│ kl v0.5.0  Logs for the Last 5m  0/0/0                         ctrl+c to quit / ? for help │
+│ kl v0.5.0  Logs for the Last 1m  0/0/0                         ctrl+c to quit / ? for help │
 ├─────────────────────────────┬────────────────────────────────────────────────────────┤
 │ (S)election                 │ (L)ogs Ascending                                       │
 │─────────────────────────────│────────────────────────────────────────────────────────│
@@ -626,6 +626,26 @@ The prefix portion (e.g., "api", "wrk", "svc") uses one color, and the full name
 - Containers can be selected/deselected to control which logs are displayed
 - Selection state persists across container restarts
 
+#### Entity Tree Display
+
+Each level of the hierarchy displays differently:
+
+```
+▼ k3d-test                                          ← Cluster (collapsible)
+  ▼ default                                         ← Namespace (collapsible)
+    ▼ flask-deployment <Deployment>                 ← Owner with type label
+      ▼ flask-deployment-5477db84c5-w2dn7           ← Pod name
+        [x] flask-1 (running for 5m23s)             ← Container with state & duration
+        [ ] flask-2 (running for 3m - NEW!)         ← New container annotation
+```
+
+**Tree Node Elements**:
+- `▼` - Expanded node indicator (collapsible nodes)
+- `<Deployment>`, `<StatefulSet>`, etc. - Owner type label
+- `(running for Xm)` - Container running duration
+- `NEW!` - Containers discovered within last 3 minutes
+- State indicators: `[ ]`, `[.]`, `[^]`, `[x]`, `[v]`
+
 #### Auto-Selection (via CLI)
 - Match/ignore patterns for: clusters, namespaces, pods, pod owners, containers
 - Kubernetes label selectors
@@ -638,6 +658,7 @@ Container state indicators in the entity list:
 - `[^]` - Scanner starting
 - `[x]` - Scanning (actively collecting logs)
 - `[v]` - Scanner stopping
+- `[d]` - Deleted (container gone but logs retained)
 
 #### Interactions
 | Action | Behavior |
@@ -669,10 +690,18 @@ Each log line displays:
 2. **Short** - Time only (HH:MM:SS.mmm)
 3. **Full** - Full ISO timestamp
 
-#### Container Name Formats (cyclable)
-1. **Short** - Abbreviated name
-2. **None** - No name shown
-3. **Full** - Complete container identifier
+#### Container Name Formats (cyclable with 'c' key)
+
+1. **Short** - Abbreviated pod name + full container name
+   - Format: `[pod-abbrev]/[container-name]`
+   - Example: `fl..7/flask-1` (pod "flask-deployment-5477db84c5-w2dn7" abbreviated)
+   - Keeps first 2 and last 2 characters of pod suffix with ".." in middle
+
+2. **None** - No name shown (just log content)
+
+3. **Full** - Complete container path
+   - Format: `[cluster]/[namespace]/[pod]/[container]`
+   - Example: `k3d-test/default/flask-deployment-5477db84c5-w2dn7/flask-1`
 
 #### Terminated Container Handling
 - When a container terminates, its logs remain visible
@@ -690,7 +719,7 @@ Each log line displays:
 | Navigate (↑/↓/j/k) | Move through log lines |
 | Page navigation (f/b, d/u) | Full/half page scrolling |
 | Jump (g/G) | Jump to top/bottom |
-| Horizontal pan (←/→/h/l) | Scroll horizontally when not wrapped |
+| Horizontal pan (←/→) | Scroll horizontally when not wrapped |
 | Enter | Open selected log in Single Log View |
 | o | Toggle ascending/descending order |
 | t | Cycle timestamp format |
@@ -704,18 +733,31 @@ Each log line displays:
 
 #### Behavior
 - Displays a single log entry in full detail
-- Header shows full timestamp and container identifier
-- JSON content is automatically formatted with indentation
-- Escaped sequences (\n, \t) are expanded for readability
+- Header shows full timestamp with timezone and complete container path
+- JSON content is automatically formatted with 4-space indentation
+- Escaped sequences (\n, \t) are expanded for readability (\t → 4 spaces)
 - Supports both horizontal and vertical scrolling
+
+#### Header Format
+```
+Single Log  '/' or 'r' to filter
+2024-12-30T16:23:43.820-08:00 | k3d-test/default/flask-deployment/flask-deployment-5477db84c5-w2dn7/flask-1
+```
+
+Container path components are color-coded:
+- Cluster/namespace/owner path in one color
+- Container name in bright highlight color
 
 #### Interactions
 | Action | Behavior |
 |--------|----------|
-| Escape | Return to Logs View |
+| Escape | Return to Logs View (or clear filter if active) |
 | Navigate (↑/↓) | Vertical scroll |
 | Horizontal pan (←/→) | Horizontal scroll |
 | Ctrl+Y | Copy log content to clipboard (without ANSI codes) |
+| / | Enter text filter mode |
+| r | Enter regex filter mode |
+| n/N | Navigate to next/previous match |
 
 ---
 
@@ -740,7 +782,9 @@ Each log line displays:
 - Text filter active: `filter: [query]`
 - Regex filter active: `regex filter: [pattern]`
 - Invalid regex: `invalid regex: [pattern]`
-- With matches: `filter: [query] (3/15 matches)`
+- With matches: `filter: [query] X% (N/M)` where X is percentage, N is current match, M is total
+
+Example: `filter: error 5% (1/217)` - showing match 1 of 217, which is 5% through the results.
 
 #### Interactions
 | Action | Behavior |
@@ -764,18 +808,18 @@ Each log line displays:
 - Applies to all selected containers
 
 #### Time Range Options
-| Key | Duration |
-|-----|----------|
-| 1 | 1 minute |
-| 2 | 5 minutes |
-| 3 | 15 minutes |
-| 4 | 30 minutes |
-| 5 | 1 hour |
-| 6 | 3 hours |
-| 7 | 12 hours |
-| 8 | 24 hours (1 day) |
-| 9 | 72 hours (3 days) |
-| 0 | All time (no limit) |
+| Key | Lookback | Description |
+|-----|----------|-------------|
+| 0 | Now onwards | Only show new logs from this point forward |
+| 1 | 1 minute | Last 1 minute of logs |
+| 2 | 5 minutes | Last 5 minutes of logs |
+| 3 | 15 minutes | Last 15 minutes of logs |
+| 4 | 30 minutes | Last 30 minutes of logs |
+| 5 | 1 hour | Last 1 hour of logs |
+| 6 | 3 hours | Last 3 hours of logs |
+| 7 | 12 hours | Last 12 hours of logs |
+| 8 | 24 hours | Last 24 hours (1 day) of logs |
+| 9 | All time | All available logs (no time limit) |
 
 #### Toast Notification
 When time range changes, display: "Changing time range to start from [X ago]..."
@@ -825,11 +869,20 @@ When time range changes, display: "Changing time range to start from [X ago]..."
 ### 8. Top Bar
 
 #### Content (left to right)
-1. Application version
-2. Current time range (e.g., "Logs for the Last 5m")
-3. Container counts: "Pending/Selected/Total"
-4. Pause indicator (when paused): `[PAUSED]`
+1. Application name/version (e.g., "kl demo" or "kl v0.5.0")
+2. Current time range with live counter (e.g., "Logs for the Last 1m34s")
+   - Counter updates in real-time showing elapsed time
+3. Container counts: `X/Y/Z Pending/Selected/Total`
+   - Pending = containers in ScannerStarting or WantScanning states
+   - Selected = containers that may have logs (Scanning or Deleted states)
+   - Total = all discovered containers
+4. Pause indicator (when paused): `[PAUSED]` (highlighted)
 5. Right side: "ctrl+c to quit / ? for help"
+
+#### Example Top Bar
+```
+kl demo   Logs for the Last 1m34s   0/4/11 Pending/Selected/Total       ctrl+c to quit / ? for help
+```
 
 #### Responsive Behavior
 - Right-side help text hidden if terminal too narrow
@@ -839,15 +892,109 @@ When time range changes, display: "Changing time range to start from [X ago]..."
 
 ### 9. Help Overlay
 
-#### Behavior
-- Displayed as centered modal overlay
-- Shows comprehensive keyboard shortcut reference
-- Organized in two-column format
-- Includes time range key reference
-- Dismissed by pressing any key
+#### Trigger
+- Press `?` to show help overlay
+- Press any key to dismiss
 
-#### Header
-"Help (press any key to hide)"
+#### Behavior
+- Displayed as centered modal overlay when user presses `?`
+- Overlays the current view (does not replace it)
+- Background remains visible but inactive
+- Does not interrupt log streaming or other background operations
+- Dismissed by pressing any key (including `?` again)
+
+#### Visual Design
+- Double-bordered box centered on screen
+- Header: "Help (press any key to hide)"
+- Two-column layout for efficient space usage
+- Fixed width regardless of terminal size
+- If terminal too small, content may be clipped
+
+#### Help Content Layout
+
+```
+╔════════════════════════════════════════════════════════════════╗
+║                Help (press any key to hide)                    ║
+╠════════════════════════════════════════════════════════════════╣
+║                                                                ║
+║  Navigation                    Actions                         ║
+║  ───────────                   ───────                         ║
+║  ↑/k      Move up              enter   Select/zoom             ║
+║  ↓/j      Move down            o       Toggle order            ║
+║  g        Jump to top          t       Cycle timestamp         ║
+║  G        Jump to bottom       c       Cycle container name    ║
+║  u/ctrl+u Half page up         w       Toggle wrap             ║
+║  d/ctrl+d Half page down       p       Pause/resume            ║
+║  b/ctrl+b Full page up         ctrl+s  Save to file            ║
+║  f/ctrl+f Full page down       ctrl+y  Copy to clipboard       ║
+║  ←        Pan left                                              ║
+║  →        Pan right            Filtering                        ║
+║                                ─────────                       ║
+║  Views                         /       Text filter             ║
+║  ─────                         r       Regex filter            ║
+║  s        Focus selection      n       Next match              ║
+║  l        Focus logs           N       Previous match          ║
+║  S        Fullscreen selection x       Toggle context          ║
+║  L        Fullscreen logs      esc     Clear filter            ║
+║  F        Toggle fullscreen                                    ║
+║                                                                ║
+║  Time Range: 0=now 1=1m 2=5m 3=15m 4=30m 5=1h 6=3h 7=12h 8=1d 9=all ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+```
+
+#### Section Details
+
+**Navigation Section (Left Column, Top)**
+| Key | Action |
+|-----|--------|
+| ↑/k | Move up one line |
+| ↓/j | Move down one line |
+| g/Ctrl+G | Jump to top |
+| G | Jump to bottom |
+| u/ctrl+u | Half page up |
+| d/ctrl+d | Half page down |
+| b/ctrl+b | Full page up |
+| f/ctrl+f | Full page down |
+| ← | Pan left (unwrapped mode) |
+| → | Pan right (unwrapped mode) |
+
+**Views Section (Left Column, Bottom)**
+| Key | Action |
+|-----|--------|
+| s | Focus selection/entities panel |
+| l | Focus logs panel |
+| S | Fullscreen selection view |
+| L | Fullscreen logs view |
+| F | Toggle fullscreen mode |
+
+**Actions Section (Right Column, Top)**
+| Key | Action |
+|-----|--------|
+| enter | Select container or zoom into log |
+| o | Toggle ascending/descending order |
+| t | Cycle timestamp format |
+| c | Cycle container name format |
+| w | Toggle line wrap |
+| p | Pause/resume streaming |
+| ctrl+s | Save to file |
+| ctrl+y | Copy to clipboard |
+
+**Filtering Section (Right Column, Bottom)**
+| Key | Action |
+|-----|--------|
+| / | Text filter |
+| r | Regex filter |
+| n | Next match |
+| N | Previous match |
+| x | Toggle context display |
+| esc | Clear filter |
+
+**Time Range Section (Bottom)**
+Compact single-line reference: `0=now 1=1m 2=5m 3=15m 4=30m 5=1h 6=3h 7=12h 8=1d 9=all`
+
+- `0` = From now onwards (only new logs)
+- `9` = All available logs (no time limit)
 
 ---
 
@@ -900,12 +1047,10 @@ This describes the complete lifecycle of a container's log streaming, including 
 │       └────────────────────┴──────────────────────┴──────────────────┘      │
 │                           (user deselects)                                  │
 │                                                                             │
-│  STREAMING ──────► DISCONNECTED ──────► RECONNECTING ──────► STREAMING      │
-│       │                                       │                             │
-│       └───────────────────────────────────────┘                             │
-│                    (automatic retry)                                        │
+│  STREAMING ──────► DISCONNECTING ──────► UNSELECTED                         │
+│                    (user deselects or container terminates)                 │
 │                                                                             │
-│  Any State ──────► DELETED (container removed from cluster)                 │
+│  Any State (selected) ──────► DELETED (container removed from cluster)     │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -919,9 +1064,7 @@ This describes the complete lifecycle of a container's log streaming, including 
 | **Connecting** | Establishing connection to Kubernetes log stream | `[^]` | No |
 | **Streaming** | Actively receiving logs | `[x]` | Yes |
 | **Disconnecting** | Gracefully closing log stream | `[v]` | Yes (frozen) |
-| **Disconnected** | Stream lost, awaiting reconnection | `[!]` | Yes (stale) |
-| **Reconnecting** | Attempting to re-establish connection | `[~]` | Yes (stale) |
-| **Deleted** | Container no longer exists in cluster | `[x]` | Yes (terminated) |
+| **Deleted** | Container no longer exists in cluster | `[d]` | Yes (terminated) |
 
 #### Detailed State Behaviors
 
@@ -1031,55 +1174,9 @@ Auto-transitions:
   - Disconnect complete + container terminated → SELECTED_WAITING (keep logs)
 ```
 
-##### DISCONNECTED
-```
-Display: [!] container-name
-Behavior:
-  - Connection was lost unexpectedly (network issue, API error)
-  - Existing logs remain visible but are stale
-  - Automatic reconnection will be attempted
-  - Shows toast: "Connection lost to [container]. Reconnecting..."
-
-User Actions Available:
-  ✓ Enter → Deselect container (remove logs, stop retry)
-  ✓ Navigate → Browse existing logs
-  ✓ Filter → Filter existing logs
-  ✓ Copy/Save → Export existing logs
-  ✓ Manual reconnect (r key in future?) → Force immediate RECONNECTING
-
-Auto-transitions:
-  - After 1s delay → RECONNECTING
-  - Container deleted → DELETED
-  - User deselects → UNSELECTED
-```
-
-##### RECONNECTING
-```
-Display: [~] container-name
-Behavior:
-  - Attempting to re-establish connection after disconnect
-  - Uses exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s (max)
-  - On success: resumes from last received log timestamp
-  - Existing logs remain visible during reconnection
-  - Shows toast: "Reconnecting to [container]... (attempt 2/10)"
-
-User Actions Available:
-  ✓ Enter → Cancel reconnection, return to UNSELECTED
-  ✓ Navigate → Browse existing logs
-  ✓ Filter → Filter existing logs
-  ✓ Copy/Save → Export existing logs
-
-Auto-transitions:
-  - Reconnection successful → STREAMING (logs resume)
-  - Reconnection failed → Retry RECONNECTING (next backoff)
-  - Max retries exceeded → DISCONNECTED (permanent, requires manual action)
-  - Container deleted → DELETED
-  - User deselects → UNSELECTED
-```
-
 ##### DELETED
 ```
-Display: [x] container-name  (with [TERMINATED] on logs)
+Display: [d] container-name  (with [TERMINATED] on logs)
 Behavior:
   - Container no longer exists in Kubernetes cluster
   - All existing logs are retained and marked as terminated
@@ -1120,36 +1217,36 @@ Auto-transitions:
     │          │                    Success   │                    │            │
     │          │                              ▼                    │            │
     │          │                    ┌───────────────────┐          │            │
-    │          ├────────────────────│    STREAMING      │◄─────────┼────────┐   │
-    │          │      Enter         │       [x]         │          │        │   │
-    │          │     (desel)        └────────┬──────────┘          │        │   │
-    │          │                             │                     │        │   │
-    │          │              Connection     │  Lost               │        │   │
-    │          │                             ▼                     │        │   │
-    │          │                    ┌───────────────────┐          │        │   │
-    │          │                    │   DISCONNECTED    │          │        │   │
-    │          ├────────────────────│       [!]         │──────────┘        │   │
-    │          │      Enter         └─────────┬─────────┘                   │   │
-    │          │                              │                             │   │
-    │          │                    Auto      │  Retry                      │   │
-    │          │                              ▼                             │   │
-    │          │                    ┌───────────────────┐        Success    │   │
-    │          └────────────────────│   RECONNECTING    │───────────────────┘   │
-    │                 Enter         │       [~]         │                       │
-    │                               └───────────────────┘                       │
+    │          ├────────────────────│    STREAMING      │◄─────────┘            │
+    │          │      Enter         │       [x]         │                       │
+    │          │     (desel)        └────────┬──────────┘                       │
+    │          │                             │                                  │
+    │          │                             │ Container                        │
+    │          │                             │ Terminated                       │
+    │          │                             ▼                                  │
+    │          │                    ┌───────────────────┐                       │
+    │          └────────────────────│  SCANNER_STOPPING │                       │
+    │                  Enter        │       [v]         │                       │
+    │                               └─────────┬─────────┘                       │
+    │                                         │                                 │
+    │                                         ▼                                 │
+    │                                   (Back to UNSELECTED                     │
+    │                                    or SELECTED_WAITING)                   │
     │                                                                           │
     │   Container deleted from cluster at any point:                            │
     │                                                                           │
     │   Any State ─────────────────► ┌───────────────────┐                      │
-    │            Container           │     DELETED       │                      │
-    │             Deleted            │       [x]         │                      │
-    │                                └─────────┬─────────┘                      │
+    │   (while selected)             │     DELETED       │                      │
+    │            Container           │       [d]         │                      │
+    │             Deleted            └─────────┬─────────┘                      │
     │                                          │                                │
     │                                   Enter  │  (remove from list)            │
     │                                          ▼                                │
     │                                   (Entity removed)                        │
     └───────────────────────────────────────────────────────────────────────────┘
 ```
+
+**Note:** Connection failures during CONNECTING are retried automatically with exponential backoff. This is handled internally and not exposed as a separate visible state.
 
 #### Time Range Change Behavior
 
@@ -1161,9 +1258,7 @@ Current State     │ Behavior
 UNSELECTED        │ Time range stored for when container is selected
 SELECTED_WAITING  │ Time range stored for when connection starts
 CONNECTING        │ Cancel current connection, restart with new time range
-STREAMING         │ → DISCONNECTING → Clear logs → CONNECTING with new range
-DISCONNECTED      │ Store new range, will use on next reconnect
-RECONNECTING      │ Cancel current attempt, restart with new time range
+STREAMING         │ → SCANNER_STOPPING → Clear logs → CONNECTING with new range
 DELETED           │ No effect (logs are historical)
 ```
 
@@ -1191,16 +1286,15 @@ Behavior:
   - Logs from all STREAMING containers interleave by timestamp
   - Time range changes apply to ALL selected containers
   - Pause applies to entire log view (all containers)
-  - If any container is RECONNECTING, show indicator in top bar
-  - Container counts in top bar: "Pending/Streaming/Total"
-    - Pending = SELECTED_WAITING + CONNECTING + RECONNECTING
-    - Streaming = STREAMING + DELETED
+  - Container counts in top bar: "Pending/Selected/Total"
+    - Pending = SELECTED_WAITING + CONNECTING
+    - Selected = STREAMING + DELETED
     - Total = All discovered containers
 
 Example top bar:
   "2/5/20" means:
     - 2 containers pending/connecting
-    - 5 containers actively streaming or terminated-with-logs
+    - 5 containers actively streaming or with retained logs (deleted)
     - 20 total containers discovered
 ```
 
@@ -1209,14 +1303,12 @@ Example top bar:
 ```
 Error Type              │ Behavior
 ────────────────────────┼──────────────────────────────────────────────────
-Network timeout         │ STREAMING → DISCONNECTED → auto-retry
-Auth failure (401/403)  │ CONNECTING → DISCONNECTED + toast error
-                        │ No auto-retry (requires user action)
+Network timeout         │ Auto-retry with exponential backoff (internal)
+Auth failure (401/403)  │ CONNECTING → UNSELECTED + toast error
 Container not found     │ → DELETED state
 Rate limited (429)      │ Extended backoff (60s minimum)
-API server unavailable  │ All containers → DISCONNECTED, retry with backoff
+API server unavailable  │ Auto-retry with backoff (internal)
 Invalid log format      │ Skip malformed line, continue streaming
-Memory pressure         │ Oldest logs evicted when buffer exceeds limit
 ```
 
 ### Entity State Machine (Summary)
@@ -1299,9 +1391,9 @@ Paused:
 |-----|--------|
 | ↑/k | Move up |
 | ↓/j | Move down |
-| ←/h | Pan left (when not wrapped) |
-| →/l | Pan right (when not wrapped) |
-| g | Jump to top |
+| ← | Pan left (when not wrapped) |
+| → | Pan right (when not wrapped) |
+| g/Ctrl+G | Jump to top |
 | G | Jump to bottom |
 | u/Ctrl+U | Half page up |
 | d/Ctrl+D | Half page down |
@@ -1772,8 +1864,8 @@ Example:     -r "error|warn|fail"
 **Behavior**:
 - Regex filter active immediately
 - Equivalent to pressing `r` and typing the pattern
-- Invalid regex shows error in filter bar
-- Overrides `-f` if both specified
+- Invalid regex shows error and exits
+- Error if both `-f` and `-r` specified (mutually exclusive)
 
 ---
 
@@ -1813,15 +1905,15 @@ Example:     --logs-view
 
 #### `--since`
 ```
-Type:        Duration string
-Default:     "5m" (5 minutes)
+Type:        Duration string (Go duration format)
+Default:     "1m" (1 minute)
 Env:         KL_SINCE
 Example:     --since 1h
 ```
 
 **Description**: How far back to fetch logs when connecting to containers.
 
-**Valid Formats**:
+**Valid Formats** (standard Go duration syntax):
 ```
 30s     - 30 seconds
 5m      - 5 minutes
@@ -1829,14 +1921,15 @@ Example:     --since 1h
 1h30m   - 1 hour 30 minutes
 24h     - 24 hours (1 day)
 72h     - 72 hours (3 days)
-0       - All available logs (no time limit)
+0 or 0s - From now onwards (no historical logs)
 ```
 
 **Behavior**:
 - Applied when container enters CONNECTING state
 - Larger values mean more initial logs to fetch
-- Can be changed during session with number keys (1-9, 0)
+- Can be changed during session with number keys (0-9)
 - Very large values may cause slow initial load
+- To get "all available logs", use a very large duration (e.g., `8760h` for 1 year) or press `9` during the session
 
 **Example Usage**:
 ```bash
@@ -1846,7 +1939,7 @@ kl --since 1h
 # Last 3 days
 kl --since 72h
 
-# All available logs
+# Only new logs from now onwards
 kl --since 0
 ```
 
@@ -2005,6 +2098,103 @@ App
 ├── Prompt Modal (conditional)
 └── Toast Notification (conditional)
 ```
+
+---
+
+## Additional Technical Details
+
+### Container Color Assignment
+
+Each container is assigned a consistent color based on its name using MD5 hashing:
+
+**Color Palette (13 colors)**:
+- Blue (#58A2EE)
+- Bright Green (#3FE34B)
+- Purple (#7c60d7)
+- Red (#FD2C4C)
+- Orange (#FE7A00)
+- Yellow (#FAF81C)
+- Teal (#56EBD3)
+- Green (#42952E)
+- Light Pink (#FFACE6)
+- Bright Pink (#FE16F4)
+- Gold (#D6A112)
+- Beige (#FFDAB9)
+- Tomato (#FF7E6A)
+
+**Behavior**:
+- Color is deterministically assigned using MD5 hash of container name
+- Same container name always gets same color across sessions
+- Ensures visual consistency for debugging
+
+---
+
+### GKE Authentication Plugin
+
+When connecting to Google Kubernetes Engine (GKE) clusters:
+
+**Automatic Validation**:
+- Application checks if `gke-gcloud-auth-plugin` is in system PATH
+- Only triggered when kubeconfig authInfo requires this plugin
+
+**Error Handling**:
+- If plugin not found, displays helpful error message
+- Includes installation hint from kubeconfig
+- Does not prevent other (non-GKE) contexts from loading
+
+**Example Error**:
+```
+gke-gcloud-auth-plugin not found in system PATH for context gke-prod.
+  - [installation hint from kubeconfig] and ensure 'google-cloud-sdk/bin' is in your system's PATH.
+```
+
+---
+
+### Developer/Debug Features
+
+Hidden environment variables for troubleshooting:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `KL_DEBUG` | Enable debug logging to file (any non-empty value) | Disabled |
+| `KL_DEBUG_PATH` | Path to debug log file | `kl.log` |
+| `KL_PPROF_SERVER` | Enable pprof profiling server on port 6060 | Disabled |
+
+**Debug Logging**:
+- Logs all tea.Msg updates with timestamps
+- Skips high-frequency messages (BatchUpdateLogsMsg, BlinkMsg)
+- Useful for diagnosing state machine issues
+
+---
+
+### Performance Tuning Constants
+
+Internal timing values that affect responsiveness:
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| SingleContainerLogCollectionDuration | 150ms | How long each container collects logs before sending |
+| GetNextContainerDeltasDuration | 300ms | How long to collect container changes before updating |
+| BatchUpdateLogsInterval | 200ms | How often logs view receives batched updates |
+| CheckStylesLoadedDuration | 200ms | Delay before checking terminal color detection |
+| AttemptUpdateSinceTimeInterval | 500ms | Retry interval for time range changes |
+
+---
+
+### Layout Constants
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| LeftPageWidthFraction | 2/5 (40%) | Width of entities panel in split view |
+| MinCharsEachSideShortNames | 2 | Minimum characters shown on each side of abbreviated names |
+| ConfirmSelectionActionsThreshold | 5 | Number of selection changes requiring confirmation prompt |
+| NewContainerThreshold | 3 minutes | Containers newer than this are annotated as "new" |
+
+---
+
+### New Container Annotation
+
+Containers discovered within the last 3 minutes display a visual indicator marking them as new. This helps users identify recently started containers.
 
 ---
 
