@@ -13,10 +13,10 @@ type Config struct {
 	IgnoreOwnerTypes []string
 	KubeConfigPath   string
 	LogsView         bool
-	LogFilter        model.LogFilter
-	Matchers         model.Matchers
+	LogFilter        TODO
+	Matchers         TODO
 	Namespaces       []string
 	Selector         labels.Selector
-	SinceTime        model.SinceTime
+	SinceTime        TODO
 	Version          string
 }
