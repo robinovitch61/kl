@@ -748,17 +748,9 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 	}
 
 	scrolledToTop := m.topItemIdx == 0 && m.topItemLineOffset == 0
-	showFooter := false
-	if scrolledToTop && len(contentLines)+1 >= numLinesAfterHeader {
-		// if seeing all the content on screen, show footer
-		// if one blank line at bottom, still show footer
-		// if two blank lines at bottom, do not show footer
-		showFooter = true
-	}
-	if !scrolledToTop {
-		// if scrolled at all, should be showing footer
-		showFooter = true
-	}
+	// show footer if scrolled at all, or if seeing all the content on screen
+	// (one blank line at bottom still shows footer, two blank lines does not)
+	showFooter := !scrolledToTop || len(contentLines)+1 >= numLinesAfterHeader
 
 	if !m.footerEnabled {
 		showFooter = false

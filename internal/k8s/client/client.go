@@ -9,7 +9,6 @@ import (
 	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 	"github.com/robinovitch61/kl/internal/model"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/informers"
@@ -169,7 +168,7 @@ func (c clientImpl) GetLogStream(
 		return nil, nil, fmt.Errorf("clientset for cluster %s not found", container.Cluster)
 	}
 
-	logOptions := &v1.PodLogOptions{
+	logOptions := &corev1.PodLogOptions{
 		Container:  container.Name,
 		Timestamps: true,
 		Follow:     true,
@@ -274,7 +273,7 @@ func getPodOwnerNameAndOwnerRefType(pod corev1.Pod) (string, string) {
 	return podOwnerRef.Name, podOwnerRef.Kind
 }
 
-func getStatus(podContainerStatuses []v1.ContainerStatus, containerName string) (container.ContainerStatus, error) {
+func getStatus(podContainerStatuses []corev1.ContainerStatus, containerName string) (container.ContainerStatus, error) {
 	for _, status := range podContainerStatuses {
 		if status.Name == containerName {
 			state, err := getState(status)

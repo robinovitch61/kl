@@ -21,7 +21,7 @@ func Debug(msg string) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 		logger := log.New(file, "", log.Ldate|log.Lmicroseconds)
 		logger.Printf("%q", msg)
 	}

@@ -89,7 +89,7 @@ func saveToFile(fileName string, fileContent []string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	for _, line := range fileContent {
 		_, writeErr := f.WriteString(line + "\n")
