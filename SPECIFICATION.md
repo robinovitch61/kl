@@ -446,7 +446,6 @@ App
 |----------|-------------|
 | `KL_DEBUG` | Enable debug logging |
 | `KL_DEBUG_PATH` | Debug log file path (default: `kl.log`) |
-| `KL_PPROF_SERVER` | Enable pprof on port 6060 |
 
 ---
 
