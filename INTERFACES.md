@@ -135,6 +135,14 @@ type TimeRange struct {
     Duration time.Duration // 0=now onwards, -1=all time
 }
 ```
+- `NewTimeRange(key int) TimeRange` - create from key press
+- `SinceTime() time.Time` - compute lookback time
+
+### Logs
+
+Sortable slice of Log:
+- `SortAscending() Logs` - returns logs sorted oldest first
+- `SortDescending() Logs` - returns logs sorted newest first
 
 ---
 
@@ -156,13 +164,14 @@ cluster-name
 ### Node
 
 A single row in the tree. Different kinds: Cluster, Namespace, Owner, Pod, Container.
-- Implements `viewport.Object` via `GetItem()`
-- Only Container nodes have selection state
-- Tracks depth and tree-drawing prefix characters
+- `GetItem() item.Item` - implements `viewport.Object`
+- `IsContainer() bool` - true if this is a container node
+- `Container() *SelectableContainer` - returns container (nil if not container node)
 
 ### Tree
 
 Immutable tree structure with key operations:
+- `NewTree() Tree` - create empty tree
 - `Update(containers []SelectableContainer) Tree` - rebuild from containers
 - `Nodes() []Node` - flattened list for viewport display
 - `ToggleSelection(idx int) (Tree, []StateChange)` - toggle container at index
@@ -185,15 +194,11 @@ type StateChange struct {
 
 Abstracts Kubernetes API operations. Returns `tea.Cmd` for async work.
 
-### Client
-
-Wraps Kubernetes client for a single cluster. Used internally by Manager.
-
 ### Manager
 
 Coordinates container watching across multiple clusters:
-- `NewManager(kubeconfig, contexts) (Manager, error)` - create manager for contexts
-- `WatchContainersCmd(namespaces, selector) tea.Cmd` - returns command that watches for container changes
+- `NewManager(kubeconfig string, contexts []string) (*Manager, error)` - create manager for contexts
+- `WatchContainersCmd(ctx, namespaces, selector) tea.Cmd` - returns command that watches for container changes
 
 The command produces `ContainerDeltasMsg` periodically (batched over 300ms per constants.go).
 
@@ -208,6 +213,8 @@ type ContainerDelta struct {
 }
 ```
 
+Note: Internal `client` type wraps per-cluster Kubernetes client (unexported).
+
 ---
 
 ## internal/logscanner/
@@ -216,8 +223,8 @@ Manages log streaming via `tea.Cmd`. Translates container state changes into com
 
 ### Coordinator
 
-One per cluster, returns commands for log streaming:
-- `NewCoordinator(client, timeRange) Coordinator`
+Manages log scanners, returns commands for log streaming:
+- `NewCoordinator(manager *k8s.Manager, timeRange TimeRange) *Coordinator`
 - `HandleStateChange(change StateChange) tea.Cmd` - returns command to start/stop log streaming
 - `SetTimeRange(tr TimeRange) tea.Cmd` - returns command to restart streams with new time range
 - `Shutdown() tea.Cmd` - returns command to stop all streams
@@ -232,35 +239,42 @@ Commands produce these messages:
 
 ## internal/view/
 
-View components using bubbleo viewports.
+View components using bubbleo viewports. All views implement standard BubbleTea patterns:
+- `Update(msg tea.Msg) (View, tea.Cmd)`
+- `View() string`
+- `SetSize(width, height int) View`
 
 ### TreeView
 
 Displays the tree in `filterableviewport.Model[tree.Node]`:
-- `SetTree(Tree)` - update displayed tree
+- `NewTreeView(width, height int) TreeView`
+- `SetTree(Tree) TreeView` - update displayed tree
 - `SelectedNode() *tree.Node` - get currently selected node
-- Handles filtering via filterableviewport
 
 ### LogsView
 
 Displays interleaved logs in `filterableviewport.Model[LogRow]`:
-- `AppendLogs([]Log)` - add new logs, re-sort
-- `ClearLogsForContainer(id)` - remove logs for deselected container
-- `ToggleTimestampFormat()` / `ToggleNameFormat()` - cycle display formats
-- `SetAscending(bool)` - change sort order
-- Filtering handled by filterableviewport
+- `NewLogsView(width, height int, ascending bool) LogsView`
+- `AppendLogs([]Log) LogsView` - add new logs, re-sort
+- `ClearLogsForContainer(id) LogsView` - remove logs for deselected container
+- `ToggleTimestampFormat() LogsView` / `ToggleNameFormat() LogsView` - cycle display formats
+- `SetAscending(bool) LogsView` - change sort order
+- `SelectedLog() *Log` - get currently selected log
 
 ### LogRow
 
-Wraps `Log` for viewport display. Implements `viewport.Object`.
-Formats: timestamp (none/short/full), container name (short/none/full).
+Wraps `Log` for viewport display:
+- `NewLogRow(log, timestampFormat, nameFormat, color) LogRow`
+- `GetItem() item.Item` - implements `viewport.Object`
+- `Log() Log` - returns underlying log
 
 ### SingleLogView
 
 Displays single expanded log in `viewport.Model[SingleLogLine]`:
-- JSON auto-formatting with indentation
-- Escape sequence expansion (\n, \t)
-- `PlainText()` for clipboard copy
+- `NewSingleLogView(width, height int) SingleLogView`
+- `SetLog(log Log) SingleLogView` - set log to display
+- `PlainText() string` - for clipboard copy (TODO: JSON formatting, escape expansion)
+- `Log() *Log` - get currently displayed log
 
 ---
 

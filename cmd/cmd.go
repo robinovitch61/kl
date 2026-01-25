@@ -3,10 +3,10 @@ package cmd
 import (
 	"fmt"
 	"github.com/carlmjohnson/versioninfo"
-	tea "github.com/charmbracelet/bubbletea/v2"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/robinovitch61/kl/internal"
 	"github.com/robinovitch61/kl/internal/constants"
-	"github.com/robinovitch61/kl/internal/model"
+	"github.com/robinovitch61/kl/internal/domain"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -311,9 +311,9 @@ func getIgnoreOwnerTypes(cmd *cobra.Command) []string {
 	return types
 }
 
-func getIgnoreMatchers(cmd *cobra.Command) model.Matcher {
-	ignoreMatchers, err := model.NewMatcher(
-		model.NewMatcherArgs{
+func getIgnoreMatchers(cmd *cobra.Command) domain.Matcher {
+	ignoreMatchers, err := domain.NewMatcher(
+		domain.NewMatcherArgs{
 			Cluster:   cmd.Flags().Lookup("iclust").Value.String(),
 			Container: cmd.Flags().Lookup("ic").Value.String(),
 			PodOwner:  cmd.Flags().Lookup("iown").Value.String(),
@@ -332,7 +332,7 @@ func getLogsView(cmd *cobra.Command) bool {
 	return cmd.Flags().Lookup("logs-view").Value.String() == "true"
 }
 
-func getLogFilter(cmd *cobra.Command) model.LogFilter {
+func getLogFilter(cmd *cobra.Command) domain.LogFilter {
 	filter := cmd.Flags().Lookup("log-filter").Value.String()
 	regex := cmd.Flags().Lookup("log-regex").Value.String()
 	if filter != "" && regex != "" {
@@ -340,7 +340,7 @@ func getLogFilter(cmd *cobra.Command) model.LogFilter {
 		os.Exit(1)
 	}
 	if filter != "" {
-		return model.LogFilter{
+		return domain.LogFilter{
 			Value:   filter,
 			IsRegex: false,
 		}
@@ -351,12 +351,12 @@ func getLogFilter(cmd *cobra.Command) model.LogFilter {
 			fmt.Printf("error compiling log regex: %v\n", err)
 			os.Exit(1)
 		}
-		return model.LogFilter{
+		return domain.LogFilter{
 			Value:   regex,
 			IsRegex: true,
 		}
 	}
-	return model.LogFilter{}
+	return domain.LogFilter{}
 }
 
 func getNamespaces(cmd *cobra.Command) []string {
@@ -378,10 +378,10 @@ func getSelector(cmd *cobra.Command) labels.Selector {
 	return selector
 }
 
-func getSince(cmd *cobra.Command) model.SinceTime {
+func getSince(cmd *cobra.Command) domain.SinceTime {
 	duration := cmd.Flags().Lookup("since").Value.String()
 	if duration == "" {
-		return model.NewSinceTime(
+		return domain.NewSinceTime(
 			time.Now().Add(-time.Duration(constants.InitialLookbackMins)*time.Minute),
 			constants.InitialLookbackMins,
 		)
@@ -397,12 +397,12 @@ func getSince(cmd *cobra.Command) model.SinceTime {
 		fmt.Println("error: since time is in the future")
 		os.Exit(1)
 	}
-	return model.NewSinceTime(t, int(d.Minutes()))
+	return domain.NewSinceTime(t, int(d.Minutes()))
 }
 
-func getAutoSelectMatchers(cmd *cobra.Command) model.Matcher {
-	autoSelectMatchers, err := model.NewMatcher(
-		model.NewMatcherArgs{
+func getAutoSelectMatchers(cmd *cobra.Command) domain.Matcher {
+	autoSelectMatchers, err := domain.NewMatcher(
+		domain.NewMatcherArgs{
 			Cluster:   cmd.Flags().Lookup("mclust").Value.String(),
 			Namespace: cmd.Flags().Lookup("mns").Value.String(),
 			PodOwner:  cmd.Flags().Lookup("mown").Value.String(),
@@ -427,7 +427,7 @@ func getConfig(cmd *cobra.Command) internal.Config {
 		KubeConfigPath:   getKubeConfigPath(cmd),
 		LogsView:         getLogsView(cmd),
 		LogFilter:        getLogFilter(cmd),
-		Matchers: model.Matchers{
+		Matchers: domain.Matchers{
 			AutoSelectMatcher: getAutoSelectMatchers(cmd),
 			IgnoreMatcher:     getIgnoreMatchers(cmd),
 		},

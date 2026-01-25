@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"github.com/robinovitch61/kl/internal/model"
+	"github.com/robinovitch61/kl/internal/domain"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
@@ -13,10 +13,10 @@ type Config struct {
 	IgnoreOwnerTypes []string
 	KubeConfigPath   string
 	LogsView         bool
-	LogFilter        TODO
-	Matchers         TODO
+	LogFilter        domain.LogFilter
+	Matchers         domain.Matchers
 	Namespaces       []string
 	Selector         labels.Selector
-	SinceTime        TODO
+	SinceTime        domain.SinceTime
 	Version          string
 }

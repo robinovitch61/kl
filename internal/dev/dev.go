@@ -1,6 +1,7 @@
 package dev
 
 import (
+	"fmt"
 	"log"
 	"os"
 )
@@ -21,4 +22,18 @@ func Debug(msg string) {
 		logger := log.New(file, "", log.Ldate|log.Lmicroseconds)
 		logger.Printf("%q", msg)
 	}
+}
+
+// DebugUpdateMsg logs a tea.Msg for debugging
+func DebugUpdateMsg(component string, msg any) {
+	if debugSet != "" {
+		Debug(component + ": " + msgToString(msg))
+	}
+}
+
+func msgToString(msg any) string {
+	if msg == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("%T", msg)
 }

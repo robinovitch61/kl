@@ -3,8 +3,8 @@ package internal
 import (
 	"context"
 
-	"github.com/charmbracelet/bubbles/v2/key"
-	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/bubbles/key"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/keymap"
 )
@@ -24,19 +24,13 @@ func InitialModel(c Config) Model {
 	}
 }
 
-func (m Model) Init() (tea.Model, tea.Cmd) {
-	return m, tea.Batch(
-		tea.RequestForegroundColor,
-		tea.RequestBackgroundColor,
-	)
+func (m Model) Init() tea.Cmd {
+	return nil
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	dev.DebugUpdateMsg("App", msg)
-	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
-	)
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -48,7 +42,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	}
 
-	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
 }
 
