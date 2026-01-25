@@ -24,7 +24,7 @@
 
 The application has three main views:
 
-1. **Entities View** - Left panel showing hierarchical container list
+1. **Tree View** - Left panel showing hierarchical container tree
 2. **Logs View** - Right panel showing interleaved log stream
 3. **Single Log View** - Right panel showing expanded single log entry
 
@@ -95,12 +95,12 @@ kl v0.5.0   Logs for the Last 1m34s   0/4/11 Pending/Selected/Total   [PAUSED]  
 ### View Switching
 | Key | Action |
 |-----|--------|
-| s/l | Focus entities/logs view |
-| S/L | Fullscreen entities/logs view |
+| s/l | Focus tree/logs view |
+| S/L | Fullscreen tree/logs view |
 | F | Toggle fullscreen |
 | Escape | Exit Single Log View / Clear filter |
 
-### Entities View
+### Tree View
 | Key | Action |
 |-----|--------|
 | Enter | Toggle container selection |
@@ -141,7 +141,7 @@ kl v0.5.0   Logs for the Last 1m34s   0/4/11 Pending/Selected/Total   [PAUSED]  
 
 ---
 
-## Entity Tree
+## Selection Tree
 
 ### Hierarchy
 ```
@@ -268,7 +268,7 @@ Non-blocking notifications at bottom of screen, auto-dismiss after 5 seconds:
 
 ## State Machine
 
-### Entity States
+### Container States
 
 ```
 States:
@@ -418,10 +418,10 @@ kl -A --mown "critical-.*" --limit 50
 ```
 App
 ├── Top Bar
-├── Pages Container
-│   ├── Entities Page → FilterableViewport
-│   ├── Logs Page → FilterableViewport
-│   └── Single Log Page → FilterableViewport
+├── Views Container
+│   ├── TreeView → FilterableViewport
+│   ├── LogsView → FilterableViewport
+│   └── SingleLogView → Viewport
 ├── Help Overlay (conditional)
 ├── Prompt Modal (conditional)
 └── Toast Notification (conditional)
@@ -435,7 +435,7 @@ App
 | BatchUpdateLogsInterval | 200ms | UI update interval |
 | NewContainerThreshold | 3 minutes | "NEW" annotation threshold |
 | ConfirmSelectionActionsThreshold | 5 | Changes requiring confirmation |
-| LeftPageWidthFraction | 40% | Entities panel width |
+| LeftPageWidthFraction | 40% | Tree panel width |
 
 ### GKE Authentication
 - Validates `gke-gcloud-auth-plugin` in PATH when required

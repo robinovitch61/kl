@@ -1,5 +1,7 @@
 # Project Values:
 
+- priorities should be on correctness, readability, testability, and avoiding nonessential complexity
+- this project uses the bubbletea TUI framework (https://github.com/charmbracelet/bubbletea). As such, commands and message passing through the bubbletea model are the primary means of handling asynchronicity, not goroutines directly.
 - a functional style that values immutability is preferred in all but absolutely necessary scenarios (use of pointers and mutable methods should be rare and well-justified)
 - an emphasis on "deep interfaces" - that is, avoidance of unnecessary interfaces wrapping little complexity underneath. Interfaces should have as few public methods with as low an arity as possible. Choosing the right interfaces at the right level of abstraction is crucial for this.
 - there is a strong emphasis on unit tests with a consistent style. Tests should only assert on publicly exposed fields and results of public methods. Fields or methods are never be made public only for the purpose of testing.
