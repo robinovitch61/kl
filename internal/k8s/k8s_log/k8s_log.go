@@ -5,13 +5,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/robinovitch61/kl/internal/dev"
-	"github.com/robinovitch61/kl/internal/k8s/container"
-	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/google/uuid"
+	"github.com/robinovitch61/bubbleo/viewport/item"
+	"github.com/robinovitch61/kl/internal/dev"
+	"github.com/robinovitch61/kl/internal/k8s/container"
 )
 
 type LogTimestamps struct {
@@ -22,7 +23,7 @@ type LogTimestamps struct {
 type Log struct {
 	Timestamp  time.Time
 	Timestamps LogTimestamps
-	LineBuffer linebuffer.LineBuffer
+	Item       item.SingleItem
 	Container  container.Container
 }
 
@@ -81,8 +82,8 @@ func (ls LogScanner) StartReadingLogs() {
 					Short: localTime.Format(time.TimeOnly),
 					Full:  localTime.Format("2006-01-02T15:04:05.000Z07:00"),
 				},
-				LineBuffer: linebuffer.New(logContent),
-				Container:  ls.Container,
+				Item:      item.NewItem(logContent),
+				Container: ls.Container,
 			}
 
 			ls.LogChan <- newLog

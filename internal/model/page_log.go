@@ -3,12 +3,13 @@ package model
 import (
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/emirpasic/gods/trees/redblacktree"
+	"github.com/robinovitch61/bubbleo/viewport"
+	"github.com/robinovitch61/bubbleo/viewport/item"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/k8s/container"
 	"github.com/robinovitch61/kl/internal/k8s/k8s_log"
 	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 	"github.com/robinovitch61/kl/internal/style"
-	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
 )
 
 type PageLogContainerNames struct {
@@ -27,15 +28,18 @@ type PageLog struct {
 	Styles           *style.Styles
 }
 
-func (l PageLog) Render() linebuffer.LineBufferer {
-	return l.render(true)
+// assert PageLog implements viewport.Object
+var _ viewport.Object = PageLog{}
+
+func (l PageLog) GetItem() item.Item {
+	return l.getItem(true)
 }
 
-func (l PageLog) RenderWithoutStyle() linebuffer.LineBufferer {
-	return l.render(false)
+func (l PageLog) GetItemWithoutStyle() item.Item {
+	return l.getItem(false)
 }
 
-func (l PageLog) render(includeStyle bool) linebuffer.LineBufferer {
+func (l PageLog) getItem(includeStyle bool) item.Item {
 	ts := ""
 	if l.CurrentTimestamp != "" {
 		if includeStyle {
@@ -54,23 +58,18 @@ func (l PageLog) render(includeStyle bool) linebuffer.LineBufferer {
 
 	prefix := ts + label
 	if len(prefix) > 0 {
-		if l.Log.LineBuffer.Content() != "" {
+		if l.Log.Item.Content() != "" {
 			prefix = prefix + " "
 		}
 	}
-	return linebuffer.NewMulti(linebuffer.New(prefix), l.Log.LineBuffer)
+	return item.NewMulti(item.NewItem(prefix), l.Log.Item)
 }
 
-func (l PageLog) Equals(other interface{}) bool {
-	otherLog, ok := other.(PageLog)
-	if !ok {
+func (l PageLog) Equals(other PageLog) bool {
+	if l.Log == nil || other.Log == nil {
 		return false
 	}
-	if l.Log == nil || otherLog.Log == nil {
-		return false
-	}
-	// TODO LEO: make this method on Log
-	return l.Log.LineBuffer.Content() == otherLog.Log.LineBuffer.Content() && l.Log.Timestamps.Full == otherLog.Log.Timestamps.Full
+	return l.Log.Item.Content() == other.Log.Item.Content() && l.Log.Timestamps.Full == other.Log.Timestamps.Full
 }
 
 func (l PageLog) RenderName(name k8s_model.ContainerNameAndPrefix, includeStyle bool) string {

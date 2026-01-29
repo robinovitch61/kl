@@ -2,13 +2,15 @@ package entity
 
 import (
 	"fmt"
+	"time"
+
+	"github.com/robinovitch61/bubbleo/viewport"
+	"github.com/robinovitch61/bubbleo/viewport/item"
 	"github.com/robinovitch61/kl/internal/constants"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/k8s/container"
 	"github.com/robinovitch61/kl/internal/k8s/k8s_log"
 	"github.com/robinovitch61/kl/internal/util"
-	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
-	"time"
 )
 
 // Entity represents a renderable & selectable kubernetes entity (cluster, namespace, pod owner, pod, or container)
@@ -20,8 +22,11 @@ type Entity struct {
 	State                                     EntityState
 }
 
-func (e Entity) Render() linebuffer.LineBufferer {
-	return linebuffer.New(e.Repr())
+// assert Entity implements viewport.Object
+var _ viewport.Object = Entity{}
+
+func (e Entity) GetItem() item.Item {
+	return item.NewItem(e.Repr())
 }
 
 // Repr is a faster equivalent to e.Render().Content()

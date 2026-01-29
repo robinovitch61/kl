@@ -2,12 +2,12 @@ package entity
 
 import (
 	"fmt"
-	"github.com/robinovitch61/kl/internal/filter"
+	"sort"
+	"strings"
+
 	"github.com/robinovitch61/kl/internal/k8s/container"
 	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 	"github.com/robinovitch61/kl/internal/util"
-	"sort"
-	"strings"
 )
 
 // Tree is a tree of entities with hierarchy Cluster > Namespace > PodOwner > Pod > Container
@@ -24,18 +24,11 @@ type Tree interface {
 	// within a cluster and namespace, sorted by pod owner, pod, and container
 	GetEntities() []Entity
 
-	// GetVisibleEntities returns all entities that match the filter, any of their children match the filter,
-	// or any of their parents match the filter. Returns in same order as GetEntities
-	GetVisibleEntities(filter filter.Model) []Entity
-
 	// GetClusterNamespaces returns all cluster namespaces
 	GetClusterNamespaces() []k8s_model.ClusterNamespaces
 
 	// AnyScannerStarting returns true if any entity in the tree is in the ScannerStarting state
 	AnyScannerStarting() bool
-
-	// IsVisibleGivenFilter returns true if the entity or any of its children or parents match the filter
-	IsVisibleGivenFilter(entity Entity, filter filter.Model) bool
 
 	// GetContainerEntities returns all entities that are containers in the tree
 	GetContainerEntities() []Entity
@@ -46,18 +39,17 @@ type Tree interface {
 
 	// GetSelectionActions returns a map of container Entity's to a boolean indicating if they
 	// should be activated or deactivated based on the current selection
-	// If an Entity doesn't match the filter, it is not included in the response
 	// An Entity's current state is considered, e.g. no Inactive entities will be deactivated again
 	// If the selection is a container, only the selection is returned
 	// If it is a cluster, namespace, pod owner, or pod, all children containers are considered
-	GetSelectionActions(selectedEntity Entity, filter filter.Model) map[Entity]bool
+	GetSelectionActions(selectedEntity Entity) map[Entity]bool
 
 	// GetEntity gets an entity by its Container
 	GetEntity(container container.Container) *Entity
 
 	// UpdatePrettyPrintPrefixes updates the Prefix field of all entities in the tree
-	// such that the tree renders as a nice visual tree given the current filter
-	UpdatePrettyPrintPrefixes(filter filter.Model)
+	// such that the tree renders as a nice visual tree
+	UpdatePrettyPrintPrefixes()
 
 	// ContainerToShortName returns a function mapping a container to its short name
 	// Short names are unique identifiers given all the other containers in the tree
@@ -69,36 +61,9 @@ type entityNode struct {
 	children map[string]*entityNode
 }
 
-type isVisibleCache struct {
-	filter string
-	cache  map[string]bool
-}
-
-func newIsVisibleCache(filter filter.Model) isVisibleCache {
-	return isVisibleCache{
-		filter: filter.Value(),
-		cache:  make(map[string]bool),
-	}
-}
-
-func (c isVisibleCache) ValidFor(filter filter.Model) bool {
-	return c.cache != nil && filter.Value() == c.filter
-}
-
-func (c isVisibleCache) Contains(e Entity) (bool, bool) {
-	v, ok := c.cache[e.Container.ID()]
-	return v, ok
-}
-
-func (c isVisibleCache) SetAndReturn(e Entity, v bool) bool {
-	c.cache[e.Container.ID()] = v
-	return v
-}
-
 type entityTreeImpl struct {
 	allClusterNamespaces []k8s_model.ClusterNamespaces
 	root                 map[string]*entityNode
-	isVisibleCache       isVisibleCache
 }
 
 func NewEntityTree(allClusterNamespaces []k8s_model.ClusterNamespaces) Tree {
@@ -109,8 +74,6 @@ func NewEntityTree(allClusterNamespaces []k8s_model.ClusterNamespaces) Tree {
 }
 
 func (et *entityTreeImpl) AddOrReplace(entity Entity) {
-	et.isVisibleCache = isVisibleCache{}
-
 	if !entity.IsContainer() {
 		// for now keep this true, but leave the implementation such that we can remove this later
 		panic("entity must be a container")
@@ -289,17 +252,6 @@ func (et *entityTreeImpl) GetEntities() []Entity {
 	return result
 }
 
-func (et entityTreeImpl) GetVisibleEntities(filter filter.Model) []Entity {
-	allEntities := et.GetEntities()
-	var visibleEntities []Entity
-	for _, entity := range allEntities {
-		if et.IsVisibleGivenFilter(entity, filter) {
-			visibleEntities = append(visibleEntities, entity)
-		}
-	}
-	return visibleEntities
-}
-
 func (et entityTreeImpl) GetClusterNamespaces() []k8s_model.ClusterNamespaces {
 	return et.allClusterNamespaces
 }
@@ -314,41 +266,6 @@ func (et entityTreeImpl) AnyScannerStarting() bool {
 	return false
 }
 
-// IsVisibleGivenFilter tends to be called many times in a row with the same filter,
-// so uses a filter-specific cache for performance
-func (et *entityTreeImpl) IsVisibleGivenFilter(entity Entity, filter filter.Model) bool {
-	if et.isVisibleCache.ValidFor(filter) {
-		if v, ok := et.isVisibleCache.Contains(entity); ok {
-			return v
-		}
-	} else {
-		et.isVisibleCache = newIsVisibleCache(filter)
-	}
-
-	if filter.Matches(entity.Repr()) {
-		return et.isVisibleCache.SetAndReturn(entity, true)
-	}
-
-	node := et.findNode(entity)
-	if node != nil {
-		for _, child := range node.children {
-			if et.IsVisibleGivenFilter(child.entity, filter) {
-				return et.isVisibleCache.SetAndReturn(entity, true)
-			}
-		}
-	}
-
-	parent := et.getParentEntity(entity)
-	for !parent.EqualTo(Entity{}) {
-		if filter.Matches(parent.Repr()) {
-			return et.isVisibleCache.SetAndReturn(entity, true)
-		}
-		parent = et.getParentEntity(parent)
-	}
-
-	return et.isVisibleCache.SetAndReturn(entity, filter.Matches(parent.Repr()))
-}
-
 func (et *entityTreeImpl) GetContainerEntities() []Entity {
 	allEntities := et.GetEntities()
 	var containers []Entity
@@ -361,8 +278,6 @@ func (et *entityTreeImpl) GetContainerEntities() []Entity {
 }
 
 func (et *entityTreeImpl) Remove(entity Entity) {
-	et.isVisibleCache = isVisibleCache{}
-
 	path := []string{
 		entity.Container.Cluster,
 		entity.Container.Namespace,
@@ -400,14 +315,14 @@ func (et *entityTreeImpl) removeEntity(path []string, depth int, current map[str
 	return false
 }
 
-func (et *entityTreeImpl) GetSelectionActions(selectedEntity Entity, filter filter.Model) map[Entity]bool {
+func (et *entityTreeImpl) GetSelectionActions(selectedEntity Entity) map[Entity]bool {
 	actions := make(map[Entity]bool)
 
-	if selectedEntity.IsContainer() && et.IsVisibleGivenFilter(selectedEntity, filter) {
+	if selectedEntity.IsContainer() {
 		actions[selectedEntity] = selectedEntity.State.ActivatesWhenSelected()
 	}
 
-	et.traverseChildren(selectedEntity, filter, actions)
+	et.traverseChildren(selectedEntity, actions)
 
 	deactivateAny := false
 	for _, shouldActivate := range actions {
@@ -451,7 +366,7 @@ func (et *entityTreeImpl) GetSelectionActions(selectedEntity Entity, filter filt
 	return actions
 }
 
-func (et *entityTreeImpl) traverseChildren(entity Entity, filter filter.Model, actions map[Entity]bool) {
+func (et *entityTreeImpl) traverseChildren(entity Entity, actions map[Entity]bool) {
 	node := et.findNode(entity)
 	if node == nil {
 		return
@@ -459,11 +374,9 @@ func (et *entityTreeImpl) traverseChildren(entity Entity, filter filter.Model, a
 
 	for _, child := range node.children {
 		if child.entity.IsContainer() {
-			if et.IsVisibleGivenFilter(child.entity, filter) {
-				actions[child.entity] = child.entity.State.ActivatesWhenSelected()
-			}
+			actions[child.entity] = child.entity.State.ActivatesWhenSelected()
 		} else {
-			et.traverseChildren(child.entity, filter, actions)
+			et.traverseChildren(child.entity, actions)
 		}
 	}
 }
@@ -519,19 +432,17 @@ func (et *entityTreeImpl) GetEntity(ct container.Container) *Entity {
 	return nil
 }
 
-func (et *entityTreeImpl) UpdatePrettyPrintPrefixes(filter filter.Model) {
+func (et *entityTreeImpl) UpdatePrettyPrintPrefixes() {
 	// TODO: consider using lipgloss's tree functionality?
-	et.isVisibleCache = isVisibleCache{}
-
-	visibleEntities := et.GetVisibleEntities(filter)
+	allEntities := et.GetEntities()
 
 	seenNamespace := false
 	seenPodOwner := false
 	seenPod := false
 	seenContainer := false
 
-	for i := len(visibleEntities) - 1; i >= 0; i-- {
-		entity := visibleEntities[i]
+	for i := len(allEntities) - 1; i >= 0; i-- {
+		entity := allEntities[i]
 
 		if entity.IsContainer() {
 			suffix := "└─"
@@ -588,10 +499,10 @@ func (et *entityTreeImpl) UpdatePrettyPrintPrefixes(filter filter.Model) {
 			seenPodOwner = false
 		}
 
-		visibleEntities[i] = entity
+		allEntities[i] = entity
 	}
 
-	for _, entity := range visibleEntities {
+	for _, entity := range allEntities {
 		if node := et.findNode(entity); node != nil {
 			node.entity.Prefix = entity.Prefix
 		}

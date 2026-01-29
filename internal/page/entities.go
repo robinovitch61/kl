@@ -2,21 +2,25 @@ package page
 
 import (
 	"fmt"
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/robinovitch61/bubbleo/filterableviewport"
+	"github.com/robinovitch61/bubbleo/viewport"
 	"github.com/robinovitch61/kl/internal/dev"
-	"github.com/robinovitch61/kl/internal/filterable_viewport"
 	"github.com/robinovitch61/kl/internal/help"
 	"github.com/robinovitch61/kl/internal/k8s/entity"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/style"
-	"strings"
 )
 
 type EntityPage struct {
-	filterableViewport filterable_viewport.FilterableViewport[entity.Entity]
+	filterableViewport *filterableviewport.Model[entity.Entity]
+	viewport           *viewport.Model[entity.Entity]
 	entityTree         entity.Tree
 	keyMap             keymap.KeyMap
 	styles             style.Styles
+	focused            bool
 }
 
 // assert EntityPage implements GenericPage
@@ -41,45 +45,51 @@ func NewEntitiesPage(
 	}
 	viewWhenEmpty := strings.Join(viewWhenEmptyLines, "\n")
 
-	filterableViewport := filterable_viewport.NewFilterableViewport[entity.Entity](
-		filterable_viewport.FilterableViewportConfig[entity.Entity]{
-			TopHeader:            "(S)election",
-			StartShowContext:     false,
-			CanToggleShowContext: false,
-			SelectionEnabled:     true,
-			StartWrapOn:          false,
-			KeyMap:               keyMap,
-			Width:                width,
-			Height:               height,
-			AllRows:              entityTree.GetEntities(),
-			MatchesFilter:        entityTree.IsVisibleGivenFilter,
-			ViewWhenEmpty:        viewWhenEmpty,
-			Styles:               styles,
-		},
+	vp := viewport.New[entity.Entity](
+		width,
+		height-1, // -1 for filter line
+		viewport.WithSelectionEnabled[entity.Entity](true),
+		viewport.WithWrapText[entity.Entity](false),
+		viewport.WithFooterEnabled[entity.Entity](true),
 	)
+
+	// Set up selection comparator to maintain selection when content changes
+	vp.SetSelectionComparator(func(a, b entity.Entity) bool {
+		return a.EqualTo(b)
+	})
+
+	fvp := filterableviewport.New[entity.Entity](
+		vp,
+		filterableviewport.WithPrefixText[entity.Entity]("(S)election"),
+		filterableviewport.WithEmptyText[entity.Entity]("'/' or 'r' to filter"),
+		filterableviewport.WithMatchingItemsOnly[entity.Entity](true),
+		filterableviewport.WithCanToggleMatchingItemsOnly[entity.Entity](false),
+	)
+
+	// Set header to show subscription info when viewport is empty
+	if len(entityTree.GetEntities()) == 0 {
+		vp.SetHeader(strings.Split(viewWhenEmpty, "\n"))
+	}
+
+	// Update tree prefixes before setting objects
+	entityTree.UpdatePrettyPrintPrefixes()
+	fvp.SetObjects(entityTree.GetEntities())
+
 	return EntityPage{
-		filterableViewport: filterableViewport,
+		filterableViewport: fvp,
+		viewport:           vp,
 		entityTree:         entityTree,
 		keyMap:             keyMap,
+		styles:             styles,
 	}
 }
 
 func (p EntityPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
 	dev.DebugUpdateMsg("EntityPage", msg)
-	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
-	)
-	prevFilterValue := p.filterableViewport.Filter.Value()
-	p.filterableViewport, cmd = p.filterableViewport.Update(msg)
-	cmds = append(cmds, cmd)
+	var cmd tea.Cmd
 
-	// if filter has changed, also need to update the entity tree's prefixes
-	if prevFilterValue != p.filterableViewport.Filter.Value() {
-		p.entityTree.UpdatePrettyPrintPrefixes(p.filterableViewport.Filter)
-		p.filterableViewport.SetAllRows(p.entityTree.GetEntities())
-	}
-	return p, tea.Batch(cmds...)
+	p.filterableViewport, cmd = p.filterableViewport.Update(msg)
+	return p, cmd
 }
 
 func (p EntityPage) View() string {
@@ -87,44 +97,44 @@ func (p EntityPage) View() string {
 }
 
 func (p EntityPage) HighjackingInput() bool {
-	return p.filterableViewport.HighjackingInput()
+	return p.filterableViewport.IsCapturingInput()
 }
 
 func (p EntityPage) ContentForFile() []string {
 	var content []string
-	for _, l := range p.getVisibleEntities() {
-		content = append(content, l.Repr())
+	for _, e := range p.entityTree.GetEntities() {
+		content = append(content, e.Repr())
 	}
 	return content
 }
 
 func (p EntityPage) HasAppliedFilter() bool {
-	return !p.filterableViewport.Filter.IsEmpty()
+	return p.filterableViewport.FilterFocused()
 }
 
 func (p EntityPage) ToggleShowContext() GenericPage {
-	p.filterableViewport.ToggleShowContext()
+	// In bubbleo, this is handled by the 'o' key (ToggleMatchingItemsOnlyKey)
 	return p
 }
 
 func (p EntityPage) WithDimensions(width, height int) GenericPage {
-	p.filterableViewport = p.filterableViewport.WithDimensions(width, height)
+	p.filterableViewport.SetWidth(width)
+	p.filterableViewport.SetHeight(height)
 	return p
 }
 
 func (p EntityPage) WithFocus() GenericPage {
-	p.filterableViewport.SetFocus(true)
+	p.focused = true
 	return p
 }
 
 func (p EntityPage) WithBlur() GenericPage {
-	p.filterableViewport.SetFocus(false)
+	p.focused = false
 	return p
 }
 
 func (p EntityPage) WithStyles(styles style.Styles) GenericPage {
 	p.styles = styles
-	p.filterableViewport.SetStyles(styles)
 	return p
 }
 
@@ -134,27 +144,31 @@ func (p EntityPage) Help() string {
 
 func (p EntityPage) WithEntityTree(entityTree entity.Tree) EntityPage {
 	p.entityTree = entityTree
-	p.entityTree.UpdatePrettyPrintPrefixes(p.filterableViewport.Filter)
-	p.filterableViewport.SetAllRowsAndMatchesFilter(p.entityTree.GetEntities(), p.entityTree.IsVisibleGivenFilter)
+	p.entityTree.UpdatePrettyPrintPrefixes()
+	entities := p.entityTree.GetEntities()
+	p.filterableViewport.SetObjects(entities)
+	// Clear header once we have entities
+	if len(entities) > 0 {
+		p.viewport.SetHeader(nil)
+	}
 	return p
 }
 
 func (p EntityPage) WithMaintainSelection(maintainSelection bool) EntityPage {
-	p.filterableViewport.SetMaintainSelection(maintainSelection)
+	if maintainSelection {
+		p.viewport.SetSelectionComparator(func(a, b entity.Entity) bool {
+			return a.EqualTo(b)
+		})
+	} else {
+		p.viewport.SetSelectionComparator(nil)
+	}
 	return p
 }
 
 func (p EntityPage) GetSelectionActions() (entity.Entity, map[entity.Entity]bool) {
-	selectedEntity := p.filterableViewport.GetSelection()
+	selectedEntity := p.viewport.GetSelectedItem()
 	if selectedEntity == nil {
 		return entity.Entity{}, nil
 	}
-	return *selectedEntity, p.entityTree.GetSelectionActions(*selectedEntity, p.filterableViewport.Filter)
-}
-
-func (p EntityPage) getVisibleEntities() []entity.Entity {
-	if p.filterableViewport.Filter.ShowContext {
-		return p.entityTree.GetEntities()
-	}
-	return p.entityTree.GetVisibleEntities(p.filterableViewport.Filter)
+	return *selectedEntity, p.entityTree.GetSelectionActions(*selectedEntity)
 }

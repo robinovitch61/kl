@@ -4,24 +4,46 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/robinovitch61/bubbleo/filterableviewport"
+	"github.com/robinovitch61/bubbleo/viewport"
+	"github.com/robinovitch61/bubbleo/viewport/item"
 	"github.com/robinovitch61/kl/internal/dev"
-	"github.com/robinovitch61/kl/internal/filter"
-	"github.com/robinovitch61/kl/internal/filterable_viewport"
 	"github.com/robinovitch61/kl/internal/help"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/model"
 	"github.com/robinovitch61/kl/internal/style"
-	"github.com/robinovitch61/kl/internal/viewport"
-	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
-	"strings"
 )
 
+// LogLine is a simple wrapper around a string that implements viewport.Object
+type LogLine struct {
+	line item.SingleItem
+}
+
+// assert LogLine implements viewport.Object
+var _ viewport.Object = LogLine{}
+
+func NewLogLine(s string) LogLine {
+	return LogLine{line: item.NewItem(s)}
+}
+
+func (l LogLine) GetItem() item.Item {
+	return l.line
+}
+
+func (l LogLine) Equals(other LogLine) bool {
+	return l.line.Content() == other.line.Content()
+}
+
 type SingleLogPage struct {
-	filterableViewport filterable_viewport.FilterableViewport[viewport.RenderableString]
+	filterableViewport *filterableviewport.Model[LogLine]
+	viewport           *viewport.Model[LogLine]
 	log                model.PageLog
 	keyMap             keymap.KeyMap
 	styles             style.Styles
+	focused            bool
 }
 
 // assert SingleLogPage implements GenericPage
@@ -32,40 +54,36 @@ func NewSingleLogPage(
 	width, height int,
 	styles style.Styles,
 ) SingleLogPage {
-	filterableViewport := filterable_viewport.NewFilterableViewport[viewport.RenderableString](
-		filterable_viewport.FilterableViewportConfig[viewport.RenderableString]{
-			TopHeader:            "Single Log",
-			StartShowContext:     true,
-			CanToggleShowContext: false,
-			SelectionEnabled:     false,
-			StartWrapOn:          true,
-			KeyMap:               keyMap,
-			Width:                width,
-			Height:               height,
-			AllRows:              []viewport.RenderableString{},
-			MatchesFilter: func(s viewport.RenderableString, filter filter.Model) bool {
-				return s.Render().Matches(filter)
-			},
-			ViewWhenEmpty: "",
-			Styles:        styles,
-		},
+	vp := viewport.New[LogLine](
+		width,
+		height-1, // -1 for filter line
+		viewport.WithSelectionEnabled[LogLine](false),
+		viewport.WithWrapText[LogLine](true),
+		viewport.WithFooterEnabled[LogLine](true),
 	)
-	filterableViewport.SetUpDownMovementWithShift()
+
+	fvp := filterableviewport.New[LogLine](
+		vp,
+		filterableviewport.WithPrefixText[LogLine]("Single Log"),
+		filterableviewport.WithEmptyText[LogLine](""),
+		filterableviewport.WithMatchingItemsOnly[LogLine](false),
+		filterableviewport.WithCanToggleMatchingItemsOnly[LogLine](false),
+	)
+
 	return SingleLogPage{
-		filterableViewport: filterableViewport,
+		filterableViewport: fvp,
+		viewport:           vp,
 		keyMap:             keyMap,
+		styles:             styles,
 	}
 }
 
 func (p SingleLogPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
 	dev.DebugUpdateMsg("SingleLogPage", msg)
-	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
-	)
+	var cmd tea.Cmd
+
 	p.filterableViewport, cmd = p.filterableViewport.Update(msg)
-	cmds = append(cmds, cmd)
-	return p, tea.Batch(cmds...)
+	return p, cmd
 }
 
 func (p SingleLogPage) View() string {
@@ -73,7 +91,7 @@ func (p SingleLogPage) View() string {
 }
 
 func (p SingleLogPage) HighjackingInput() bool {
-	return p.filterableViewport.Filter.Focused()
+	return p.filterableViewport.IsCapturingInput()
 }
 
 func (p SingleLogPage) ContentForFile() []string {
@@ -83,12 +101,11 @@ func (p SingleLogPage) ContentForFile() []string {
 }
 
 func (p SingleLogPage) ToggleShowContext() GenericPage {
-	p.filterableViewport.ToggleShowContext()
 	return p
 }
 
 func (p SingleLogPage) HasAppliedFilter() bool {
-	return !p.filterableViewport.Filter.IsEmpty()
+	return p.filterableViewport.FilterFocused()
 }
 
 func (p SingleLogPage) ContentForClipboard() []string {
@@ -99,23 +116,23 @@ func (p SingleLogPage) ContentForClipboard() []string {
 }
 
 func (p SingleLogPage) WithDimensions(width, height int) GenericPage {
-	p.filterableViewport = p.filterableViewport.WithDimensions(width, height)
+	p.filterableViewport.SetWidth(width)
+	p.filterableViewport.SetHeight(height)
 	return p
 }
 
 func (p SingleLogPage) WithFocus() GenericPage {
-	p.filterableViewport.SetFocus(true)
+	p.focused = true
 	return p
 }
 
 func (p SingleLogPage) WithBlur() GenericPage {
-	p.filterableViewport.SetFocus(false)
+	p.focused = false
 	return p
 }
 
 func (p SingleLogPage) WithStyles(styles style.Styles) GenericPage {
 	p.styles = styles
-	p.filterableViewport.SetStyles(styles)
 	return p
 }
 
@@ -127,7 +144,7 @@ func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
 	needsUpdate := true
 
 	if log.Log != nil && p.log.Log != nil {
-		needsUpdate = log.Log.LineBuffer.Content() != p.log.Log.LineBuffer.Content()
+		needsUpdate = log.Log.Item.Content() != p.log.Log.Item.Content()
 	}
 
 	if !needsUpdate {
@@ -136,17 +153,17 @@ func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
 
 	p.log = log
 	header, content := veryNicelyFormatThisLog(log, true)
-	renderableStrings := []viewport.RenderableString{{LineBuffer: linebuffer.New(header)}}
+	logLines := []LogLine{NewLogLine(header)}
 	for _, c := range content {
-		renderableStrings = append(renderableStrings, viewport.RenderableString{LineBuffer: linebuffer.New(c)})
+		logLines = append(logLines, NewLogLine(c))
 	}
-	p.filterableViewport.SetAllRows(renderableStrings)
+	p.filterableViewport.SetObjects(logLines)
 	return p
 }
 
 func veryNicelyFormatThisLog(log model.PageLog, styleHeader bool) (string, []string) {
 	header := fmt.Sprintf("%s | %s", log.Log.Timestamps.Full, log.RenderName(log.ContainerNames.Full, styleHeader))
-	return header, formatJSON(log.Log.LineBuffer.Content())
+	return header, formatJSON(log.Log.Item.Content())
 }
 
 func formatJSON(input string) []string {
