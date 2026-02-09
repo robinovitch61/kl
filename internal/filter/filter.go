@@ -47,6 +47,14 @@ func New(km keymap.KeyMap) Model {
 	}
 }
 
+// NewFromText creates a filter.Model from text and regex mode
+func NewFromText(text string, isRegex bool, km keymap.KeyMap) Model {
+	f := New(km)
+	f.SetValue(text)
+	f.SetIsRegex(isRegex)
+	return f
+}
+
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	dev.DebugUpdateMsg("Filter", msg)
 	var (

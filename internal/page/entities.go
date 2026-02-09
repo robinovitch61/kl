@@ -4,20 +4,25 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/v2/key"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/dev"
-	"github.com/robinovitch61/kl/internal/filterable_viewport"
+	"github.com/robinovitch61/kl/internal/filter"
 	"github.com/robinovitch61/kl/internal/help"
 	"github.com/robinovitch61/kl/internal/k8s/entity"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/style"
+	"github.com/robinovitch61/viewport/filterableviewport"
+	"github.com/robinovitch61/viewport/viewport"
 )
 
 type EntityPage struct {
-	filterableViewport filterable_viewport.FilterableViewport[entity.Entity]
+	filterableViewport *filterableviewport.Model[entity.Entity]
 	entityTree         entity.Tree
 	keyMap             keymap.KeyMap
 	styles             style.Styles
+	focused            bool
+	viewWhenEmpty      string
 }
 
 // assert EntityPage implements GenericPage
@@ -42,53 +47,98 @@ func NewEntitiesPage(
 	}
 	viewWhenEmpty := strings.Join(viewWhenEmptyLines, "\n")
 
-	filterableViewport := filterable_viewport.NewFilterableViewport[entity.Entity](
-		filterable_viewport.FilterableViewportConfig[entity.Entity]{
-			TopHeader:            "(S)election",
-			StartShowContext:     false,
-			CanToggleShowContext: false,
-			SelectionEnabled:     true,
-			StartWrapOn:          false,
-			KeyMap:               keyMap,
-			Width:                width,
-			Height:               height,
-			AllRows:              entityTree.GetEntities(),
-			MatchesFilter:        entityTree.IsVisibleGivenFilter,
-			ViewWhenEmpty:        viewWhenEmpty,
-			Styles:               styles,
-		},
+	vp := viewport.New[entity.Entity](width, height,
+		viewport.WithKeyMap[entity.Entity](viewport.KeyMap{
+			PageDown:     keyMap.PageDown,
+			PageUp:       keyMap.PageUp,
+			HalfPageUp:   keyMap.HalfPageUp,
+			HalfPageDown: keyMap.HalfPageDown,
+			Up:           keyMap.Up,
+			Down:         keyMap.Down,
+			Left:         keyMap.Left,
+			Right:        keyMap.Right,
+			Top:          keyMap.Top,
+			Bottom:       keyMap.Bottom,
+		}),
 	)
-	return EntityPage{
-		filterableViewport: filterableViewport,
+	vp.SetSelectionEnabled(true)
+	vp.SetWrapText(false)
+	vp.SetHeader([]string{"(S)election"})
+
+	fvp := filterableviewport.New(vp,
+		filterableviewport.WithKeyMap[entity.Entity](filterableviewport.KeyMap{
+			FilterKey:                  keyMap.Filter,
+			RegexFilterKey:             keyMap.FilterRegex,
+			CaseInsensitiveFilterKey:   keyMap.FilterCaseInsensitive,
+			ApplyFilterKey:             keyMap.Enter,
+			CancelFilterKey:            keyMap.Clear,
+			ToggleMatchingItemsOnlyKey: keyMap.Context,
+			NextMatchKey:               keyMap.FilterNextRow,
+			PrevMatchKey:               keyMap.FilterPrevRow,
+		}),
+		filterableviewport.WithMatchingItemsOnly[entity.Entity](false),
+		filterableviewport.WithCanToggleMatchingItemsOnly[entity.Entity](false),
+		filterableviewport.WithEmptyText[entity.Entity]("No Filter"),
+		filterableviewport.WithStyles[entity.Entity](filterableviewport.Styles{
+			Match: filterableviewport.MatchStyles{
+				Focused:   styles.Inverse,
+				Unfocused: styles.AltInverse,
+			},
+		}),
+		filterableviewport.WithAdjustObjectsForFilter(func(filterText string, isRegex bool) []entity.Entity {
+			f := makeFilterFromText(filterText, isRegex, keyMap)
+			entityTree.UpdatePrettyPrintPrefixes(f)
+			return entityTree.GetVisibleEntities(f)
+		}),
+	)
+
+	fvp.SetObjects(entityTree.GetEntities())
+
+	p := EntityPage{
+		filterableViewport: fvp,
 		entityTree:         entityTree,
 		keyMap:             keyMap,
+		styles:             styles,
+		viewWhenEmpty:      viewWhenEmpty,
+		focused:            true,
 	}
+	p.updateStyles()
+
+	return p
 }
 
 func (p EntityPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
 	dev.DebugUpdateMsg("EntityPage", msg)
-	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
-	)
-	prevFilterValue := p.filterableViewport.Filter.Value()
-	p.filterableViewport, cmd = p.filterableViewport.Update(msg)
-	cmds = append(cmds, cmd)
+	var cmd tea.Cmd
 
-	// if filter has changed, also need to update the entity tree's prefixes
-	if prevFilterValue != p.filterableViewport.Filter.Value() {
-		p.entityTree.UpdatePrettyPrintPrefixes(p.filterableViewport.Filter)
-		p.filterableViewport.SetAllRows(p.entityTree.GetEntities())
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if !p.HighjackingInput() {
+			if key.Matches(msg, p.keyMap.Wrap) {
+				p.filterableViewport.SetWrapText(!p.filterableViewport.GetWrapText())
+				return p, nil
+			}
+		}
 	}
-	return p, tea.Batch(cmds...)
+
+	p.filterableViewport, cmd = p.filterableViewport.Update(msg)
+
+	return p, cmd
 }
 
 func (p EntityPage) View() string {
+	if len(p.entityTree.GetEntities()) == 0 {
+		viewWhenEmpty := p.viewWhenEmpty
+		if p.focused {
+			viewWhenEmpty = p.styles.Blue.Render(viewWhenEmpty)
+		}
+		return viewWhenEmpty
+	}
 	return p.filterableViewport.View()
 }
 
 func (p EntityPage) HighjackingInput() bool {
-	return p.filterableViewport.HighjackingInput()
+	return p.filterableViewport.IsCapturingInput()
 }
 
 func (p EntityPage) ContentForFile() []string {
@@ -100,32 +150,42 @@ func (p EntityPage) ContentForFile() []string {
 }
 
 func (p EntityPage) HasAppliedFilter() bool {
-	return !p.filterableViewport.Filter.IsEmpty()
+	return p.filterableViewport.GetFilterText() != ""
 }
 
 func (p EntityPage) ToggleShowContext() GenericPage {
-	p.filterableViewport.ToggleShowContext()
+	// EntityPage doesn't support show context toggle
 	return p
 }
 
 func (p EntityPage) WithDimensions(width, height int) GenericPage {
-	p.filterableViewport = p.filterableViewport.WithDimensions(width, height)
+	p.filterableViewport.SetWidth(width)
+	p.filterableViewport.SetHeight(height)
 	return p
 }
 
 func (p EntityPage) WithFocus() GenericPage {
-	p.filterableViewport.SetFocus(true)
+	p.focused = true
+	p.updateStyles()
 	return p
 }
 
 func (p EntityPage) WithBlur() GenericPage {
-	p.filterableViewport.SetFocus(false)
+	p.focused = false
+	p.updateStyles()
 	return p
 }
 
 func (p EntityPage) WithStyles(styles style.Styles) GenericPage {
 	p.styles = styles
-	p.filterableViewport.SetStyles(styles)
+	p.updateStyles()
+	// Update filterableviewport match styles
+	p.filterableViewport.SetFilterableViewportStyles(filterableviewport.Styles{
+		Match: filterableviewport.MatchStyles{
+			Focused:   styles.Inverse,
+			Unfocused: styles.AltInverse,
+		},
+	})
 	return p
 }
 
@@ -135,27 +195,58 @@ func (p EntityPage) Help() string {
 
 func (p EntityPage) WithEntityTree(entityTree entity.Tree) EntityPage {
 	p.entityTree = entityTree
-	p.entityTree.UpdatePrettyPrintPrefixes(p.filterableViewport.Filter)
-	p.filterableViewport.SetAllRowsAndMatchesFilter(p.entityTree.GetEntities(), p.entityTree.IsVisibleGivenFilter)
+	f := p.getCurrentFilter()
+	p.entityTree.UpdatePrettyPrintPrefixes(f)
+	p.filterableViewport.SetObjects(p.entityTree.GetVisibleEntities(f))
+	p.filterableViewport.SetSelectionComparator(func(a, b entity.Entity) bool {
+		return a.EqualTo(b)
+	})
+	p.filterableViewport.SetAdjustObjectsForFilter(func(filterText string, isRegex bool) []entity.Entity {
+		f := makeFilterFromText(filterText, isRegex, p.keyMap)
+		entityTree.UpdatePrettyPrintPrefixes(f)
+		return entityTree.GetVisibleEntities(f)
+	})
 	return p
 }
 
 func (p EntityPage) WithMaintainSelection(maintainSelection bool) EntityPage {
-	p.filterableViewport.SetMaintainSelection(maintainSelection)
+	if maintainSelection {
+		p.filterableViewport.SetSelectionComparator(func(a, b entity.Entity) bool {
+			return a.EqualTo(b)
+		})
+	} else {
+		p.filterableViewport.SetSelectionComparator(nil)
+	}
 	return p
 }
 
 func (p EntityPage) GetSelectionActions() (entity.Entity, map[entity.Entity]bool) {
-	selectedEntity := p.filterableViewport.GetSelection()
+	selectedEntity := p.filterableViewport.GetSelectedItem()
 	if selectedEntity == nil {
 		return entity.Entity{}, nil
 	}
-	return *selectedEntity, p.entityTree.GetSelectionActions(*selectedEntity, p.filterableViewport.Filter)
+	return *selectedEntity, p.entityTree.GetSelectionActions(*selectedEntity, p.getCurrentFilter())
 }
 
 func (p EntityPage) getVisibleEntities() []entity.Entity {
-	if p.filterableViewport.Filter.ShowContext {
-		return p.entityTree.GetEntities()
+	return p.entityTree.GetVisibleEntities(p.getCurrentFilter())
+}
+
+func (p EntityPage) getCurrentFilter() filter.Model {
+	return makeFilterFromText(p.filterableViewport.GetFilterText(), p.filterableViewport.IsRegexMode(), p.keyMap)
+}
+
+func (p *EntityPage) updateStyles() {
+	p.filterableViewport.SetViewportStyles(viewportStylesForFocus(p.focused, p.styles))
+
+	header := "(S)election"
+	if p.focused {
+		header = p.styles.Blue.Render(header)
 	}
-	return p.entityTree.GetVisibleEntities(p.filterableViewport.Filter)
+	p.filterableViewport.SetHeader([]string{header})
+}
+
+// makeFilterFromText creates a filter.Model from filter text and regex mode
+func makeFilterFromText(filterText string, isRegex bool, keyMap keymap.KeyMap) filter.Model {
+	return filter.NewFromText(filterText, isRegex, keyMap)
 }

@@ -3,16 +3,18 @@ package page
 import (
 	"fmt"
 
+	"github.com/charmbracelet/bubbles/v2/key"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/filter"
-	"github.com/robinovitch61/kl/internal/filterable_viewport"
 	"github.com/robinovitch61/kl/internal/help"
 	"github.com/robinovitch61/kl/internal/k8s/container"
 	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/model"
 	"github.com/robinovitch61/kl/internal/style"
+	"github.com/robinovitch61/viewport/filterableviewport"
+	"github.com/robinovitch61/viewport/viewport"
 )
 
 var (
@@ -21,12 +23,14 @@ var (
 )
 
 type LogsPage struct {
-	filterableViewport filterable_viewport.FilterableViewport[model.PageLog]
+	filterableViewport *filterableviewport.Model[model.PageLog]
 	keyMap             keymap.KeyMap
 	logContainer       *model.PageLogContainer
 	timestampFormatIdx int
 	nameFormatIdx      int
 	styles             style.Styles
+	focused            bool
+	viewWhenEmpty      string
 }
 
 // assert LogsPage implements GenericPage
@@ -39,34 +43,68 @@ func NewLogsPage(
 	styles style.Styles,
 ) LogsPage {
 	lc := model.NewPageLogContainer(!descending)
-	filterableViewport := filterable_viewport.NewFilterableViewport[model.PageLog](
-		filterable_viewport.FilterableViewportConfig[model.PageLog]{
-			TopHeader:            fmt.Sprintf("(L)ogs, %s", getOrder(!descending)),
-			StartShowContext:     true,
-			CanToggleShowContext: true,
-			SelectionEnabled:     true,
-			StartWrapOn:          true,
-			KeyMap:               keyMap,
-			Width:                width,
-			Height:               height,
-			AllRows:              lc.GetOrderedLogs(),
-			MatchesFilter: func(log model.PageLog, filter filter.Model) bool {
-				return log.RenderWithoutStyle().Matches(filter)
-			},
-			ViewWhenEmpty: "No logs yet",
-			Styles:        styles,
-		},
+
+	vp := viewport.New[model.PageLog](width, height,
+		viewport.WithKeyMap[model.PageLog](viewport.KeyMap{
+			PageDown:     keyMap.PageDown,
+			PageUp:       keyMap.PageUp,
+			HalfPageUp:   keyMap.HalfPageUp,
+			HalfPageDown: keyMap.HalfPageDown,
+			Up:           keyMap.Up,
+			Down:         keyMap.Down,
+			Left:         keyMap.Left,
+			Right:        keyMap.Right,
+			Top:          keyMap.Top,
+			Bottom:       keyMap.Bottom,
+		}),
 	)
-	filterableViewport.SetMaintainSelection(true)
+	vp.SetSelectionEnabled(true)
+	vp.SetWrapText(true)
+	vp.SetHeader([]string{fmt.Sprintf("(L)ogs, %s", getOrder(!descending))})
+
+	fvp := filterableviewport.New(vp,
+		filterableviewport.WithKeyMap[model.PageLog](filterableviewport.KeyMap{
+			FilterKey:                  keyMap.Filter,
+			RegexFilterKey:             keyMap.FilterRegex,
+			CaseInsensitiveFilterKey:   keyMap.FilterCaseInsensitive,
+			ApplyFilterKey:             keyMap.Enter,
+			CancelFilterKey:            keyMap.Clear,
+			ToggleMatchingItemsOnlyKey: keyMap.Context,
+			NextMatchKey:               keyMap.FilterNextRow,
+			PrevMatchKey:               keyMap.FilterPrevRow,
+		}),
+		filterableviewport.WithMatchingItemsOnly[model.PageLog](false), // ShowContext=true equivalent
+		filterableviewport.WithCanToggleMatchingItemsOnly[model.PageLog](true),
+		filterableviewport.WithEmptyText[model.PageLog]("No Filter"),
+		filterableviewport.WithStyles[model.PageLog](filterableviewport.Styles{
+			Match: filterableviewport.MatchStyles{
+				Focused:   styles.Inverse,
+				Unfocused: styles.AltInverse,
+			},
+		}),
+	)
+
+	// Set initial logs
+	fvp.SetObjects(lc.GetOrderedLogs())
+
+	// Set selection comparator for maintaining selection
+	fvp.SetSelectionComparator(func(a, b model.PageLog) bool {
+		return a.Equals(b)
+	})
+
 	page := LogsPage{
-		filterableViewport: filterableViewport,
+		filterableViewport: fvp,
 		keyMap:             keyMap,
 		logContainer:       lc,
 		timestampFormatIdx: 0,
 		nameFormatIdx:      0,
+		styles:             styles,
+		focused:            true,
+		viewWhenEmpty:      "No logs yet",
 	}
 	page.setStickynessBasedOnOrder()
-	page.updateFilterLabel()
+	page.updateStyles()
+
 	return page
 }
 
@@ -84,6 +122,10 @@ func (p LogsPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
 			cmds = append(cmds, cmd)
 			return p, tea.Batch(cmds...)
 		}
+		if key.Matches(msg, p.keyMap.Wrap) {
+			p.filterableViewport.SetWrapText(!p.filterableViewport.GetWrapText())
+			return p, nil
+		}
 	}
 
 	p.filterableViewport, cmd = p.filterableViewport.Update(msg)
@@ -92,52 +134,77 @@ func (p LogsPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
 }
 
 func (p LogsPage) View() string {
+	if len(p.logContainer.GetOrderedLogs()) == 0 {
+		viewWhenEmpty := p.viewWhenEmpty
+		if p.focused {
+			viewWhenEmpty = p.styles.Blue.Render(viewWhenEmpty)
+		}
+		return viewWhenEmpty
+	}
 	return p.filterableViewport.View()
 }
 
 func (p LogsPage) HighjackingInput() bool {
-	return p.filterableViewport.HighjackingInput()
+	return p.filterableViewport.IsCapturingInput()
 }
 
 func (p LogsPage) ContentForFile() []string {
 	var content []string
+	matchingOnly := p.filterableViewport.GetMatchingItemsOnly()
+	filterText := p.filterableViewport.GetFilterText()
+
+	var f filter.Model
+	if matchingOnly && filterText != "" {
+		f = filter.NewFromText(filterText, p.filterableViewport.IsRegexMode(), p.keyMap)
+	}
+
 	for _, l := range p.logContainer.GetOrderedLogs() {
-		if p.filterableViewport.Filter.ShowContext {
-			content = append(content, l.Render().Content())
-		} else if p.filterableViewport.Filter.Matches(l.Log.LineBuffer.Content()) {
-			content = append(content, l.Render().Content())
+		if !matchingOnly || filterText == "" {
+			content = append(content, l.GetItem().Content())
+		} else if f.Matches(l.GetItem().ContentNoAnsi()) {
+			content = append(content, l.GetItem().Content())
 		}
 	}
 	return content
 }
 
 func (p LogsPage) HasAppliedFilter() bool {
-	return !p.filterableViewport.Filter.IsEmpty()
+	return p.filterableViewport.GetFilterText() != ""
 }
 
 func (p LogsPage) ToggleShowContext() GenericPage {
-	p.filterableViewport.ToggleShowContext()
+	currentValue := p.filterableViewport.GetMatchingItemsOnly()
+	p.filterableViewport.SetMatchingItemsOnly(!currentValue)
 	return p
 }
 
 func (p LogsPage) WithDimensions(width, height int) GenericPage {
-	p.filterableViewport = p.filterableViewport.WithDimensions(width, height)
+	p.filterableViewport.SetWidth(width)
+	p.filterableViewport.SetHeight(height)
 	return p
 }
 
 func (p LogsPage) WithFocus() GenericPage {
-	p.filterableViewport.SetFocus(true)
+	p.focused = true
+	p.updateStyles()
 	return p
 }
 
 func (p LogsPage) WithBlur() GenericPage {
-	p.filterableViewport.SetFocus(false)
+	p.focused = false
+	p.updateStyles()
 	return p
 }
 
 func (p LogsPage) WithStyles(styles style.Styles) GenericPage {
 	p.styles = styles
-	p.filterableViewport.SetStyles(styles)
+	p.updateStyles()
+	p.filterableViewport.SetFilterableViewportStyles(filterableviewport.Styles{
+		Match: filterableviewport.MatchStyles{
+			Focused:   styles.Inverse,
+			Unfocused: styles.AltInverse,
+		},
+	})
 	return p
 }
 
@@ -146,36 +213,61 @@ func (p LogsPage) Help() string {
 }
 
 func (p LogsPage) WithLogFilter(lf model.LogFilter) LogsPage {
-	p.filterableViewport.Filter.SetValue(lf.Value)
-	p.filterableViewport.Filter.SetIsRegex(lf.IsRegex)
+	p.filterableViewport.SetFilter(lf.Value, lf.IsRegex)
 	return p
 }
 
 func (p LogsPage) GetSelectedLog() *model.PageLog {
-	return p.filterableViewport.GetSelection()
+	return p.filterableViewport.GetSelectedItem()
 }
 
 func (p LogsPage) ScrolledUpByOne() LogsPage {
-	currentIdx := p.filterableViewport.GetSelectionIdx()
-	p.filterableViewport.SetSelectedContentIdx(currentIdx - 1)
+	currentIdx := p.filterableViewport.GetSelectedItemIdx()
+	p.filterableViewport.SetSelectedItemIdx(currentIdx - 1)
 	return p
 }
 
 func (p LogsPage) ScrolledDownByOne() LogsPage {
-	currentIdx := p.filterableViewport.GetSelectionIdx()
-	p.filterableViewport.SetSelectedContentIdx(currentIdx + 1)
+	currentIdx := p.filterableViewport.GetSelectedItemIdx()
+	p.filterableViewport.SetSelectedItemIdx(currentIdx + 1)
 	return p
 }
 
 func (p LogsPage) WithAppendedLogs(logs []model.PageLog) LogsPage {
 	dev.Debug(fmt.Sprintf("Appending %d logs", len(logs)))
 	defer dev.Debug("Done appending logs")
+
+	prevLen := p.logContainer.Len()
+
+	// Check if all new logs are >= the current last timestamp.
+	// If ascending and this holds, new logs land at the end of the ordered
+	// list and we can use the more efficient AppendObjects path.
+	canAppend := p.logContainer.Ascending() && prevLen > 0 && len(logs) > 0
+	if canAppend {
+		if lastTS, ok := p.logContainer.LastTimestamp(); ok {
+			for i := range logs {
+				if logs[i].Log.Timestamp.Before(lastTS) {
+					canAppend = false
+					break
+				}
+			}
+		}
+	}
+
 	for i := range logs {
 		logs[i].CurrentTimestamp = getLogTimestamp(logs[i], timestampFormats[p.timestampFormatIdx])
 		logs[i].CurrentName = getContainerName(logs[i], nameFormats[p.nameFormatIdx])
 		p.logContainer.AppendLog(logs[i], nil)
 	}
-	p.filterableViewport.SetAllRows(p.logContainer.GetOrderedLogs())
+
+	orderedLogs := p.logContainer.GetOrderedLogs()
+
+	if canAppend && len(orderedLogs) == prevLen+len(logs) {
+		p.filterableViewport.AppendObjects(orderedLogs[prevLen:])
+	} else {
+		p.filterableViewport.SetObjects(orderedLogs)
+	}
+
 	return p
 }
 
@@ -275,7 +367,7 @@ func (p *LogsPage) setLogs(newLogs []model.PageLog) {
 	for i := range newLogs {
 		p.logContainer.AppendLog(newLogs[i], nil)
 	}
-	p.filterableViewport.SetAllRows(p.logContainer.GetOrderedLogs())
+	p.filterableViewport.SetObjects(p.logContainer.GetOrderedLogs())
 }
 
 // setStickynessBasedOnOrder sets viewport stickyness so selection stays at most recent log
@@ -291,7 +383,15 @@ func (p *LogsPage) setStickynessBasedOnOrder() {
 
 func (p *LogsPage) updateFilterLabel() {
 	label := fmt.Sprintf("(L)ogs %s", getOrder(p.logContainer.Ascending()))
-	p.filterableViewport.SetTopHeader(label)
+	if p.focused {
+		label = p.styles.Blue.Render(label)
+	}
+	p.filterableViewport.SetHeader([]string{label})
+}
+
+func (p *LogsPage) updateStyles() {
+	p.filterableViewport.SetViewportStyles(viewportStylesForFocus(p.focused, p.styles))
+	p.updateFilterLabel()
 }
 
 func getOrder(ascending bool) string {

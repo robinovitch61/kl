@@ -16,6 +16,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.16
 	github.com/muesli/reflow v0.3.0
 	github.com/rivo/uniseg v0.4.7
+	github.com/robinovitch61/viewport v0.0.0-00010101000000-000000000000
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.18.2
@@ -71,7 +72,7 @@ require (
 	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/oauth2 v0.15.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
-	golang.org/x/sys v0.26.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/term v0.18.0 // indirect
 	golang.org/x/text v0.19.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
@@ -87,3 +88,5 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
+
+replace github.com/robinovitch61/viewport => ../viewport

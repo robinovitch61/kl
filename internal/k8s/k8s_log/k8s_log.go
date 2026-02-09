@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/k8s/container"
-	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
+	"github.com/robinovitch61/viewport/viewport/item"
 )
 
 type LogTimestamps struct {
@@ -21,10 +21,10 @@ type LogTimestamps struct {
 }
 
 type Log struct {
-	Timestamp  time.Time
-	Timestamps LogTimestamps
-	LineBuffer linebuffer.LineBuffer
-	Container  container.Container
+	Timestamp   time.Time
+	Timestamps  LogTimestamps
+	Container   container.Container
+	ContentItem item.SingleItem
 }
 
 type LogScanner struct {
@@ -75,16 +75,15 @@ func (ls LogScanner) StartReadingLogs() {
 
 			localTime := parsedTime.Local()
 
-			// precompute LogData here as logs come in as logs are immutable. Having the LogData up front helps
-			// to minimize expensive/repeated re-computation later, particularly making new line buffers
+			// precompute LogData here as logs come in as logs are immutable and instantiating new items is expensive
 			newLog := Log{
 				Timestamp: parsedTime,
 				Timestamps: LogTimestamps{
 					Short: localTime.Format(time.TimeOnly),
 					Full:  localTime.Format("2006-01-02T15:04:05.000Z07:00"),
 				},
-				LineBuffer: linebuffer.New(logContent),
-				Container:  ls.Container,
+				Container:   ls.Container,
+				ContentItem: item.NewItem(logContent),
 			}
 
 			ls.LogChan <- newLog
