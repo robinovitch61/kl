@@ -12,7 +12,6 @@ import (
 	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 	"github.com/robinovitch61/kl/internal/model"
 	corev1 "k8s.io/api/core/v1"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/informers"
