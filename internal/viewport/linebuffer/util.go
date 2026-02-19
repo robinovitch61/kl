@@ -1,11 +1,12 @@
 package linebuffer
 
 import (
-	"github.com/charmbracelet/lipgloss/v2"
-	"github.com/mattn/go-runewidth"
 	"regexp"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/mattn/go-runewidth"
 )
 
 var emptySequenceRegex = regexp.MustCompile("\x1b\\[[0-9;]+m\x1b\\[m")
@@ -373,7 +374,7 @@ func replaceStartWithContinuation(s string, continuationRunes []rune) string {
 			for nextIdx < len(runes) {
 				nextRWidth := runewidth.RuneWidth(runes[nextIdx])
 				if nextRWidth == 0 && nextIdx < len(runes) && !runesHaveAnsiPrefix(runes[nextIdx:]) {
-					runeIdx += 1
+					runeIdx++
 					nextIdx = runeIdx + 1
 				} else {
 					break
@@ -382,7 +383,7 @@ func replaceStartWithContinuation(s string, continuationRunes []rune) string {
 		} else {
 			sb.WriteRune(runes[runeIdx])
 		}
-		runeIdx += 1
+		runeIdx++
 	}
 
 	return sb.String()
@@ -434,7 +435,7 @@ func replaceEndWithContinuation(s string, continuationRunes []rune) string {
 		} else {
 			result = string(runes[runeIdx]) + result
 		}
-		runeIdx -= 1
+		runeIdx--
 	}
 
 	return result

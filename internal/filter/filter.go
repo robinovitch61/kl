@@ -2,6 +2,9 @@ package filter
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
+
 	"github.com/charmbracelet/bubbles/v2/cursor"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
@@ -9,8 +12,6 @@ import (
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/style"
 	"github.com/robinovitch61/kl/internal/textinput"
-	"regexp"
-	"strings"
 )
 
 type Model struct {
@@ -125,10 +126,9 @@ func (m Model) Matches(s string) bool {
 	// if invalid regexp, fallback to string matching
 	if m.isRegex && m.regexp != nil {
 		return m.regexp.MatchString(s)
-	} else {
-		// TODO LEO: reduce number of calls to .Value() here
-		return strings.Contains(s, m.Value())
 	}
+	// TODO LEO: reduce number of calls to .Value() here
+	return strings.Contains(s, m.Value())
 }
 
 func (m Model) Value() string {

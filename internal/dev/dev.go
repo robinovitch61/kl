@@ -2,11 +2,12 @@ package dev
 
 import (
 	"fmt"
+	"log"
+	"os"
+
 	"github.com/charmbracelet/bubbles/v2/cursor"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/message"
-	"log"
-	"os"
 )
 
 var debugSet = os.Getenv("KL_DEBUG")
@@ -17,11 +18,11 @@ func Debug(msg string) {
 		debugPath = "kl.log"
 	}
 	if debugSet != "" {
-		file, err := os.OpenFile(debugPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		file, err := os.OpenFile(debugPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 		logger := log.New(file, "", log.Ldate|log.Lmicroseconds)
 		logger.Printf("%q", msg)
 	}

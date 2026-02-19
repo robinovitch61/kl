@@ -6,3 +6,4 @@ kl
 *.txt
 *.prof
 pyproject.toml
+.claude

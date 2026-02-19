@@ -4,8 +4,9 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"github.com/charmbracelet/lipgloss/v2"
 	"image/color"
+
+	"github.com/charmbracelet/lipgloss/v2"
 )
 
 var containerNameColors = []color.Color{

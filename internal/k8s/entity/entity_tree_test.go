@@ -2,12 +2,13 @@ package entity
 
 import (
 	"fmt"
+	"strings"
+	"testing"
+
 	"github.com/robinovitch61/kl/internal/filter"
 	"github.com/robinovitch61/kl/internal/k8s/container"
 	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 	"github.com/robinovitch61/kl/internal/keymap"
-	"strings"
-	"testing"
 )
 
 var (
@@ -662,7 +663,7 @@ func entitiesEqual(a, b []Entity) bool {
 func formatEntities(entities []Entity) string {
 	var result strings.Builder
 	for i, e := range entities {
-		result.WriteString(fmt.Sprintf("%d: {%s}\n", i, formatEntity(e)))
+		fmt.Fprintf(&result, "%d: {%s}\n", i, formatEntity(e))
 	}
 	return result.String()
 }

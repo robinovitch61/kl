@@ -1,10 +1,11 @@
 package textinput
 
 import (
-	"github.com/robinovitch61/kl/internal/dev"
 	"reflect"
 	"strings"
 	"unicode"
+
+	"github.com/robinovitch61/kl/internal/dev"
 
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/v2/cursor"
@@ -402,7 +403,7 @@ func (m *Model) deleteWordBackward() {
 	// Linter note: it's critical that we acquire the initial cursor position
 	// here prior to altering it via SetCursor() below. As such, moving this
 	// call into the corresponding if clause does not apply here.
-	oldPos := m.pos //nolint:ifshort
+	oldPos := m.pos
 
 	m.SetCursor(m.pos - 1)
 	for unicode.IsSpace(m.value[m.pos]) {
@@ -762,20 +763,6 @@ func clamp(v, low, high int) int {
 		low, high = high, low
 	}
 	return min(high, max(low, v))
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 func (m Model) completionView(offset int) string {

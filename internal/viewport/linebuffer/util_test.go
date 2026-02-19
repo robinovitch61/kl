@@ -1,11 +1,12 @@
 package linebuffer
 
 import (
-	"github.com/charmbracelet/lipgloss/v2"
-	"github.com/robinovitch61/kl/internal/util"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/robinovitch61/kl/internal/util"
 )
 
 func TestLineBuffer_reapplyAnsi(t *testing.T) {

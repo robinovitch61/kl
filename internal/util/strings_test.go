@@ -1,8 +1,9 @@
 package util
 
 import (
-	"github.com/charmbracelet/lipgloss/v2"
 	"testing"
+
+	"github.com/charmbracelet/lipgloss/v2"
 )
 
 func TestGetUniqueShortNames(t *testing.T) {

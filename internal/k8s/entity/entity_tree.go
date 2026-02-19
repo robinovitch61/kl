@@ -2,12 +2,13 @@ package entity
 
 import (
 	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/robinovitch61/kl/internal/filter"
 	"github.com/robinovitch61/kl/internal/k8s/container"
 	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 	"github.com/robinovitch61/kl/internal/util"
-	"sort"
-	"strings"
 )
 
 // Tree is a tree of entities with hierarchy Cluster > Namespace > PodOwner > Pod > Container
@@ -148,14 +149,14 @@ func (et *entityTreeImpl) AddOrReplace(entity Entity) {
 }
 
 func (et *entityTreeImpl) addCluster(entity Entity, replace bool) {
-	clusterId := entity.Container.Cluster
-	if _, exists := et.root[clusterId]; !exists {
-		et.root[clusterId] = &entityNode{
+	clusterID := entity.Container.Cluster
+	if _, exists := et.root[clusterID]; !exists {
+		et.root[clusterID] = &entityNode{
 			entity:   entity,
 			children: make(map[string]*entityNode),
 		}
 	} else if replace {
-		et.root[clusterId].entity = entity
+		et.root[clusterID].entity = entity
 	}
 }
 
@@ -178,34 +179,34 @@ func (et *entityTreeImpl) addNamespace(entity Entity, replace bool) {
 func (et *entityTreeImpl) addPodOwner(entity Entity, replace bool) {
 	clusterID := entity.Container.Cluster
 	namespaceID := entity.Container.Namespace
-	podOwnerId := entity.Container.PodOwner
+	podOwnerID := entity.Container.PodOwner
 	et.addNamespace(
 		Entity{Container: container.Container{Cluster: clusterID, Namespace: namespaceID}, IsNamespace: true},
 		false,
 	)
 
 	namespace := et.root[clusterID].children[namespaceID]
-	if _, exists := namespace.children[podOwnerId]; !exists {
-		namespace.children[podOwnerId] = &entityNode{
+	if _, exists := namespace.children[podOwnerID]; !exists {
+		namespace.children[podOwnerID] = &entityNode{
 			entity:   entity,
 			children: make(map[string]*entityNode),
 		}
 	} else if replace {
-		namespace.children[podOwnerId].entity = entity
+		namespace.children[podOwnerID].entity = entity
 	}
 }
 
 func (et *entityTreeImpl) addOrReplacePod(entity Entity, replace bool) {
 	clusterID := entity.Container.Cluster
 	namespaceID := entity.Container.Namespace
-	podOwnerId := entity.Container.PodOwner
+	podOwnerID := entity.Container.PodOwner
 	podID := entity.Container.Pod
 	et.addPodOwner(
-		Entity{Container: container.Container{Cluster: clusterID, Namespace: namespaceID, PodOwner: podOwnerId, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsPodOwner: true},
+		Entity{Container: container.Container{Cluster: clusterID, Namespace: namespaceID, PodOwner: podOwnerID, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsPodOwner: true},
 		false,
 	)
 
-	podOwner := et.root[clusterID].children[namespaceID].children[podOwnerId]
+	podOwner := et.root[clusterID].children[namespaceID].children[podOwnerID]
 	if _, exists := podOwner.children[podID]; !exists {
 		podOwner.children[podID] = &entityNode{
 			entity:   entity,
@@ -219,15 +220,15 @@ func (et *entityTreeImpl) addOrReplacePod(entity Entity, replace bool) {
 func (et *entityTreeImpl) addOrReplaceContainer(entity Entity, replace bool) {
 	clusterID := entity.Container.Cluster
 	namespaceID := entity.Container.Namespace
-	podOwnerId := entity.Container.PodOwner
+	podOwnerID := entity.Container.PodOwner
 	podID := entity.Container.Pod
 	containerID := entity.Container.Name
 	et.addOrReplacePod(
-		Entity{Container: container.Container{Cluster: clusterID, Namespace: namespaceID, PodOwner: podOwnerId, Pod: podID, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsPod: true},
+		Entity{Container: container.Container{Cluster: clusterID, Namespace: namespaceID, PodOwner: podOwnerID, Pod: podID, PodOwnerMetadata: entity.Container.PodOwnerMetadata}, IsPod: true},
 		false,
 	)
 
-	pod := et.root[clusterID].children[namespaceID].children[podOwnerId].children[podID]
+	pod := et.root[clusterID].children[namespaceID].children[podOwnerID].children[podID]
 	if _, exists := pod.children[containerID]; !exists {
 		pod.children[containerID] = &entityNode{
 			entity:   entity,
@@ -250,13 +251,13 @@ func (et *entityTreeImpl) GetEntities() []Entity {
 					result = append(result, namespace.entity)
 
 					podOwners := make([]string, 0, len(namespace.children))
-					for podOwnerId := range namespace.children {
-						podOwners = append(podOwners, podOwnerId)
+					for podOwnerID := range namespace.children {
+						podOwners = append(podOwners, podOwnerID)
 					}
 					sort.Strings(podOwners)
 
-					for _, podOwnerId := range podOwners {
-						podOwner := namespace.children[podOwnerId]
+					for _, podOwnerID := range podOwners {
+						podOwner := namespace.children[podOwnerID]
 						result = append(result, podOwner.entity)
 
 						pods := make([]string, 0, len(podOwner.children))
@@ -619,13 +620,13 @@ func (et entityTreeImpl) ContainerToShortName(minCharsEachSide int) func(contain
 	shortNameFromNamespace := util.GetUniqueShortNamesFromEdges(activeNamespaces, minCharsEachSide)
 	shortNameFromPodOwner := util.GetUniqueShortNamesFromEdges(activePodOwners, minCharsEachSide)
 	shortNameFromPod := util.GetUniqueShortNamesFromEdges(activePods, minCharsEachSide)
-	specFromContainerId := make(map[string]container.Container)
+	specFromContainerID := make(map[string]container.Container)
 	for _, e := range entities {
-		specFromContainerId[e.Container.ID()] = e.Container
+		specFromContainerID[e.Container.ID()] = e.Container
 	}
 
 	return func(container container.Container) (k8s_model.ContainerNameAndPrefix, error) {
-		c, ok := specFromContainerId[container.ID()]
+		c, ok := specFromContainerID[container.ID()]
 		if !ok {
 			return k8s_model.ContainerNameAndPrefix{}, fmt.Errorf("container not found when getting short name: %s", container.HumanReadable())
 		}

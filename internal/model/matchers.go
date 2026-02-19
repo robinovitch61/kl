@@ -2,8 +2,9 @@ package model
 
 import (
 	"fmt"
-	"github.com/robinovitch61/kl/internal/k8s/container"
 	"regexp"
+
+	"github.com/robinovitch61/kl/internal/k8s/container"
 )
 
 type ValidRegex struct {

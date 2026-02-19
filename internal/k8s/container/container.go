@@ -1,9 +1,10 @@
 package container
 
 import (
-	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 	"image/color"
 	"strings"
+
+	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 )
 
 const idSeparator = "/"

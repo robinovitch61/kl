@@ -5,13 +5,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
+	"time"
+	"unicode"
+
 	"github.com/google/uuid"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/k8s/container"
 	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
-	"strings"
-	"time"
-	"unicode"
 )
 
 type LogTimestamps struct {

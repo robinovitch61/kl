@@ -1,12 +1,13 @@
 package util
 
 import (
-	"github.com/charmbracelet/lipgloss/v2"
-	"github.com/google/go-cmp/cmp"
 	"regexp"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/google/go-cmp/cmp"
 )
 
 var ansiRegex = regexp.MustCompile(`(\x1b\[[0-9;]*m.*?\x1b\[0?m)`)
@@ -116,26 +117,25 @@ func JoinWithEqualSpacing(width int, items ...string) string {
 		}
 
 		return result.String()
-	} else {
-		// if not enough space, truncate from the right
-		var result strings.Builder
-		remainingWidth := width
-
-		for _, item := range items {
-			itemWidth := lipgloss.Width(item)
-			if remainingWidth <= 0 {
-				break
-			}
-			if itemWidth > remainingWidth {
-				result.WriteString(lipgloss.NewStyle().MaxWidth(remainingWidth).Render(item))
-				break
-			}
-			result.WriteString(item)
-			remainingWidth -= itemWidth
-		}
-
-		return result.String()
 	}
+	// if not enough space, truncate from the right
+	var result strings.Builder
+	remainingWidth := width
+
+	for _, item := range items {
+		itemWidth := lipgloss.Width(item)
+		if remainingWidth <= 0 {
+			break
+		}
+		if itemWidth > remainingWidth {
+			result.WriteString(lipgloss.NewStyle().MaxWidth(remainingWidth).Render(item))
+			break
+		}
+		result.WriteString(item)
+		remainingWidth -= itemWidth
+	}
+
+	return result.String()
 }
 
 // StyleStyledString is for styling a string that contains ANSI escape codes.

@@ -1,9 +1,10 @@
 package model
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/robinovitch61/kl/internal/util"
-	"time"
 )
 
 type SinceTime struct {

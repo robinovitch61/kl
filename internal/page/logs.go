@@ -2,6 +2,7 @@ package page
 
 import (
 	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/filter"
@@ -178,10 +179,10 @@ func (p LogsPage) WithAppendedLogs(logs []model.PageLog) LogsPage {
 	return p
 }
 
-func (p LogsPage) WithContainerColors(containerIdToColor map[string]container.ContainerColors) LogsPage {
+func (p LogsPage) WithContainerColors(containerIDToColor map[string]container.ContainerColors) LogsPage {
 	allLogs := p.logContainer.GetOrderedLogs()
 	for i := range allLogs {
-		color, ok := containerIdToColor[allLogs[i].Log.Container.ID()]
+		color, ok := containerIDToColor[allLogs[i].Log.Container.ID()]
 		if ok {
 			allLogs[i].ContainerColors = &color
 		}

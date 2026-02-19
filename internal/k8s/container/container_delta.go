@@ -1,8 +1,9 @@
 package container
 
 import (
-	"github.com/emirpasic/gods/trees/redblacktree"
 	"time"
+
+	"github.com/emirpasic/gods/trees/redblacktree"
 )
 
 type ContainerDelta struct {

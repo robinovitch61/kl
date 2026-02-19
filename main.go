@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/robinovitch61/kl/cmd"
 	"net/http"
 	_ "net/http/pprof" // register pprof endpoints
 	"os"
+
+	"github.com/robinovitch61/kl/cmd"
 )
 
 func main() {

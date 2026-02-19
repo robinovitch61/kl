@@ -1,9 +1,10 @@
 package viewport
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
-	"strings"
 )
 
 func percent(a, b int) int {
@@ -54,6 +55,7 @@ func safeSliceFromIdx(s []string, i int) []string {
 	return s[i:]
 }
 
+//nolint:unparam
 func clampValMinMax(v, minimum, maximum int) int {
 	return max(minimum, min(maximum, v))
 }

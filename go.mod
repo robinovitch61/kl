@@ -1,6 +1,8 @@
 module github.com/robinovitch61/kl
 
-go 1.23.3
+go 1.26
+
+toolchain go1.26.0
 
 require (
 	github.com/atotto/clipboard v0.1.4
@@ -13,6 +15,7 @@ require (
 	github.com/google/uuid v1.4.0
 	github.com/mattn/go-runewidth v0.0.16
 	github.com/muesli/reflow v0.3.0
+	github.com/rivo/uniseg v0.4.7
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.18.2
@@ -54,7 +57,6 @@ require (
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
-	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect

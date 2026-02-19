@@ -2,13 +2,14 @@ package entity
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/robinovitch61/kl/internal/constants"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/k8s/container"
 	"github.com/robinovitch61/kl/internal/k8s/k8s_log"
 	"github.com/robinovitch61/kl/internal/util"
 	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
-	"time"
 )
 
 // Entity represents a renderable & selectable kubernetes entity (cluster, namespace, pod owner, pod, or container)
@@ -38,43 +39,42 @@ func (e Entity) Repr() string {
 		return res
 	} else if e.IsPod {
 		return e.Prefix + e.Container.Pod
-	} else {
-		// for containers
-		res := e.Prefix + e.State.StatusIndicator() + " " + e.Container.Name + " (" + e.Container.Status.State.String()
-
-		// running container with started at time, show "for X time"
-		if e.Container.Status.State == container.ContainerRunning && !e.Container.Status.StartedAt.IsZero() {
-			res += " for " + util.TimeSince(e.Container.Status.StartedAt)
-		}
-
-		// terminated containers with terminated at time
-		if e.Container.Status.State == container.ContainerTerminated && !e.Container.Status.TerminatedAt.IsZero() {
-			if e.Container.Status.StartedAt.IsZero() {
-				// terminated container with just terminated at time, show "for X time"
-				res += " for " + util.TimeSince(e.Container.Status.TerminatedAt)
-			} else {
-				// terminated container with started at and terminated at time, show "for X time, ran X time"
-				res += " for " + util.TimeSince(e.Container.Status.TerminatedAt) + ", ran " + util.FormatDuration(e.Container.Status.TerminatedAt.Sub(e.Container.Status.StartedAt))
-			}
-
-			if e.Container.Status.TerminatedFor != "" {
-				res += ": " + e.Container.Status.TerminatedFor
-			}
-		}
-
-		// waiting container with waiting for reason, show "waiting for X"
-		if e.Container.Status.State == container.ContainerWaiting && e.Container.Status.WaitingFor != "" {
-			res += ": " + e.Container.Status.WaitingFor
-		}
-
-		// add "NEW" to newly started containers
-		if e.Container.Status.State == container.ContainerRunning && e.Container.Status.StartedAt.After(time.Now().Add(-constants.NewContainerThreshold)) {
-			res += " - NEW"
-		}
-
-		res += ")"
-		return res
 	}
+	// for containers
+	res := e.Prefix + e.State.StatusIndicator() + " " + e.Container.Name + " (" + e.Container.Status.State.String()
+
+	// running container with started at time, show "for X time"
+	if e.Container.Status.State == container.ContainerRunning && !e.Container.Status.StartedAt.IsZero() {
+		res += " for " + util.TimeSince(e.Container.Status.StartedAt)
+	}
+
+	// terminated containers with terminated at time
+	if e.Container.Status.State == container.ContainerTerminated && !e.Container.Status.TerminatedAt.IsZero() {
+		if e.Container.Status.StartedAt.IsZero() {
+			// terminated container with just terminated at time, show "for X time"
+			res += " for " + util.TimeSince(e.Container.Status.TerminatedAt)
+		} else {
+			// terminated container with started at and terminated at time, show "for X time, ran X time"
+			res += " for " + util.TimeSince(e.Container.Status.TerminatedAt) + ", ran " + util.FormatDuration(e.Container.Status.TerminatedAt.Sub(e.Container.Status.StartedAt))
+		}
+
+		if e.Container.Status.TerminatedFor != "" {
+			res += ": " + e.Container.Status.TerminatedFor
+		}
+	}
+
+	// waiting container with waiting for reason, show "waiting for X"
+	if e.Container.Status.State == container.ContainerWaiting && e.Container.Status.WaitingFor != "" {
+		res += ": " + e.Container.Status.WaitingFor
+	}
+
+	// add "NEW" to newly started containers
+	if e.Container.Status.State == container.ContainerRunning && e.Container.Status.StartedAt.After(time.Now().Add(-constants.NewContainerThreshold)) {
+		res += " - NEW"
+	}
+
+	res += ")"
+	return res
 }
 
 func (e Entity) Equals(other interface{}) bool {
@@ -125,9 +125,8 @@ func (e Entity) Type() string {
 		return "pod owner"
 	} else if e.IsPod {
 		return "pod"
-	} else {
-		return "container"
 	}
+	return "container"
 }
 
 func (e Entity) Activate(tree Tree) (Entity, Tree, []EntityAction) {
@@ -141,11 +140,10 @@ func (e Entity) Activate(tree Tree) (Entity, Tree, []EntityAction) {
 			e.State = WantScanning
 			tree.AddOrReplace(e)
 			return e, tree, []EntityAction{}
-		} else {
-			e.State = ScannerStarting
-			tree.AddOrReplace(e)
-			return e, tree, []EntityAction{StartScanner}
 		}
+		e.State = ScannerStarting
+		tree.AddOrReplace(e)
+		return e, tree, []EntityAction{StartScanner}
 	default:
 		panic(fmt.Sprintf("Activate called for entity in %v state", e.State))
 	}

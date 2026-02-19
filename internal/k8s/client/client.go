@@ -4,19 +4,20 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/k8s/container"
 	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 	"github.com/robinovitch61/kl/internal/model"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	"strings"
-	"time"
 )
 
 // K8sClient is an interface for interacting with a Kubernetes cluster
@@ -169,7 +170,7 @@ func (c clientImpl) GetLogStream(
 		return nil, nil, fmt.Errorf("clientset for cluster %s not found", container.Cluster)
 	}
 
-	logOptions := &v1.PodLogOptions{
+	logOptions := &corev1.PodLogOptions{
 		Container:  container.Name,
 		Timestamps: true,
 		Follow:     true,
@@ -194,7 +195,7 @@ func (c clientImpl) GetLogStream(
 func getContainerDeltas(
 	pod *corev1.Pod,
 	cluster string,
-	delete bool,
+	toDelete bool,
 	matchers model.Matchers,
 	selector labels.Selector,
 	ignorePodOwnerTypes []string,
@@ -214,7 +215,7 @@ func getContainerDeltas(
 		delta := container.ContainerDelta{
 			Time:       now,
 			Container:  containers[i],
-			ToDelete:   delete,
+			ToDelete:   toDelete,
 			ToActivate: matcherSelectsContainer || labelSelectorSelectsContainer,
 		}
 		deltas = append(deltas, delta)
@@ -274,7 +275,7 @@ func getPodOwnerNameAndOwnerRefType(pod corev1.Pod) (string, string) {
 	return podOwnerRef.Name, podOwnerRef.Kind
 }
 
-func getStatus(podContainerStatuses []v1.ContainerStatus, containerName string) (container.ContainerStatus, error) {
+func getStatus(podContainerStatuses []corev1.ContainerStatus, containerName string) (container.ContainerStatus, error) {
 	for _, status := range podContainerStatuses {
 		if status.Name == containerName {
 			state, err := getState(status)

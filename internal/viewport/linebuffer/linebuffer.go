@@ -2,11 +2,12 @@ package linebuffer
 
 import (
 	"fmt"
+	"strings"
+	"unicode/utf8"
+
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/mattn/go-runewidth"
 	"github.com/robinovitch61/kl/internal/filter"
-	"strings"
-	"unicode/utf8"
 )
 
 // LineBuffer provides functionality to get sequential strings of a specified terminal cell width, accounting
@@ -365,7 +366,7 @@ func (l LineBuffer) findRuneIndexWithWidthToLeft(widthToLeft int) int {
 	nextLeft := left + 1
 	for nextLeft < l.numNoAnsiRunes && l.getCumulativeWidthAtRuneIdx(nextLeft) == w {
 		left = nextLeft
-		nextLeft += 1
+		nextLeft++
 	}
 
 	return left + 1

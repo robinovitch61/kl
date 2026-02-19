@@ -1,9 +1,10 @@
 package linebuffer
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/filter"
-	"strings"
 )
 
 // MultiLineBuffer implements LineBufferer by wrapping multiple LineBuffers without extra memory allocation
@@ -116,7 +117,7 @@ func (m MultiLineBuffer) Take(
 	}
 
 	// get content after our result for highlight context
-	currentBufferIdx -= 1
+	currentBufferIdx--
 	nBytesRightContext := len(toHighlight) * 2
 	rightContext := getBytesRightOfWidth(nBytesRightContext, m.buffers, currentBufferIdx, remainingBufferWidth)
 

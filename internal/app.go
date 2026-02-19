@@ -3,14 +3,15 @@ package internal
 import (
 	"context"
 	"fmt"
-	"github.com/robinovitch61/kl/internal/k8s/container"
-	"github.com/robinovitch61/kl/internal/k8s/entity"
-	"github.com/robinovitch61/kl/internal/k8s/k8s_log"
-	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 	"math"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/robinovitch61/kl/internal/k8s/container"
+	"github.com/robinovitch61/kl/internal/k8s/entity"
+	"github.com/robinovitch61/kl/internal/k8s/k8s_log"
+	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 
 	"github.com/charmbracelet/bubbles/v2/key"
 	tea "github.com/charmbracelet/bubbletea/v2"
@@ -75,7 +76,7 @@ type Model struct {
 	entityTree    entity.Tree
 	// TODO: put these in entity tree?
 	containerToShortName func(container.Container) (k8s_model.ContainerNameAndPrefix, error)
-	containerIdToColors  map[string]container.ContainerColors
+	containerIDToColors  map[string]container.ContainerColors
 
 	k8sClient client.K8sClient
 
@@ -354,6 +355,8 @@ func (m Model) topBar() string {
 
 // startup, shutdown, & bubble tea builtin messages
 // ---
+//
+//nolint:unparam
 func (m Model) syncDimensions() (Model, tea.Cmd) {
 	contentHeight := m.state.height - m.data.topBarHeight
 	m.components.prompt.SetWidthAndHeight(m.state.width, contentHeight)
@@ -374,6 +377,7 @@ func (m Model) syncDimensions() (Model, tea.Cmd) {
 	return m, nil
 }
 
+//nolint:unparam
 func (m Model) changeFocusedPage(newPage page.Type) (Model, tea.Cmd) {
 	switch newPage {
 	case page.EntitiesPageType:
@@ -580,9 +584,8 @@ func (m Model) handleEntitiesPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 			bottomLine := fmt.Sprintf("%s?", selected.Container.HumanReadable())
 			text := []string{topLine, bottomLine}
 			return m.promptToConfirmSelectionActions(text, selectionActions)
-		} else {
-			return m.doSelectionActions(selectionActions)
 		}
+		return m.doSelectionActions(selectionActions)
 	}
 
 	// handle deselecting all containers
@@ -597,9 +600,8 @@ func (m Model) handleEntitiesPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 		if len(selectionActions) > constants.ConfirmSelectionActionsThreshold {
 			text := []string{fmt.Sprintf("Deselect all %d containers?", len(selectionActions))}
 			return m.promptToConfirmSelectionActions(text, selectionActions)
-		} else {
-			return m.doSelectionActions(selectionActions)
 		}
+		return m.doSelectionActions(selectionActions)
 	}
 
 	// change since time for logs
@@ -960,8 +962,8 @@ func (m Model) handleNewLogsMsg(msg command.GetNewLogsMsg) (Model, tea.Cmd) {
 			ContainerName: msg.NewLogs[i].Container.Name,
 		}
 		var containerColors container.ContainerColors
-		if m.containerIdToColors != nil {
-			containerColors = m.containerIdToColors[msg.NewLogs[i].Container.ID()]
+		if m.containerIDToColors != nil {
+			containerColors = m.containerIDToColors[msg.NewLogs[i].Container.ID()]
 		}
 		newLog := model.PageLog{
 			Log:             &msg.NewLogs[i],
@@ -1063,14 +1065,14 @@ func (m Model) doActions(ent entity.Entity, actions []entity.EntityAction) (Mode
 // it should be called every time the set of active containers changes
 func (m Model) withUpdatedContainerShortNames() Model {
 	containers := m.entityTree.GetContainerEntities()
-	m.containerIdToColors = make(map[string]container.ContainerColors)
+	m.containerIDToColors = make(map[string]container.ContainerColors)
 	for _, containerEntity := range containers {
-		m.containerIdToColors[containerEntity.Container.ID()] = container.ContainerColors{
+		m.containerIDToColors[containerEntity.Container.ID()] = container.ContainerColors{
 			ID:   color.GetColor(containerEntity.Container.ID()),
 			Name: color.GetColor(containerEntity.Container.Name),
 		}
 	}
-	m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithContainerColors(m.containerIdToColors)
+	m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithContainerColors(m.containerIDToColors)
 
 	m.containerToShortName = m.entityTree.ContainerToShortName(constants.MinCharsEachSideShortNames)
 	newLogsPage, err := m.pages[page.LogsPageType].(page.LogsPage).WithUpdatedShortNames(m.containerToShortName)

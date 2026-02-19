@@ -2,10 +2,11 @@ package style
 
 import (
 	"fmt"
+	"image/color"
+
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/dev"
-	"image/color"
 )
 
 var (
@@ -128,12 +129,12 @@ func lightenColor(c color.Color, offset uint32) string {
 	return fmt.Sprintf("#%02x%02x%02x", r, g, b)
 }
 
-func clamp(value, min, max uint32) uint32 {
-	if value < min {
-		return min
+func clamp(value, lo, hi uint32) uint32 {
+	if value < lo {
+		return lo
 	}
-	if value > max {
-		return max
+	if value > hi {
+		return hi
 	}
 	return value
 }

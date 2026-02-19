@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/filter"
@@ -14,7 +16,6 @@ import (
 	"github.com/robinovitch61/kl/internal/style"
 	"github.com/robinovitch61/kl/internal/viewport"
 	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
-	"strings"
 )
 
 type SingleLogPage struct {

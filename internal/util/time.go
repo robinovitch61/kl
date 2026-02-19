@@ -45,9 +45,8 @@ func FormatDuration(duration time.Duration) string {
 			return fmt.Sprintf("%dm%ds", minutes, seconds%60)
 		}
 		return fmt.Sprintf("%dm", minutes)
-	} else {
-		return fmt.Sprintf("%ds", seconds)
 	}
+	return fmt.Sprintf("%ds", seconds)
 }
 
 // DurationTilNext calculates the duration until the between occurrence of a periodic event.

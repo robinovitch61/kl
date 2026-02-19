@@ -1,0 +1,106 @@
+version: "2"
+run:
+  tests: true
+linters:
+  enable:
+    - bodyclose
+    - gosec
+    - nilerr
+    - predeclared
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - tparallel
+    - unconvert
+    - unparam
+    - whitespace
+  settings:
+    gosec:
+      excludes:
+        - G108 # pprof endpoint
+        - G114 # http serve without timeouts (debug only)
+        - G115 # integer overflow conversion (linebuffer math)
+        - G301 # directory permissions
+        - G304 # file path variable (CLI tool, not a server)
+        - G401 # weak crypto (md5 used for color hashing, not security)
+        - G501 # weak crypto import
+    revive:
+      # everything not explicitly enabled below is disabled
+      rules:
+        # style & naming
+        - name: exported
+          disabled: true
+        - name: var-naming
+          disabled: false
+        - name: receiver-naming
+          disabled: false
+        - name: var-declaration
+          disabled: false
+
+        # error handling
+        - name: error-return
+          disabled: false
+        - name: error-strings
+          disabled: false
+        - name: error-naming
+          disabled: false
+        - name: errorf
+          disabled: false
+
+        # control flow & code quality
+        - name: if-return
+          disabled: false
+        - name: indent-error-flow
+          disabled: false
+        - name: superfluous-else
+          disabled: false
+        - name: empty-block
+          disabled: false
+        - name: unreachable-code
+          disabled: false
+
+        # import & context rules
+        - name: blank-imports
+          disabled: false
+        - name: dot-imports
+          disabled: false
+        - name: context-as-argument
+          disabled: false
+        - name: context-keys-type
+          disabled: false
+
+        # misc best practices
+        - name: increment-decrement
+          disabled: false
+        - name: range
+          disabled: false
+        - name: time-naming
+          disabled: false
+        - name: unexported-return
+          disabled: false
+        - name: unused-parameter
+          disabled: true
+        - name: redefines-builtin-id
+          disabled: false
+  exclusions:
+    rules:
+      # package naming conventions that would require disruptive renames
+      - linters: [revive]
+        text: "don't use an underscore in package name"
+      - linters: [revive]
+        text: "avoid package names that conflict with Go standard library"
+      - linters: [revive]
+        text: "avoid meaningless package names"
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+formatters:
+  enable:
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$

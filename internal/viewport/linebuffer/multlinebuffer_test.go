@@ -1,8 +1,9 @@
 package linebuffer
 
 import (
-	"github.com/charmbracelet/lipgloss/v2"
 	"testing"
+
+	"github.com/charmbracelet/lipgloss/v2"
 )
 
 func getEquivalentLineBuffers() map[string][]LineBufferer {

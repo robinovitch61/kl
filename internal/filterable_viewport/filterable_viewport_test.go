@@ -1,6 +1,11 @@
 package filterable_viewport
 
 import (
+	"regexp"
+	"strings"
+	"testing"
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/filter"
@@ -8,10 +13,6 @@ import (
 	"github.com/robinovitch61/kl/internal/style"
 	"github.com/robinovitch61/kl/internal/util"
 	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
-	"regexp"
-	"strings"
-	"testing"
-	"time"
 )
 
 var (

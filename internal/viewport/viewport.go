@@ -2,13 +2,14 @@ package viewport
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
+
 	"github.com/charmbracelet/bubbles/v2/key"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
-	"regexp"
-	"strings"
 )
 
 // Terminology:
@@ -601,7 +602,7 @@ func (m *Model[T]) scrollByNLines(n int) {
 				// take lines from items until scrolled up desired amount
 				n += newTopItemLineOffset
 				for n < 0 {
-					newTopItemIdx -= 1
+					newTopItemIdx--
 					if newTopItemIdx < 0 {
 						// scrolled up past top - stay at top
 						newTopItemIdx = 0
@@ -610,7 +611,7 @@ func (m *Model[T]) scrollByNLines(n int) {
 					}
 					numLinesInTopItem := m.numLinesForItem(newTopItemIdx)
 					for i := range numLinesInTopItem {
-						n += 1
+						n++
 						if n == 0 {
 							newTopItemLineOffset = numLinesInTopItem - (i + 1)
 							break
@@ -627,14 +628,14 @@ func (m *Model[T]) scrollByNLines(n int) {
 				// take lines from items until scrolled down desired amount
 				n -= numLinesInTopItem - (newTopItemLineOffset + 1)
 				for n > 0 {
-					newTopItemIdx += 1
+					newTopItemIdx++
 					if newTopItemIdx >= len(m.allItems) {
 						newTopItemIdx = len(m.allItems) - 1
 						break
 					}
 					numLinesInTopItem = m.numLinesForItem(newTopItemIdx)
 					for i := range numLinesInTopItem {
-						n -= 1
+						n--
 						if n == 0 {
 							newTopItemLineOffset = i
 							break
@@ -657,18 +658,17 @@ func (m Model[T]) getVisibleHeaderLines() []string {
 
 	if !m.wrapText {
 		return safeSliceUpToIdx(m.header, m.height)
-	} else {
-		// wrapped
-		var wrappedHeaderLines []string
-		for _, s := range m.header {
-			lb := linebuffer.New(s)
-			wrappedHeaderLines = append(
-				wrappedHeaderLines,
-				lb.WrappedLines(m.width, m.height, "", lipgloss.NewStyle())...,
-			)
-		}
-		return safeSliceUpToIdx(wrappedHeaderLines, m.height)
 	}
+	// wrapped
+	var wrappedHeaderLines []string
+	for _, s := range m.header {
+		lb := linebuffer.New(s)
+		wrappedHeaderLines = append(
+			wrappedHeaderLines,
+			lb.WrappedLines(m.width, m.height, "", lipgloss.NewStyle())...,
+		)
+	}
+	return safeSliceUpToIdx(wrappedHeaderLines, m.height)
 }
 
 type visibleContentLinesResult struct {
@@ -724,7 +724,7 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 		done = addLines(toLineBuffers(offsetLines), currItemIdx)
 
 		for !done {
-			currItemIdx += 1
+			currItemIdx++
 			if currItemIdx >= len(m.allItems) {
 				done = true
 			} else {
@@ -737,7 +737,7 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 	} else {
 		done = addLine(currItem.Render(), currItemIdx)
 		for !done {
-			currItemIdx += 1
+			currItemIdx++
 			if currItemIdx >= len(m.allItems) {
 				done = true
 			} else {
@@ -748,17 +748,9 @@ func (m Model[T]) getVisibleContentLines() visibleContentLinesResult {
 	}
 
 	scrolledToTop := m.topItemIdx == 0 && m.topItemLineOffset == 0
-	showFooter := false
-	if scrolledToTop && len(contentLines)+1 >= numLinesAfterHeader {
-		// if seeing all the content on screen, show footer
-		// if one blank line at bottom, still show footer
-		// if two blank lines at bottom, do not show footer
-		showFooter = true
-	}
-	if !scrolledToTop {
-		// if scrolled at all, should be showing footer
-		showFooter = true
-	}
+	// show footer if scrolled at all, or if seeing all content on screen
+	// (with at most one blank line at bottom)
+	showFooter := !scrolledToTop || (scrolledToTop && len(contentLines)+1 >= numLinesAfterHeader)
 
 	if !m.footerEnabled {
 		showFooter = false
@@ -871,7 +863,7 @@ func (m Model[T]) maxItemIdxAndMaxTopLineOffset() (int, int) {
 		// take lines from items until scrolled up desired amount
 		n := m.getNumContentLines() - nLinesLastItem
 		for n > 0 {
-			maxTopItemIdx -= 1
+			maxTopItemIdx--
 			if maxTopItemIdx < 0 {
 				// scrolled up past top - stay at top
 				maxTopItemIdx = 0
@@ -880,7 +872,7 @@ func (m Model[T]) maxItemIdxAndMaxTopLineOffset() (int, int) {
 			}
 			numLinesInTopItem := m.numLinesForItem(maxTopItemIdx)
 			for i := range numLinesInTopItem {
-				n -= 1
+				n--
 				if n == 0 {
 					maxTopItemLineOffset = numLinesInTopItem - (i + 1)
 					break
@@ -894,15 +886,14 @@ func (m Model[T]) maxItemIdxAndMaxTopLineOffset() (int, int) {
 func (m Model[T]) getNumVisibleItems() int {
 	if !m.wrapText {
 		return m.getNumContentLines()
-	} else {
-		visibleContentLines := m.getVisibleContentLines()
-		// return distinct number of items
-		itemIndexSet := make(map[int]struct{})
-		for _, i := range visibleContentLines.itemIndexes {
-			itemIndexSet[i] = struct{}{}
-		}
-		return len(itemIndexSet)
 	}
+	visibleContentLines := m.getVisibleContentLines()
+	// return distinct number of items
+	itemIndexSet := make(map[int]struct{})
+	for _, i := range visibleContentLines.itemIndexes {
+		itemIndexSet[i] = struct{}{}
+	}
+	return len(itemIndexSet)
 }
 
 func (m Model[T]) styleSelection(s string) string {

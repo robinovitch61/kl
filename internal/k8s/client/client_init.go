@@ -3,9 +3,10 @@ package client
 import (
 	"context"
 	"fmt"
-	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 	"os"
 	"strings"
+
+	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 
 	"github.com/robinovitch61/kl/internal/dev"
 	"k8s.io/client-go/kubernetes"

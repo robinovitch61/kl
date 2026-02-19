@@ -3,8 +3,9 @@ package internal
 import (
 	"context"
 	"flag"
-	"github.com/robinovitch61/kl/internal/k8s/entity"
 	"time"
+
+	"github.com/robinovitch61/kl/internal/k8s/entity"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"

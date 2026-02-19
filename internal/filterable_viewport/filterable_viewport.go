@@ -1,6 +1,8 @@
 package filterable_viewport
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/v2/key"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
@@ -10,7 +12,6 @@ import (
 	"github.com/robinovitch61/kl/internal/style"
 	"github.com/robinovitch61/kl/internal/textinput"
 	"github.com/robinovitch61/kl/internal/viewport"
-	"strings"
 )
 
 type FilterableViewport[T viewport.RenderableComparable] struct {

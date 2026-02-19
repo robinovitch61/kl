@@ -1,13 +1,14 @@
 package viewport
 
 import (
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/charmbracelet/bubbles/v2/key"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/util"
-	"strings"
-	"testing"
-	"time"
 )
 
 var (
@@ -3193,7 +3194,6 @@ func TestViewport_SelectionOn_WrapOn_SmolDimensions(t *testing.T) {
 		"1...",
 	})
 	util.CmpStr(t, expectedView, vp.View())
-
 }
 
 func TestViewport_SelectionOn_WrapOn_Basic(t *testing.T) {

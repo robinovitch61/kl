@@ -2,13 +2,14 @@ package command
 
 import (
 	"fmt"
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/k8s/client"
 	"github.com/robinovitch61/kl/internal/k8s/container"
 	"github.com/robinovitch61/kl/internal/k8s/entity"
 	"github.com/robinovitch61/kl/internal/k8s/k8s_log"
-	"time"
 )
 
 type StartedLogScannerMsg struct {

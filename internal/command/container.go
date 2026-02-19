@@ -2,12 +2,13 @@ package command
 
 import (
 	"fmt"
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/k8s/client"
 	"github.com/robinovitch61/kl/internal/k8s/container"
 	"github.com/robinovitch61/kl/internal/model"
 	"k8s.io/apimachinery/pkg/labels"
-	"time"
 )
 
 type GetContainerListenerMsg struct {

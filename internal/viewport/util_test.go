@@ -1,9 +1,10 @@
 package viewport
 
 import (
+	"testing"
+
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/util"
-	"testing"
 )
 
 func TestPad(t *testing.T) {

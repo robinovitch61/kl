@@ -49,16 +49,18 @@ func (s EntityState) String() string {
 }
 
 func (s EntityState) StatusIndicator() string {
-	if s == WantScanning {
+	switch s {
+	case WantScanning:
 		return "[.]"
-	} else if s == ScannerStarting {
+	case ScannerStarting:
 		return "[^]"
-	} else if s == Scanning || s == Deleted {
+	case Scanning, Deleted:
 		return "[x]"
-	} else if s == ScannerStopping {
+	case ScannerStopping:
 		return "[v]"
+	default:
+		return "[ ]"
 	}
-	return "[ ]"
 }
 
 func (s EntityState) ActivatesWhenSelected() bool {

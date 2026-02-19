@@ -2,12 +2,13 @@ package fileio
 
 import (
 	"fmt"
-	tea "github.com/charmbracelet/bubbletea/v2"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
 	"time"
+
+	tea "github.com/charmbracelet/bubbletea/v2"
 )
 
 type SaveCompleteMsg struct {
@@ -89,7 +90,7 @@ func saveToFile(fileName string, fileContent []string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	for _, line := range fileContent {
 		_, writeErr := f.WriteString(line + "\n")
