@@ -56,10 +56,10 @@ func NewSingleLogPage(
 			Top:          keyMap.Top,
 			Bottom:       keyMap.Bottom,
 		}),
+		viewport.WithSelectionStyleOverridesItemStyle[SingleLogLine](false),
 	)
 	vp.SetSelectionEnabled(false)
 	vp.SetWrapText(true)
-	vp.SetHeader([]string{"Single Log"})
 
 	fvp := filterableviewport.New(vp,
 		filterableviewport.WithKeyMap[SingleLogLine](filterableviewport.KeyMap{
@@ -74,7 +74,9 @@ func NewSingleLogPage(
 		}),
 		filterableviewport.WithMatchingItemsOnly[SingleLogLine](false),
 		filterableviewport.WithCanToggleMatchingItemsOnly[SingleLogLine](false),
-		filterableviewport.WithEmptyText[SingleLogLine]("No Filter"),
+		filterableviewport.WithEmptyText[SingleLogLine]("'/', 'r', or 'i' to filter"),
+		filterableviewport.WithFilterLinePosition[SingleLogLine](filterableviewport.FilterLineTop),
+		filterableviewport.WithFilterLinePrefix[SingleLogLine]("Single Log"),
 		filterableviewport.WithStyles[SingleLogLine](filterableviewport.Styles{
 			Match: filterableviewport.MatchStyles{
 				Focused:   styles.Inverse,
@@ -87,7 +89,6 @@ func NewSingleLogPage(
 		filterableViewport: fvp,
 		keyMap:             keyMap,
 		styles:             styles,
-		focused:            true,
 	}
 	p.updateStyles()
 
@@ -183,11 +184,11 @@ func (p SingleLogPage) Help() string {
 func (p *SingleLogPage) updateStyles() {
 	p.filterableViewport.SetViewportStyles(viewportStylesForFocus(p.focused, p.styles))
 
-	header := "Single Log"
+	prefix := "Single Log"
 	if p.focused {
-		header = p.styles.Blue.Render(header)
+		prefix = p.styles.Blue.Render(prefix)
 	}
-	p.filterableViewport.SetHeader([]string{header})
+	p.filterableViewport.SetFilterLinePrefix(prefix)
 }
 
 func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {

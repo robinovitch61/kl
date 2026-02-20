@@ -63,7 +63,6 @@ func NewEntitiesPage(
 	)
 	vp.SetSelectionEnabled(true)
 	vp.SetWrapText(false)
-	vp.SetHeader([]string{"(S)election"})
 
 	fvp := filterableviewport.New(vp,
 		filterableviewport.WithKeyMap[entity.Entity](filterableviewport.KeyMap{
@@ -78,7 +77,9 @@ func NewEntitiesPage(
 		}),
 		filterableviewport.WithMatchingItemsOnly[entity.Entity](false),
 		filterableviewport.WithCanToggleMatchingItemsOnly[entity.Entity](false),
-		filterableviewport.WithEmptyText[entity.Entity]("No Filter"),
+		filterableviewport.WithEmptyText[entity.Entity]("'/', 'r', or 'i' to filter"),
+		filterableviewport.WithFilterLinePosition[entity.Entity](filterableviewport.FilterLineTop),
+		filterableviewport.WithFilterLinePrefix[entity.Entity]("(S)election"),
 		filterableviewport.WithStyles[entity.Entity](filterableviewport.Styles{
 			Match: filterableviewport.MatchStyles{
 				Focused:   styles.Inverse,
@@ -100,7 +101,6 @@ func NewEntitiesPage(
 		keyMap:             keyMap,
 		styles:             styles,
 		viewWhenEmpty:      viewWhenEmpty,
-		focused:            true,
 	}
 	p.updateStyles()
 
@@ -239,11 +239,11 @@ func (p EntityPage) getCurrentFilter() filter.Model {
 func (p *EntityPage) updateStyles() {
 	p.filterableViewport.SetViewportStyles(viewportStylesForFocus(p.focused, p.styles))
 
-	header := "(S)election"
+	prefix := "(S)election"
 	if p.focused {
-		header = p.styles.Blue.Render(header)
+		prefix = p.styles.Blue.Render(prefix)
 	}
-	p.filterableViewport.SetHeader([]string{header})
+	p.filterableViewport.SetFilterLinePrefix(prefix)
 }
 
 // makeFilterFromText creates a filter.Model from filter text and regex mode

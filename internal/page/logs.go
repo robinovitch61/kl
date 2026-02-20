@@ -57,10 +57,10 @@ func NewLogsPage(
 			Top:          keyMap.Top,
 			Bottom:       keyMap.Bottom,
 		}),
+		viewport.WithSelectionStyleOverridesItemStyle[model.PageLog](false),
 	)
 	vp.SetSelectionEnabled(true)
 	vp.SetWrapText(true)
-	vp.SetHeader([]string{fmt.Sprintf("(L)ogs, %s", getOrder(!descending))})
 
 	fvp := filterableviewport.New(vp,
 		filterableviewport.WithKeyMap[model.PageLog](filterableviewport.KeyMap{
@@ -75,7 +75,9 @@ func NewLogsPage(
 		}),
 		filterableviewport.WithMatchingItemsOnly[model.PageLog](false), // ShowContext=true equivalent
 		filterableviewport.WithCanToggleMatchingItemsOnly[model.PageLog](true),
-		filterableviewport.WithEmptyText[model.PageLog]("No Filter"),
+		filterableviewport.WithEmptyText[model.PageLog]("'/', 'r', or 'i' to filter"),
+		filterableviewport.WithFilterLinePosition[model.PageLog](filterableviewport.FilterLineTop),
+		filterableviewport.WithFilterLinePrefix[model.PageLog](fmt.Sprintf("(L)ogs, %s", getOrder(!descending))),
 		filterableviewport.WithStyles[model.PageLog](filterableviewport.Styles{
 			Match: filterableviewport.MatchStyles{
 				Focused:   styles.Inverse,
@@ -99,7 +101,6 @@ func NewLogsPage(
 		timestampFormatIdx: 0,
 		nameFormatIdx:      0,
 		styles:             styles,
-		focused:            true,
 		viewWhenEmpty:      "No logs yet",
 	}
 	page.setStickynessBasedOnOrder()
@@ -382,11 +383,11 @@ func (p *LogsPage) setStickynessBasedOnOrder() {
 }
 
 func (p *LogsPage) updateFilterLabel() {
-	label := fmt.Sprintf("(L)ogs %s", getOrder(p.logContainer.Ascending()))
+	prefix := fmt.Sprintf("(L)ogs, %s", getOrder(p.logContainer.Ascending()))
 	if p.focused {
-		label = p.styles.Blue.Render(label)
+		prefix = p.styles.Blue.Render(prefix)
 	}
-	p.filterableViewport.SetHeader([]string{label})
+	p.filterableViewport.SetFilterLinePrefix(prefix)
 }
 
 func (p *LogsPage) updateStyles() {
