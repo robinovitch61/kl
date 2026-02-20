@@ -43,14 +43,25 @@ func NewSingleLogPage(
 	width, height int,
 	styles style.Styles,
 ) SingleLogPage {
+	addShift := func(keys []string) []string {
+		shifted := make([]string, len(keys))
+		for i, k := range keys {
+			if !strings.Contains(k, "shift") {
+				shifted[i] = "shift+" + k
+			} else {
+				shifted[i] = k
+			}
+		}
+		return shifted
+	}
 	vp := viewport.New[SingleLogLine](width, height,
 		viewport.WithKeyMap[SingleLogLine](viewport.KeyMap{
-			PageDown:     keyMap.PageDown,
-			PageUp:       keyMap.PageUp,
-			HalfPageUp:   keyMap.HalfPageUp,
-			HalfPageDown: keyMap.HalfPageDown,
-			Up:           keyMap.Up,
-			Down:         keyMap.Down,
+			PageDown:     key.NewBinding(key.WithKeys(addShift(keyMap.PageDown.Keys())...)),
+			PageUp:       key.NewBinding(key.WithKeys(addShift(keyMap.PageUp.Keys())...)),
+			HalfPageUp:   key.NewBinding(key.WithKeys(addShift(keyMap.HalfPageUp.Keys())...)),
+			HalfPageDown: key.NewBinding(key.WithKeys(addShift(keyMap.HalfPageDown.Keys())...)),
+			Up:           key.NewBinding(key.WithKeys(addShift(keyMap.Up.Keys())...)),
+			Down:         key.NewBinding(key.WithKeys(addShift(keyMap.Down.Keys())...)),
 			Left:         keyMap.Left,
 			Right:        keyMap.Right,
 			Top:          keyMap.Top,
