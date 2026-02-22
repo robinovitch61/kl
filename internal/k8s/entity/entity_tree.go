@@ -292,7 +292,7 @@ func (et *entityTreeImpl) GetEntities() []Entity {
 
 func (et entityTreeImpl) GetVisibleEntities(filter filter.Model) []Entity {
 	allEntities := et.GetEntities()
-	var visibleEntities []Entity
+	visibleEntities := make([]Entity, 0)
 	for _, entity := range allEntities {
 		if et.IsVisibleGivenFilter(entity, filter) {
 			visibleEntities = append(visibleEntities, entity)

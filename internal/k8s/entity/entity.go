@@ -9,7 +9,7 @@ import (
 	"github.com/robinovitch61/kl/internal/k8s/container"
 	"github.com/robinovitch61/kl/internal/k8s/k8s_log"
 	"github.com/robinovitch61/kl/internal/util"
-	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
+	"github.com/robinovitch61/viewport/viewport/item"
 )
 
 // Entity represents a renderable & selectable kubernetes entity (cluster, namespace, pod owner, pod, or container)
@@ -21,8 +21,8 @@ type Entity struct {
 	State                                     EntityState
 }
 
-func (e Entity) Render() linebuffer.LineBufferer {
-	return linebuffer.New(e.Repr())
+func (e Entity) GetItem() item.Item {
+	return item.NewItem(e.Repr())
 }
 
 // Repr is a faster equivalent to e.Render().Content()

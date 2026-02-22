@@ -5,31 +5,32 @@ import (
 )
 
 type KeyMap struct {
-	Clear               key.Binding
-	Copy                key.Binding
-	Context             key.Binding
-	Enter               key.Binding
-	DeselectAll         key.Binding
-	Filter              key.Binding
-	FilterRegex         key.Binding
-	FilterNextRow       key.Binding
-	FilterPrevRow       key.Binding
-	Fullscreen          key.Binding
-	Help                key.Binding
-	Logs                key.Binding
-	LogsFullScreen      key.Binding
-	Name                key.Binding
-	NextLog             key.Binding
-	PrevLog             key.Binding
-	Quit                key.Binding
-	ReverseOrder        key.Binding
-	Save                key.Binding
-	Selection           key.Binding
-	SelectionFullScreen key.Binding
-	SinceTime           key.Binding
-	Timestamps          key.Binding
-	TogglePause         key.Binding
-	Wrap                key.Binding
+	Clear                 key.Binding
+	Copy                  key.Binding
+	Context               key.Binding
+	Enter                 key.Binding
+	DeselectAll           key.Binding
+	Filter                key.Binding
+	FilterRegex           key.Binding
+	FilterCaseInsensitive key.Binding
+	FilterNextRow         key.Binding
+	FilterPrevRow         key.Binding
+	Fullscreen            key.Binding
+	Help                  key.Binding
+	Logs                  key.Binding
+	LogsFullScreen        key.Binding
+	Name                  key.Binding
+	NextLog               key.Binding
+	PrevLog               key.Binding
+	Quit                  key.Binding
+	ReverseOrder          key.Binding
+	Save                  key.Binding
+	Selection             key.Binding
+	SelectionFullScreen   key.Binding
+	SinceTime             key.Binding
+	Timestamps            key.Binding
+	TogglePause           key.Binding
+	Wrap                  key.Binding
 
 	// viewport
 	PageDown     key.Binding
@@ -73,6 +74,10 @@ func DefaultKeyMap() KeyMap {
 		FilterRegex: key.NewBinding(
 			key.WithKeys("r"),
 			key.WithHelp("r", "regex filter"),
+		),
+		FilterCaseInsensitive: key.NewBinding(
+			key.WithKeys("i"),
+			key.WithHelp("i", "case insensitive filter"),
 		),
 		FilterNextRow: key.NewBinding(
 			key.WithKeys("n"),

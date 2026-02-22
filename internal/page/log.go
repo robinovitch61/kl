@@ -6,23 +6,33 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/v2/key"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/dev"
-	"github.com/robinovitch61/kl/internal/filter"
-	"github.com/robinovitch61/kl/internal/filterable_viewport"
 	"github.com/robinovitch61/kl/internal/help"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/model"
 	"github.com/robinovitch61/kl/internal/style"
-	"github.com/robinovitch61/kl/internal/viewport"
-	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
+	"github.com/robinovitch61/viewport/filterableviewport"
+	"github.com/robinovitch61/viewport/viewport"
+	"github.com/robinovitch61/viewport/viewport/item"
 )
 
+// SingleLogLine wraps a string line for display in the viewport
+type SingleLogLine struct {
+	content string
+}
+
+func (s SingleLogLine) GetItem() item.Item {
+	return item.NewItem(s.content)
+}
+
 type SingleLogPage struct {
-	filterableViewport filterable_viewport.FilterableViewport[viewport.RenderableString]
+	filterableViewport *filterableviewport.Model[SingleLogLine]
 	log                model.PageLog
 	keyMap             keymap.KeyMap
 	styles             style.Styles
+	focused            bool
 }
 
 // assert SingleLogPage implements GenericPage
@@ -33,29 +43,67 @@ func NewSingleLogPage(
 	width, height int,
 	styles style.Styles,
 ) SingleLogPage {
-	filterableViewport := filterable_viewport.NewFilterableViewport[viewport.RenderableString](
-		filterable_viewport.FilterableViewportConfig[viewport.RenderableString]{
-			TopHeader:            "Single Log",
-			StartShowContext:     true,
-			CanToggleShowContext: false,
-			SelectionEnabled:     false,
-			StartWrapOn:          true,
-			KeyMap:               keyMap,
-			Width:                width,
-			Height:               height,
-			AllRows:              []viewport.RenderableString{},
-			MatchesFilter: func(s viewport.RenderableString, filter filter.Model) bool {
-				return s.Render().Matches(filter)
-			},
-			ViewWhenEmpty: "",
-			Styles:        styles,
-		},
-	)
-	filterableViewport.SetUpDownMovementWithShift()
-	return SingleLogPage{
-		filterableViewport: filterableViewport,
-		keyMap:             keyMap,
+	addShift := func(keys []string) []string {
+		shifted := make([]string, len(keys))
+		for i, k := range keys {
+			if !strings.Contains(k, "shift") {
+				shifted[i] = "shift+" + k
+			} else {
+				shifted[i] = k
+			}
+		}
+		return shifted
 	}
+	vp := viewport.New[SingleLogLine](width, height,
+		viewport.WithKeyMap[SingleLogLine](viewport.KeyMap{
+			PageDown:     key.NewBinding(key.WithKeys(addShift(keyMap.PageDown.Keys())...)),
+			PageUp:       key.NewBinding(key.WithKeys(addShift(keyMap.PageUp.Keys())...)),
+			HalfPageUp:   key.NewBinding(key.WithKeys(addShift(keyMap.HalfPageUp.Keys())...)),
+			HalfPageDown: key.NewBinding(key.WithKeys(addShift(keyMap.HalfPageDown.Keys())...)),
+			Up:           key.NewBinding(key.WithKeys(addShift(keyMap.Up.Keys())...)),
+			Down:         key.NewBinding(key.WithKeys(addShift(keyMap.Down.Keys())...)),
+			Left:         keyMap.Left,
+			Right:        keyMap.Right,
+			Top:          keyMap.Top,
+			Bottom:       keyMap.Bottom,
+		}),
+		viewport.WithSelectionStyleOverridesItemStyle[SingleLogLine](false),
+	)
+	vp.SetSelectionEnabled(false)
+	vp.SetWrapText(true)
+
+	fvp := filterableviewport.New(vp,
+		filterableviewport.WithKeyMap[SingleLogLine](filterableviewport.KeyMap{
+			FilterKey:                  keyMap.Filter,
+			RegexFilterKey:             keyMap.FilterRegex,
+			CaseInsensitiveFilterKey:   keyMap.FilterCaseInsensitive,
+			ApplyFilterKey:             keyMap.Enter,
+			CancelFilterKey:            keyMap.Clear,
+			ToggleMatchingItemsOnlyKey: keyMap.Context,
+			NextMatchKey:               keyMap.FilterNextRow,
+			PrevMatchKey:               keyMap.FilterPrevRow,
+		}),
+		filterableviewport.WithMatchingItemsOnly[SingleLogLine](false),
+		filterableviewport.WithCanToggleMatchingItemsOnly[SingleLogLine](false),
+		filterableviewport.WithEmptyText[SingleLogLine]("'/', 'r', or 'i' to filter"),
+		filterableviewport.WithFilterLinePosition[SingleLogLine](filterableviewport.FilterLineTop),
+		filterableviewport.WithFilterLinePrefix[SingleLogLine]("Single Log"),
+		filterableviewport.WithStyles[SingleLogLine](filterableviewport.Styles{
+			Match: filterableviewport.MatchStyles{
+				Focused:   styles.Inverse,
+				Unfocused: styles.AltInverse,
+			},
+		}),
+	)
+
+	p := SingleLogPage{
+		filterableViewport: fvp,
+		keyMap:             keyMap,
+		styles:             styles,
+	}
+	p.updateStyles()
+
+	return p
 }
 
 func (p SingleLogPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
@@ -64,6 +112,17 @@ func (p SingleLogPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
 		cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if !p.HighjackingInput() {
+			if key.Matches(msg, p.keyMap.Wrap) {
+				p.filterableViewport.SetWrapText(!p.filterableViewport.GetWrapText())
+				return p, nil
+			}
+		}
+	}
+
 	p.filterableViewport, cmd = p.filterableViewport.Update(msg)
 	cmds = append(cmds, cmd)
 	return p, tea.Batch(cmds...)
@@ -74,7 +133,7 @@ func (p SingleLogPage) View() string {
 }
 
 func (p SingleLogPage) HighjackingInput() bool {
-	return p.filterableViewport.Filter.Focused()
+	return p.filterableViewport.IsCapturingInput()
 }
 
 func (p SingleLogPage) ContentForFile() []string {
@@ -84,12 +143,12 @@ func (p SingleLogPage) ContentForFile() []string {
 }
 
 func (p SingleLogPage) ToggleShowContext() GenericPage {
-	p.filterableViewport.ToggleShowContext()
+	// SingleLogPage doesn't support context toggling
 	return p
 }
 
 func (p SingleLogPage) HasAppliedFilter() bool {
-	return !p.filterableViewport.Filter.IsEmpty()
+	return p.filterableViewport.GetFilterText() != ""
 }
 
 func (p SingleLogPage) ContentForClipboard() []string {
@@ -100,23 +159,32 @@ func (p SingleLogPage) ContentForClipboard() []string {
 }
 
 func (p SingleLogPage) WithDimensions(width, height int) GenericPage {
-	p.filterableViewport = p.filterableViewport.WithDimensions(width, height)
+	p.filterableViewport.SetWidth(width)
+	p.filterableViewport.SetHeight(height)
 	return p
 }
 
 func (p SingleLogPage) WithFocus() GenericPage {
-	p.filterableViewport.SetFocus(true)
+	p.focused = true
+	p.updateStyles()
 	return p
 }
 
 func (p SingleLogPage) WithBlur() GenericPage {
-	p.filterableViewport.SetFocus(false)
+	p.focused = false
+	p.updateStyles()
 	return p
 }
 
 func (p SingleLogPage) WithStyles(styles style.Styles) GenericPage {
 	p.styles = styles
-	p.filterableViewport.SetStyles(styles)
+	p.updateStyles()
+	p.filterableViewport.SetFilterableViewportStyles(filterableviewport.Styles{
+		Match: filterableviewport.MatchStyles{
+			Focused:   styles.Inverse,
+			Unfocused: styles.AltInverse,
+		},
+	})
 	return p
 }
 
@@ -124,11 +192,21 @@ func (p SingleLogPage) Help() string {
 	return help.MakeHelp(p.keyMap, p.styles.InverseUnderline)
 }
 
+func (p *SingleLogPage) updateStyles() {
+	p.filterableViewport.SetViewportStyles(viewportStylesForFocus(p.focused, p.styles))
+
+	prefix := "Single Log"
+	if p.focused {
+		prefix = p.styles.Blue.Render(prefix)
+	}
+	p.filterableViewport.SetFilterLinePrefix(prefix)
+}
+
 func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
 	needsUpdate := true
 
 	if log.Log != nil && p.log.Log != nil {
-		needsUpdate = log.Log.LineBuffer.Content() != p.log.Log.LineBuffer.Content()
+		needsUpdate = log.Log.ContentItem.Content() != p.log.Log.ContentItem.Content()
 	}
 
 	if !needsUpdate {
@@ -137,17 +215,17 @@ func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
 
 	p.log = log
 	header, content := veryNicelyFormatThisLog(log, true)
-	renderableStrings := []viewport.RenderableString{{LineBuffer: linebuffer.New(header)}}
+	lines := []SingleLogLine{{content: header}}
 	for _, c := range content {
-		renderableStrings = append(renderableStrings, viewport.RenderableString{LineBuffer: linebuffer.New(c)})
+		lines = append(lines, SingleLogLine{content: c})
 	}
-	p.filterableViewport.SetAllRows(renderableStrings)
+	p.filterableViewport.SetObjects(lines)
 	return p
 }
 
 func veryNicelyFormatThisLog(log model.PageLog, styleHeader bool) (string, []string) {
 	header := fmt.Sprintf("%s | %s", log.Log.Timestamps.Full, log.RenderName(log.ContainerNames.Full, styleHeader))
-	return header, formatJSON(log.Log.LineBuffer.Content())
+	return header, formatJSON(log.Log.ContentItem.Content())
 }
 
 func formatJSON(input string) []string {

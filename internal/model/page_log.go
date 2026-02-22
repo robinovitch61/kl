@@ -1,6 +1,8 @@
 package model
 
 import (
+	"time"
+
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/emirpasic/gods/trees/redblacktree"
 	"github.com/robinovitch61/kl/internal/dev"
@@ -8,7 +10,7 @@ import (
 	"github.com/robinovitch61/kl/internal/k8s/k8s_log"
 	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 	"github.com/robinovitch61/kl/internal/style"
-	"github.com/robinovitch61/kl/internal/viewport/linebuffer"
+	"github.com/robinovitch61/viewport/viewport/item"
 )
 
 type PageLogContainerNames struct {
@@ -27,15 +29,16 @@ type PageLog struct {
 	Styles           *style.Styles
 }
 
-func (l PageLog) Render() linebuffer.LineBufferer {
-	return l.render(true)
+func (l PageLog) GetItem() item.Item {
+	prefix := l.renderPrefix(true)
+	if prefix == "" {
+		return l.Log.ContentItem
+	}
+	return item.NewMulti(item.NewItem(prefix), l.Log.ContentItem)
 }
 
-func (l PageLog) RenderWithoutStyle() linebuffer.LineBufferer {
-	return l.render(false)
-}
-
-func (l PageLog) render(includeStyle bool) linebuffer.LineBufferer {
+// renderPrefix returns the styled prefix (timestamp + container name + trailing space if needed)
+func (l PageLog) renderPrefix(includeStyle bool) string {
 	ts := ""
 	if l.CurrentTimestamp != "" {
 		if includeStyle {
@@ -54,11 +57,11 @@ func (l PageLog) render(includeStyle bool) linebuffer.LineBufferer {
 
 	prefix := ts + label
 	if len(prefix) > 0 {
-		if l.Log.LineBuffer.Content() != "" {
+		if l.Log.ContentItem.Content() != "" {
 			prefix = prefix + " "
 		}
 	}
-	return linebuffer.NewMulti(linebuffer.New(prefix), l.Log.LineBuffer)
+	return prefix
 }
 
 func (l PageLog) Equals(other interface{}) bool {
@@ -70,7 +73,7 @@ func (l PageLog) Equals(other interface{}) bool {
 		return false
 	}
 	// TODO LEO: make this method on Log
-	return l.Log.LineBuffer.Content() == otherLog.Log.LineBuffer.Content() && l.Log.Timestamps.Full == otherLog.Log.Timestamps.Full
+	return l.Log.ContentItem.Content() == otherLog.Log.ContentItem.Content() && l.Log.Timestamps.Full == otherLog.Log.Timestamps.Full
 }
 
 func (l PageLog) RenderName(name k8s_model.ContainerNameAndPrefix, includeStyle bool) string {
@@ -119,6 +122,20 @@ func NewPageLogContainer(ascending bool) *PageLogContainer {
 		allLogs:   redblacktree.NewWith(comparator),
 		ascending: ascending,
 	}
+}
+
+func (lc PageLogContainer) Len() int {
+	return lc.allLogs.Size()
+}
+
+// LastTimestamp returns the timestamp of the last log in the current ordering.
+// In ascending mode this is the max timestamp; in descending mode the min.
+func (lc PageLogContainer) LastTimestamp() (time.Time, bool) {
+	node := lc.allLogs.Right()
+	if node == nil {
+		return time.Time{}, false
+	}
+	return node.Key.(PageLog).Log.Timestamp, true
 }
 
 func (lc *PageLogContainer) AppendLog(log PageLog, _ interface{}) {
