@@ -16,7 +16,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.16
 	github.com/muesli/reflow v0.3.0
 	github.com/rivo/uniseg v0.4.7
-	github.com/robinovitch61/viewport v0.0.0-00010101000000-000000000000
+	github.com/robinovitch61/viewport v0.7.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.18.2
@@ -88,5 +88,3 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
-
-replace github.com/robinovitch61/viewport => ../viewport
