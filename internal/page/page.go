@@ -1,7 +1,7 @@
 package page
 
 import (
-	tea "github.com/charmbracelet/bubbletea/v2"
+	tea "charm.land/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/style"
 	"github.com/robinovitch61/viewport/viewport"
 )

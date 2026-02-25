@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/carlmjohnson/versioninfo"
-	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal"
 	"github.com/robinovitch61/kl/internal/constants"
 	"github.com/robinovitch61/kl/internal/model"
@@ -238,8 +238,8 @@ func bindFlags(cmd *cobra.Command, nameToArg map[string]arg) {
 }
 
 func mainEntrypoint(cmd *cobra.Command, _ []string) {
-	initialModel, options := setup(cmd)
-	program := tea.NewProgram(initialModel, options...)
+	initialModel := setup(cmd)
+	program := tea.NewProgram(initialModel)
 
 	if _, err := program.Run(); err != nil {
 		fmt.Printf("error on kl startup: %v", err)
@@ -439,7 +439,6 @@ func getConfig(cmd *cobra.Command) internal.Config {
 	}
 }
 
-func setup(cmd *cobra.Command) (internal.Model, []tea.ProgramOption) {
-	initialModel := internal.InitialModel(getConfig(cmd))
-	return initialModel, []tea.ProgramOption{tea.WithAltScreen()}
+func setup(cmd *cobra.Command) internal.Model {
+	return internal.InitialModel(getConfig(cmd))
 }

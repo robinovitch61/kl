@@ -1,7 +1,7 @@
 package keymap
 
 import (
-	"github.com/charmbracelet/bubbles/v2/key"
+	"charm.land/bubbles/v2/key"
 )
 
 type KeyMap struct {
@@ -64,7 +64,7 @@ func DefaultKeyMap() KeyMap {
 			key.WithHelp("enter", ""), // means different things on different pages
 		),
 		DeselectAll: key.NewBinding(
-			key.WithKeys("shift+r"),
+			key.WithKeys("R"),
 			key.WithHelp("R", "deselect all containers"),
 		),
 		Filter: key.NewBinding(
@@ -84,11 +84,11 @@ func DefaultKeyMap() KeyMap {
 			key.WithHelp("n", "next filter match"),
 		),
 		FilterPrevRow: key.NewBinding(
-			key.WithKeys("shift+n"),
+			key.WithKeys("N"),
 			key.WithHelp("N", "prev filter match"),
 		),
 		Fullscreen: key.NewBinding(
-			key.WithKeys("shift+f"),
+			key.WithKeys("F"),
 			key.WithHelp("F", "toggle fullscreen"),
 		),
 		Help: key.NewBinding(
@@ -100,7 +100,7 @@ func DefaultKeyMap() KeyMap {
 			key.WithHelp("l", "focus logs"),
 		),
 		LogsFullScreen: key.NewBinding(
-			key.WithKeys("shift+l"),
+			key.WithKeys("L"),
 			key.WithHelp("L", "logs fullscreen"),
 		),
 		Name: key.NewBinding(
@@ -132,7 +132,7 @@ func DefaultKeyMap() KeyMap {
 			key.WithHelp("s", "focus selection"),
 		),
 		SelectionFullScreen: key.NewBinding(
-			key.WithKeys("shift+s"),
+			key.WithKeys("S"),
 			key.WithHelp("S", "selection fullscreen"),
 		),
 		SinceTime: key.NewBinding(
@@ -188,7 +188,7 @@ func DefaultKeyMap() KeyMap {
 			key.WithHelp("g", "top"),
 		),
 		Bottom: key.NewBinding(
-			key.WithKeys("shift+g"),
+			key.WithKeys("G"),
 			key.WithHelp("G", "bottom"),
 		),
 	}

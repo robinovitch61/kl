@@ -3,8 +3,8 @@ package page
 import (
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/v2/key"
-	tea "github.com/charmbracelet/bubbletea/v2"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/filter"
 	"github.com/robinovitch61/kl/internal/help"

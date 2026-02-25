@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/charmbracelet/bubbles/v2/cursor"
-	tea "github.com/charmbracelet/bubbletea/v2"
+	"charm.land/bubbles/v2/cursor"
+	tea "charm.land/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/message"
 )
 

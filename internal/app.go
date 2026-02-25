@@ -13,9 +13,9 @@ import (
 	"github.com/robinovitch61/kl/internal/k8s/k8s_log"
 	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 
-	"github.com/charmbracelet/bubbles/v2/key"
-	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/lipgloss/v2"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/muesli/reflow/wrap"
 	"github.com/robinovitch61/kl/internal/color"
 	"github.com/robinovitch61/kl/internal/command"
@@ -93,8 +93,8 @@ func InitialModel(c Config) Model {
 	}
 }
 
-func (m Model) Init() (tea.Model, tea.Cmd) {
-	return m, tea.Batch(
+func (m Model) Init() tea.Cmd {
+	return tea.Batch(
 		tea.Tick(constants.BatchUpdateLogsInterval, func(t time.Time) tea.Msg { return message.BatchUpdateLogsMsg{} }),
 		tea.Tick(constants.CheckStylesLoadedDuration, func(t time.Time) tea.Msg { return message.CheckStylesLoadedMsg{} }),
 		tea.RequestForegroundColor,
@@ -260,10 +260,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m Model) View() string {
+func (m Model) View() tea.View {
+	var content string
+
 	if m.state.err != nil {
 		errString := wrap.String(m.state.err.Error(), m.state.width)
-		return lipgloss.JoinVertical(
+		content = lipgloss.JoinVertical(
 			lipgloss.Left,
 			"Error - if this seems wrong, consider opening an issue",
 			"https://github.com/robinovitch61/kl/issues/new",
@@ -272,43 +274,43 @@ func (m Model) View() string {
 			"",
 			errString,
 		)
-	}
-
-	if !m.state.initialized {
-		return ""
-	}
-
-	topBar := util.StyleStyledString(m.topBar(), m.data.styles.Lilac)
-	if m.state.helpText != "" {
+	} else if !m.state.initialized {
+		content = ""
+	} else if m.state.helpText != "" {
+		topBar := util.StyleStyledString(m.topBar(), m.data.styles.Lilac)
 		centeredHelp := lipgloss.Place(m.state.width, m.state.height-m.data.topBarHeight, lipgloss.Center, lipgloss.Center, m.state.helpText)
-		return lipgloss.JoinVertical(lipgloss.Left, topBar, centeredHelp)
-	}
-
-	if m.components.prompt.Visible {
-		return lipgloss.JoinVertical(lipgloss.Left, topBar, m.components.prompt.View())
-	}
-
-	viewLines := strings.Split(topBar, "\n")
-
-	var pageView string
-	if !m.state.fullScreen && m.state.gotFirstContainers {
-		leftPageView := m.data.styles.RightBorder.Render(m.pages[page.EntitiesPageType].View())
-		rightPageView := m.pages[m.state.rightPageType].View()
-		pageView = lipgloss.JoinHorizontal(lipgloss.Left, leftPageView, rightPageView)
+		content = lipgloss.JoinVertical(lipgloss.Left, topBar, centeredHelp)
+	} else if m.components.prompt.Visible {
+		topBar := util.StyleStyledString(m.topBar(), m.data.styles.Lilac)
+		content = lipgloss.JoinVertical(lipgloss.Left, topBar, m.components.prompt.View())
 	} else {
-		if m.state.focusedPageType == page.EntitiesPageType {
-			pageView = m.pages[page.EntitiesPageType].View()
+		topBar := util.StyleStyledString(m.topBar(), m.data.styles.Lilac)
+		viewLines := strings.Split(topBar, "\n")
+
+		var pageView string
+		if !m.state.fullScreen && m.state.gotFirstContainers {
+			leftPageView := m.data.styles.RightBorder.Render(m.pages[page.EntitiesPageType].View())
+			rightPageView := m.pages[m.state.rightPageType].View()
+			pageView = lipgloss.JoinHorizontal(lipgloss.Left, leftPageView, rightPageView)
 		} else {
-			pageView = m.pages[m.state.rightPageType].View()
+			if m.state.focusedPageType == page.EntitiesPageType {
+				pageView = m.pages[page.EntitiesPageType].View()
+			} else {
+				pageView = m.pages[m.state.rightPageType].View()
+			}
 		}
+
+		viewLines = append(viewLines, strings.Split(pageView, "\n")...)
+		if toastHeight := m.components.toast.ViewHeight(); m.components.toast.Visible && toastHeight > 0 {
+			viewLines = viewLines[:len(viewLines)-toastHeight]
+			viewLines = append(viewLines, strings.Split(m.components.toast.View(), "\n")...)
+		}
+		content = strings.Join(viewLines, "\n")
 	}
 
-	viewLines = append(viewLines, strings.Split(pageView, "\n")...)
-	if toastHeight := m.components.toast.ViewHeight(); m.components.toast.Visible && toastHeight > 0 {
-		viewLines = viewLines[:len(viewLines)-toastHeight]
-		viewLines = append(viewLines, strings.Split(m.components.toast.View(), "\n")...)
-	}
-	return strings.Join(viewLines, "\n")
+	v := tea.NewView(content)
+	v.AltScreen = true
+	return v
 }
 
 func (m Model) topBar() string {

@@ -1,8 +1,8 @@
 package help
 
 import (
-	"github.com/charmbracelet/bubbles/v2/key"
-	"github.com/charmbracelet/lipgloss/v2"
+	"charm.land/bubbles/v2/key"
+	"charm.land/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/keymap"
 )
 

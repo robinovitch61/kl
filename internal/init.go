@@ -7,8 +7,8 @@ import (
 
 	"github.com/robinovitch61/kl/internal/k8s/entity"
 
-	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/lipgloss/v2"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/command"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/k8s/client"

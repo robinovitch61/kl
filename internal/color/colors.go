@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"image/color"
 
-	"github.com/charmbracelet/lipgloss/v2"
+	"charm.land/lipgloss/v2"
 )
 
 var containerNameColors = []color.Color{

@@ -3,7 +3,7 @@ package model
 import (
 	"time"
 
-	"github.com/charmbracelet/lipgloss/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/emirpasic/gods/trees/redblacktree"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/k8s/container"

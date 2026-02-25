@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/v2/key"
-	tea "github.com/charmbracelet/bubbletea/v2"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/help"
 	"github.com/robinovitch61/kl/internal/keymap"
@@ -46,10 +46,17 @@ func NewSingleLogPage(
 	addShift := func(keys []string) []string {
 		shifted := make([]string, len(keys))
 		for i, k := range keys {
-			if !strings.Contains(k, "shift") {
-				shifted[i] = "shift+" + k
-			} else {
+			if strings.Contains(k, "shift") {
 				shifted[i] = k
+			} else if len(k) == 1 {
+				// single letter: use uppercase (v2 String() returns "F" not "shift+f")
+				shifted[i] = strings.ToUpper(k)
+			} else if strings.HasPrefix(k, "ctrl+") && len(k) == 6 {
+				// ctrl+letter: use ctrl+shift+letter (v2 String() returns "ctrl+shift+f")
+				shifted[i] = "ctrl+shift+" + k[5:]
+			} else {
+				// function keys: prefix with shift+ (v2 String() returns "shift+pgdown")
+				shifted[i] = "shift+" + k
 			}
 		}
 		return shifted

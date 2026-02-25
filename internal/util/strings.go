@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/lipgloss/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/google/go-cmp/cmp"
 )
 

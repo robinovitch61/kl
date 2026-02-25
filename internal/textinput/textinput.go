@@ -7,11 +7,11 @@ import (
 
 	"github.com/robinovitch61/kl/internal/dev"
 
+	"charm.land/bubbles/v2/cursor"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/atotto/clipboard"
-	"github.com/charmbracelet/bubbles/v2/cursor"
-	"github.com/charmbracelet/bubbles/v2/key"
-	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/lipgloss/v2"
 	rw "github.com/mattn/go-runewidth"
 	"github.com/rivo/uniseg"
 )
@@ -630,7 +630,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.updateSuggestions()
 
 	case tea.PasteMsg:
-		m.insertRunesFromUserInput([]rune(msg))
+		m.insertRunesFromUserInput([]rune(msg.Content))
 
 	case pasteMsg:
 		m.insertRunesFromUserInput([]rune(msg))
@@ -646,8 +646,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	if oldPos != m.pos && m.Cursor.Mode() == cursor.CursorBlink {
-		m.Cursor.Blink = false
-		cmds = append(cmds, m.Cursor.BlinkCmd())
+		m.Cursor.IsBlinked = false
+		cmds = append(cmds, m.Cursor.Blink())
 	}
 
 	m.handleOverflow()
