@@ -53,8 +53,9 @@ func (c clientImpl) AllClusterNamespaces() []k8s_model.ClusterNamespaces {
 type ContainerListener struct {
 	Cluster            string
 	Namespace          string
-	Stop               func()
+	Stop               context.CancelFunc
 	containerDeltaChan chan container.ContainerDelta
+	ctx                context.Context
 }
 
 func (c clientImpl) GetContainerListener(
@@ -65,7 +66,7 @@ func (c clientImpl) GetContainerListener(
 	ignorePodOwnerTypes []string,
 ) (ContainerListener, error) {
 	deltaChan := make(chan container.ContainerDelta, 100)
-	stopChan := make(chan struct{})
+	ctx, cancel := context.WithCancel(c.ctx)
 
 	// every 10 minutes, informer will resync, emitting new events for all discrepancies
 	factory := informers.NewSharedInformerFactoryWithOptions(
@@ -85,7 +86,11 @@ func (c clientImpl) GetContainerListener(
 			deltas := getContainerDeltas(pod, cluster, false, matchers, selector, ignorePodOwnerTypes)
 			for _, delta := range deltas {
 				dev.Debug(fmt.Sprintf("listener add container %s, state %s", delta.Container.HumanReadable(), delta.Container.Status.State))
-				deltaChan <- delta
+				select {
+				case deltaChan <- delta:
+				case <-ctx.Done():
+					return
+				}
 			}
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
@@ -96,7 +101,11 @@ func (c clientImpl) GetContainerListener(
 			deltas := getContainerDeltas(pod, cluster, false, matchers, selector, ignorePodOwnerTypes)
 			for _, delta := range deltas {
 				dev.Debug(fmt.Sprintf("listener update container %s, state %s", delta.Container.HumanReadable(), delta.Container.Status.State))
-				deltaChan <- delta
+				select {
+				case deltaChan <- delta:
+				case <-ctx.Done():
+					return
+				}
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
@@ -115,33 +124,32 @@ func (c clientImpl) GetContainerListener(
 
 			for _, delta := range deltas {
 				dev.Debug(fmt.Sprintf("listener delete container %s, state %s", delta.Container.HumanReadable(), delta.Container.Status.State))
-				deltaChan <- delta
+				select {
+				case deltaChan <- delta:
+				case <-ctx.Done():
+					return
+				}
 			}
 		},
 	})
 	if err != nil {
+		cancel()
 		return ContainerListener{}, fmt.Errorf("error adding event handler: %v", err)
 	}
 
-	go func() {
-		podInformer.Run(stopChan)
-	}()
+	go podInformer.Run(ctx.Done())
 
-	if !cache.WaitForCacheSync(stopChan, podInformer.HasSynced) {
-		close(stopChan)
+	if !cache.WaitForCacheSync(ctx.Done(), podInformer.HasSynced) {
+		cancel()
 		return ContainerListener{}, fmt.Errorf("timed out waiting for caches to sync")
-	}
-
-	stop := func() {
-		close(stopChan)
-		close(deltaChan)
 	}
 
 	return ContainerListener{
 		Cluster:            cluster,
 		Namespace:          namespace,
 		containerDeltaChan: deltaChan,
-		Stop:               stop,
+		ctx:                ctx,
+		Stop:               cancel,
 	}, nil
 }
 
@@ -328,21 +336,26 @@ func getState(status corev1.ContainerStatus) (container.ContainerState, error) {
 	return container.ContainerUnknown, fmt.Errorf("unknown container status %+v", status)
 }
 
-func CollectContainerDeltasForDuration(
-	listener ContainerListener,
-	duration time.Duration,
-) (container.ContainerDeltaSet, error) {
+// NextDeltaSet blocks until at least one delta is available, then drains for batchWindow.
+func (l ContainerListener) NextDeltaSet(batchWindow time.Duration) (container.ContainerDeltaSet, error) {
 	var deltas container.ContainerDeltaSet
-	timeout := time.After(duration)
 
+	// block until first delta or stop
+	select {
+	case delta := <-l.containerDeltaChan:
+		deltas.Add(delta)
+	case <-l.ctx.Done():
+		return container.ContainerDeltaSet{}, fmt.Errorf("container listener stopped")
+	}
+
+	// drain for batchWindow to collect concurrent deltas
+	timeout := time.After(batchWindow)
 	for {
 		select {
-		case containerDelta, ok := <-listener.containerDeltaChan:
-			if !ok {
-				return container.ContainerDeltaSet{}, fmt.Errorf("add/update pod channel closed")
-			}
-			deltas.Add(containerDelta)
-
+		case delta := <-l.containerDeltaChan:
+			deltas.Add(delta)
+		case <-l.ctx.Done():
+			return container.ContainerDeltaSet{}, fmt.Errorf("container listener stopped")
 		case <-timeout:
 			return deltas, nil
 		}

@@ -47,21 +47,16 @@ func GetNextContainerDeltasCmd(
 	duration time.Duration,
 ) tea.Cmd {
 	return func() tea.Msg {
-		for {
-			deltaSet, err := client.CollectContainerDeltasForDuration(listener, duration)
-			if err != nil {
-				return GetContainerDeltasMsg{
-					Listener: listener,
-					DeltaSet: container.ContainerDeltaSet{},
-					Err:      err,
-				}
+		deltaSet, err := listener.NextDeltaSet(duration)
+		if err != nil {
+			return GetContainerDeltasMsg{
+				Listener: listener,
+				Err:      err,
 			}
-			if deltaSet.Size() > 0 {
-				return GetContainerDeltasMsg{
-					Listener: listener,
-					DeltaSet: deltaSet,
-				}
-			}
+		}
+		return GetContainerDeltasMsg{
+			Listener: listener,
+			DeltaSet: deltaSet,
 		}
 	}
 }
