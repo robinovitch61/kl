@@ -16,7 +16,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.20
 	github.com/muesli/reflow v0.3.0
 	github.com/rivo/uniseg v0.4.7
-	github.com/robinovitch61/viewport v0.7.1
+	github.com/robinovitch61/viewport v0.8.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.18.2
@@ -25,8 +25,6 @@ require (
 	k8s.io/client-go v0.30.0
 	k8s.io/klog/v2 v2.120.1
 )
-
-replace github.com/robinovitch61/viewport => ../viewport
 
 require (
 	github.com/charmbracelet/colorprofile v0.4.2 // indirect
