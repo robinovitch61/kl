@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -25,6 +26,45 @@ type Log struct {
 	Timestamps  LogTimestamps
 	Container   container.Container
 	ContentItem item.SingleItem
+	PrettyItems []item.SingleItem // pretty-printed JSON lines, nil if not valid JSON or single item
+}
+
+// FormatJSON attempts to pretty-print JSON input. Returns the input as-is if not valid JSON.
+func FormatJSON(input string) []string {
+	var raw map[string]interface{}
+
+	err := json.Unmarshal([]byte(input), &raw)
+	if err != nil {
+		return []string{input}
+	}
+
+	var prettyJSON bytes.Buffer
+	encoder := json.NewEncoder(&prettyJSON)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "    ")
+	err = encoder.Encode(raw)
+	if err != nil {
+		return []string{input}
+	}
+
+	lines := strings.Split(prettyJSON.String(), "\n")
+
+	// remove trailing empty line if exists
+	if len(lines) > 1 && strings.TrimSpace(lines[len(lines)-1]) == "" {
+		lines = lines[:len(lines)-1]
+	}
+
+	var result []string
+	for i := range lines {
+		if strings.Contains(lines[i], "\\n") || strings.Contains(lines[i], "\\t") {
+			lines[i] = strings.ReplaceAll(lines[i], "\\t", "    ")
+			parts := strings.Split(lines[i], "\\n")
+			result = append(result, parts...)
+		} else {
+			result = append(result, lines[i])
+		}
+	}
+	return result
 }
 
 type LogScanner struct {
@@ -76,17 +116,25 @@ func (ls LogScanner) StartReadingLogs() {
 			localTime := parsedTime.Local()
 
 			// precompute LogData here as logs come in as logs are immutable and instantiating new items is expensive
-			newLog := Log{
+			contentItem := item.NewItem(logContent)
+			var prettyItems []item.SingleItem
+			if lines := FormatJSON(logContent); len(lines) > 1 {
+				prettyItems = make([]item.SingleItem, len(lines))
+				for i, line := range lines {
+					prettyItems[i] = item.NewItem(line)
+				}
+			}
+
+			ls.LogChan <- Log{
 				Timestamp: parsedTime,
 				Timestamps: LogTimestamps{
 					Short: localTime.Format(time.TimeOnly),
 					Full:  localTime.Format("2006-01-02T15:04:05.000Z07:00"),
 				},
 				Container:   ls.Container,
-				ContentItem: item.NewItem(logContent),
+				ContentItem: contentItem,
+				PrettyItems: prettyItems,
 			}
-
-			ls.LogChan <- newLog
 		}
 
 		err := ls.logLineScanner.Err()

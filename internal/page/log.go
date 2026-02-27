@@ -1,8 +1,6 @@
 package page
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -10,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/help"
+	"github.com/robinovitch61/kl/internal/k8s/k8s_log"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/model"
 	"github.com/robinovitch61/kl/internal/style"
@@ -232,42 +231,5 @@ func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
 
 func veryNicelyFormatThisLog(log model.PageLog, styleHeader bool) (string, []string) {
 	header := fmt.Sprintf("%s | %s", log.Log.Timestamps.Full, log.RenderName(log.ContainerNames.Full, styleHeader))
-	return header, formatJSON(log.Log.ContentItem.Content())
-}
-
-func formatJSON(input string) []string {
-	var raw map[string]interface{}
-
-	err := json.Unmarshal([]byte(input), &raw)
-	if err != nil {
-		return []string{input}
-	}
-
-	var prettyJSON bytes.Buffer
-	encoder := json.NewEncoder(&prettyJSON)
-	encoder.SetEscapeHTML(false)
-	encoder.SetIndent("", "    ")
-	err = encoder.Encode(raw)
-	if err != nil {
-		return []string{input}
-	}
-
-	lines := strings.Split(prettyJSON.String(), "\n")
-
-	// remove trailing empty line if exists
-	if len(lines) > 1 && strings.TrimSpace(lines[len(lines)-1]) == "" {
-		lines = lines[:len(lines)-1]
-	}
-
-	var result []string
-	for i := range lines {
-		if strings.Contains(lines[i], "\\n") || strings.Contains(lines[i], "\\t") {
-			lines[i] = strings.ReplaceAll(lines[i], "\\t", "    ")
-			parts := strings.Split(lines[i], "\\n")
-			result = append(result, parts...)
-		} else {
-			result = append(result, lines[i])
-		}
-	}
-	return result
+	return header, k8s_log.FormatJSON(log.Log.ContentItem.Content())
 }

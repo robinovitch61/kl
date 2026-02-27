@@ -28,6 +28,7 @@ type LogsPage struct {
 	logContainer       *model.PageLogContainer
 	timestampFormatIdx int
 	nameFormatIdx      int
+	prettyPrint        bool
 	styles             style.Styles
 	focused            bool
 	viewWhenEmpty      string
@@ -125,6 +126,18 @@ func (p LogsPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
 		}
 		if key.Matches(msg, p.keyMap.Wrap) {
 			p.filterableViewport.SetWrapText(!p.filterableViewport.GetWrapText())
+			if !p.filterableViewport.GetWrapText() && p.prettyPrint {
+				p.prettyPrint = false
+				p.updatePrettyPrintOnLogs()
+			}
+			return p, nil
+		}
+		if key.Matches(msg, p.keyMap.PrettyPrint) {
+			p.prettyPrint = !p.prettyPrint
+			p.updatePrettyPrintOnLogs()
+			if p.prettyPrint && !p.filterableViewport.GetWrapText() {
+				p.filterableViewport.SetWrapText(true)
+			}
 			return p, nil
 		}
 	}
@@ -258,6 +271,8 @@ func (p LogsPage) WithAppendedLogs(logs []model.PageLog) LogsPage {
 	for i := range logs {
 		logs[i].CurrentTimestamp = getLogTimestamp(logs[i], timestampFormats[p.timestampFormatIdx])
 		logs[i].CurrentName = getContainerName(logs[i], nameFormats[p.nameFormatIdx])
+		logs[i].PrettyPrinted = p.prettyPrint
+		logs[i].BuildPrettyItemWithPrefix()
 		p.logContainer.AppendLog(logs[i], nil)
 	}
 
@@ -366,6 +381,7 @@ func (p LogsPage) WithNoStickyness() LogsPage {
 func (p *LogsPage) setLogs(newLogs []model.PageLog) {
 	p.logContainer.RemoveAllLogs()
 	for i := range newLogs {
+		newLogs[i].BuildPrettyItemWithPrefix()
 		p.logContainer.AppendLog(newLogs[i], nil)
 	}
 	p.filterableViewport.SetObjects(p.logContainer.GetOrderedLogs())
@@ -388,6 +404,14 @@ func (p *LogsPage) updateFilterLabel() {
 		prefix = p.styles.Blue.Render(prefix)
 	}
 	p.filterableViewport.SetFilterLinePrefix(prefix)
+}
+
+func (p *LogsPage) updatePrettyPrintOnLogs() {
+	allLogs := p.logContainer.GetOrderedLogs()
+	for i := range allLogs {
+		allLogs[i].PrettyPrinted = p.prettyPrint
+	}
+	p.setLogs(allLogs)
 }
 
 func (p *LogsPage) updateStyles() {

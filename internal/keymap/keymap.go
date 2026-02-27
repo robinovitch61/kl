@@ -31,6 +31,7 @@ type KeyMap struct {
 	Timestamps            key.Binding
 	TogglePause           key.Binding
 	Wrap                  key.Binding
+	PrettyPrint           key.Binding
 
 	// viewport
 	PageDown     key.Binding
@@ -144,12 +145,16 @@ func DefaultKeyMap() KeyMap {
 			key.WithHelp("t", "show short/full/no timestamps"),
 		),
 		TogglePause: key.NewBinding(
-			key.WithKeys("p"),
-			key.WithHelp("p", "pause/resume logs"),
+			key.WithKeys("P"),
+			key.WithHelp("P", "pause/resume logs"),
 		),
 		Wrap: key.NewBinding(
 			key.WithKeys("w"),
 			key.WithHelp("w", "toggle line wrap"),
+		),
+		PrettyPrint: key.NewBinding(
+			key.WithKeys("p"),
+			key.WithHelp("p", "pretty-print JSON"),
 		),
 		PageDown: key.NewBinding(
 			key.WithKeys("pgdown", "f", "ctrl+f"),
@@ -220,6 +225,7 @@ func DescriptiveKeyBindings(km KeyMap) []key.Binding {
 		km.SelectionFullScreen,
 		km.Fullscreen,
 		km.Wrap,
+		km.PrettyPrint,
 		km.Timestamps,
 		km.Name,
 		km.ReverseOrder,
