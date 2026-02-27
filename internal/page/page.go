@@ -16,7 +16,7 @@ type GenericPage interface {
 	WithDimensions(width, height int) GenericPage
 	WithFocus() GenericPage
 	WithBlur() GenericPage
-	WithStyles(style.Styles) GenericPage
+	WithTheme(style.Theme) GenericPage
 	Help() string
 }
 
@@ -29,17 +29,18 @@ const (
 )
 
 // viewportStylesForFocus returns the viewport styles for a page based on whether it is focused.
-func viewportStylesForFocus(focused bool, styles style.Styles) viewport.Styles {
+func viewportStylesForFocus(focused bool, theme style.Theme) viewport.Styles {
 	if focused {
 		return viewport.Styles{
-			SelectedItemStyle:        styles.Inverse,
-			HighlightStyle:           styles.Inverse,
-			HighlightStyleIfSelected: styles.Unset,
+			SelectionPrefix:          theme.SelectionPrefix,
+			SelectedItemStyle:        theme.SelectedItem,
+			HighlightStyle:           theme.Highlight,
+			HighlightStyleIfSelected: theme.HighlightIfSelected,
 		}
 	}
 	return viewport.Styles{
-		FooterStyle:              styles.Alt,
-		HighlightStyle:           styles.Inverse,
-		HighlightStyleIfSelected: styles.Inverse,
+		FooterStyle:              theme.Footer,
+		HighlightStyle:           theme.Highlight,
+		HighlightStyleIfSelected: theme.Highlight,
 	}
 }

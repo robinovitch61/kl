@@ -1,7 +1,6 @@
 package container
 
 import (
-	"image/color"
 	"strings"
 
 	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
@@ -52,11 +51,4 @@ func (c Container) InPodOwnerOf(other Container) bool {
 
 func (c Container) InPodOf(other Container) bool {
 	return c.Cluster == other.Cluster && c.Namespace == other.Namespace && c.PodOwner == other.PodOwner && c.Pod == other.Pod
-}
-
-type ContainerColors struct {
-	// the entire container's ID (full specification)
-	ID color.Color
-	// just the container name
-	Name color.Color
 }

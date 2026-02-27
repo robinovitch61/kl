@@ -30,7 +30,7 @@ type SingleLogPage struct {
 	filterableViewport *filterableviewport.Model[SingleLogLine]
 	log                model.PageLog
 	keyMap             keymap.KeyMap
-	styles             style.Styles
+	theme              style.Theme
 	focused            bool
 }
 
@@ -40,7 +40,7 @@ var _ GenericPage = SingleLogPage{}
 func NewSingleLogPage(
 	keyMap keymap.KeyMap,
 	width, height int,
-	styles style.Styles,
+	theme style.Theme,
 ) SingleLogPage {
 	addShift := func(keys []string) []string {
 		shifted := make([]string, len(keys))
@@ -96,8 +96,8 @@ func NewSingleLogPage(
 		filterableviewport.WithFilterLinePrefix[SingleLogLine]("Single Log"),
 		filterableviewport.WithStyles[SingleLogLine](filterableviewport.Styles{
 			Match: filterableviewport.MatchStyles{
-				Focused:   styles.Inverse,
-				Unfocused: styles.AltInverse,
+				Focused:   theme.MatchFocused,
+				Unfocused: theme.MatchUnfocused,
 			},
 		}),
 	)
@@ -105,7 +105,7 @@ func NewSingleLogPage(
 	p := SingleLogPage{
 		filterableViewport: fvp,
 		keyMap:             keyMap,
-		styles:             styles,
+		theme:              theme,
 	}
 	p.updateStyles()
 
@@ -143,7 +143,7 @@ func (p SingleLogPage) HighjackingInput() bool {
 }
 
 func (p SingleLogPage) ContentForFile() []string {
-	header, content := veryNicelyFormatThisLog(p.log, true)
+	header, content := veryNicelyFormatThisLog(p.log, false)
 	res := []string{header}
 	return append(res, content...)
 }
@@ -158,7 +158,6 @@ func (p SingleLogPage) HasAppliedFilter() bool {
 }
 
 func (p SingleLogPage) ContentForClipboard() []string {
-	// don't include asci escape chars in header when copying single log to clipboard
 	header, content := veryNicelyFormatThisLog(p.log, false)
 	res := []string{header}
 	return append(res, content...)
@@ -182,28 +181,29 @@ func (p SingleLogPage) WithBlur() GenericPage {
 	return p
 }
 
-func (p SingleLogPage) WithStyles(styles style.Styles) GenericPage {
-	p.styles = styles
+func (p SingleLogPage) WithTheme(theme style.Theme) GenericPage {
+	p.theme = theme
 	p.updateStyles()
 	p.filterableViewport.SetFilterableViewportStyles(filterableviewport.Styles{
 		Match: filterableviewport.MatchStyles{
-			Focused:   styles.Inverse,
-			Unfocused: styles.AltInverse,
+			Focused:           theme.MatchFocused,
+			FocusedIfSelected: theme.MatchFocusedIfSelected,
+			Unfocused:         theme.MatchUnfocused,
 		},
 	})
 	return p
 }
 
 func (p SingleLogPage) Help() string {
-	return help.MakeHelp(p.keyMap, p.styles.InverseUnderline)
+	return help.MakeHelp(p.keyMap, p.theme.HelpKeyColumn)
 }
 
 func (p *SingleLogPage) updateStyles() {
-	p.filterableViewport.SetViewportStyles(viewportStylesForFocus(p.focused, p.styles))
+	p.filterableViewport.SetViewportStyles(viewportStylesForFocus(p.focused, p.theme))
 
 	prefix := "Single Log"
 	if p.focused {
-		prefix = p.styles.Blue.Render(prefix)
+		prefix = p.theme.FilterPrefixFocused.Render(prefix)
 	}
 	p.filterableViewport.SetFilterLinePrefix(prefix)
 }

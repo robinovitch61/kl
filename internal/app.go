@@ -17,7 +17,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/muesli/reflow/wrap"
-	"github.com/robinovitch61/kl/internal/color"
 	"github.com/robinovitch61/kl/internal/command"
 	"github.com/robinovitch61/kl/internal/constants"
 	"github.com/robinovitch61/kl/internal/dev"
@@ -34,15 +33,13 @@ import (
 )
 
 type data struct {
-	styles        style.Styles
-	termStyleData style.TermStyleData
-	topBarHeight  int // assumed constant
+	theme        style.Theme
+	topBarHeight int // assumed constant
 }
 
 type state struct {
 	width, height      int
 	initialized        bool
-	stylesLoaded       bool
 	gotFirstContainers bool
 	seenFirstContainer bool
 	fullScreen         bool
@@ -76,7 +73,6 @@ type Model struct {
 	entityTree    entity.Tree
 	// TODO: put these in entity tree?
 	containerToShortName func(container.Container) (k8s_model.ContainerNameAndPrefix, error)
-	containerIDToColors  map[string]container.ContainerColors
 
 	k8sClient client.K8sClient
 
@@ -96,9 +92,6 @@ func InitialModel(c Config) Model {
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		tea.Tick(constants.BatchUpdateLogsInterval, func(t time.Time) tea.Msg { return message.BatchUpdateLogsMsg{} }),
-		tea.Tick(constants.CheckStylesLoadedDuration, func(t time.Time) tea.Msg { return message.CheckStylesLoadedMsg{} }),
-		tea.RequestForegroundColor,
-		tea.RequestBackgroundColor,
 	)
 }
 
@@ -128,26 +121,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case message.ErrMsg:
 		m.state.err = msg.Err
-		return m, nil
-
-	case tea.BackgroundColorMsg:
-		m.data.termStyleData.SetBackground(msg)
-		if m.data.termStyleData.IsComplete() {
-			m.setStyles(style.NewStyles(m.data.termStyleData))
-		}
-		return m, nil
-
-	case tea.ForegroundColorMsg:
-		m.data.termStyleData.SetForeground(msg)
-		if m.data.termStyleData.IsComplete() {
-			m.setStyles(style.NewStyles(m.data.termStyleData))
-		}
-		return m, nil
-
-	case message.CheckStylesLoadedMsg:
-		if !m.state.stylesLoaded {
-			m.setStyles(style.DefaultStyles)
-		}
 		return m, nil
 
 	// WindowSizeMsg arrives once on startup, then again every time the window is resized
@@ -277,19 +250,19 @@ func (m Model) View() tea.View {
 	} else if !m.state.initialized {
 		content = ""
 	} else if m.state.helpText != "" {
-		topBar := util.StyleStyledString(m.topBar(), m.data.styles.Lilac)
+		topBar := m.renderTopBar()
 		centeredHelp := lipgloss.Place(m.state.width, m.state.height-m.data.topBarHeight, lipgloss.Center, lipgloss.Center, m.state.helpText)
 		content = lipgloss.JoinVertical(lipgloss.Left, topBar, centeredHelp)
 	} else if m.components.prompt.Visible {
-		topBar := util.StyleStyledString(m.topBar(), m.data.styles.Lilac)
+		topBar := m.renderTopBar()
 		content = lipgloss.JoinVertical(lipgloss.Left, topBar, m.components.prompt.View())
 	} else {
-		topBar := util.StyleStyledString(m.topBar(), m.data.styles.Lilac)
+		topBar := m.renderTopBar()
 		viewLines := strings.Split(topBar, "\n")
 
 		var pageView string
 		if !m.state.fullScreen && m.state.gotFirstContainers {
-			leftPageView := m.data.styles.RightBorder.Render(m.pages[page.EntitiesPageType].View())
+			leftPageView := m.data.theme.EntityPaneBorder.Render(m.pages[page.EntitiesPageType].View())
 			rightPageView := m.pages[m.state.rightPageType].View()
 			pageView = lipgloss.JoinHorizontal(lipgloss.Left, leftPageView, rightPageView)
 		} else {
@@ -311,6 +284,11 @@ func (m Model) View() tea.View {
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
+}
+
+// renderTopBar renders the top bar with the theme's TopBar style.
+func (m Model) renderTopBar() string {
+	return util.StyleStyledString(m.topBar(), m.data.theme.TopBar)
 }
 
 func (m Model) topBar() string {
@@ -342,7 +320,7 @@ func (m Model) topBar() string {
 		len(containerEntities),
 	)
 	if m.state.pauseState {
-		left += padding + m.data.styles.Inverse.Render("[PAUSED]")
+		left += padding + m.data.theme.TopBarAccent.Render("[PAUSED]")
 	}
 
 	right := fmt.Sprintf("%s to quit / %s for help", m.keyMap.Quit.Help().Key, m.keyMap.Help.Help().Key)
@@ -619,7 +597,7 @@ func (m Model) handleEntitiesPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 }
 
 func (m Model) promptToConfirmSelectionActions(text []string, selectionActions map[entity.Entity]bool) (Model, tea.Cmd) {
-	m.components.prompt = prompt.New(true, m.state.width, m.state.height-m.data.topBarHeight, text, m.data.styles.Inverse)
+	m.components.prompt = prompt.New(true, m.state.width, m.state.height-m.data.topBarHeight, text, m.data.theme.PromptSelected)
 	m.components.whenPromptConfirm = func() (Model, tea.Cmd) { return m.doSelectionActions(selectionActions) }
 	return m, nil
 }
@@ -963,19 +941,14 @@ func (m Model) handleNewLogsMsg(msg command.GetNewLogsMsg) (Model, tea.Cmd) {
 			Prefix:        msg.NewLogs[i].Container.IDWithoutContainerName(),
 			ContainerName: msg.NewLogs[i].Container.Name,
 		}
-		var containerColors container.ContainerColors
-		if m.containerIDToColors != nil {
-			containerColors = m.containerIDToColors[msg.NewLogs[i].Container.ID()]
-		}
 		newLog := model.PageLog{
-			Log:             &msg.NewLogs[i],
-			ContainerColors: &containerColors,
+			Log: &msg.NewLogs[i],
 			ContainerNames: &model.PageLogContainerNames{
 				Short: shortName,
 				Full:  fullName,
 			},
 			Terminated: ent.Container.Status.State == container.ContainerTerminated,
-			Styles:     &m.data.styles,
+			Theme:      &m.data.theme,
 		}
 		newLogs = append(newLogs, newLog)
 	}
@@ -1066,16 +1039,6 @@ func (m Model) doActions(ent entity.Entity, actions []entity.EntityAction) (Mode
 // withUpdatedContainerShortNames updates the container short names in the entity tree and logs page
 // it should be called every time the set of active containers changes
 func (m Model) withUpdatedContainerShortNames() Model {
-	containers := m.entityTree.GetContainerEntities()
-	m.containerIDToColors = make(map[string]container.ContainerColors)
-	for _, containerEntity := range containers {
-		m.containerIDToColors[containerEntity.Container.ID()] = container.ContainerColors{
-			ID:   color.GetColor(containerEntity.Container.ID()),
-			Name: color.GetColor(containerEntity.Container.Name),
-		}
-	}
-	m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithContainerColors(m.containerIDToColors)
-
 	m.containerToShortName = m.entityTree.ContainerToShortName(constants.MinCharsEachSideShortNames)
 	newLogsPage, err := m.pages[page.LogsPageType].(page.LogsPage).WithUpdatedShortNames(m.containerToShortName)
 	if err != nil {
@@ -1138,14 +1101,6 @@ func (m *Model) markContainerLogsTerminatedInBuffer(container container.Containe
 func (m *Model) setFullscreen(fullscreen bool) {
 	m.state.fullScreen = fullscreen
 	m.syncDimensions()
-}
-
-func (m *Model) setStyles(styles style.Styles) {
-	m.data.styles = styles
-	m.state.stylesLoaded = true
-	m.pages[page.EntitiesPageType] = m.pages[page.EntitiesPageType].WithStyles(styles)
-	m.pages[page.LogsPageType] = m.pages[page.LogsPageType].WithStyles(styles)
-	m.pages[page.SingleLogPageType] = m.pages[page.SingleLogPageType].WithStyles(styles)
 }
 
 func getLookbackMins(keyString string) int {

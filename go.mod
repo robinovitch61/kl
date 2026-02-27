@@ -26,6 +26,8 @@ require (
 	k8s.io/klog/v2 v2.120.1
 )
 
+replace github.com/robinovitch61/viewport => ../viewport
+
 require (
 	github.com/charmbracelet/colorprofile v0.4.2 // indirect
 	github.com/charmbracelet/ultraviolet v0.0.0-20260205113103-524a6607adb8 // indirect
