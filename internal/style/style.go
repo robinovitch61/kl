@@ -58,7 +58,49 @@ func (t Theme) ContainerColorStyle(name string) lipgloss.Style {
 	return t.ContainerColors[hashValue%int64(len(t.ContainerColors))]
 }
 
-// DefaultTheme returns a theme using only most visible ANSI colors and reverse video.
+// VividTheme uses 256-color and true-color values for maximum visual richness.
+func VividTheme() Theme {
+	lilac := lipgloss.Color("189")
+	return Theme{
+		SelectionPrefix: "",
+
+		ContainerColors: []lipgloss.Style{
+			lipgloss.NewStyle().Background(lipgloss.Color("#58A2EE")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#3FE34B")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#7c60d7")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#FD2C4C")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#FE7A00")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#FAF81C")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#56EBD3")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#42952E")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#FFACE6")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#FE16F4")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#D6A112")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#FFDAB9")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#FF7E6A")).Foreground(lipgloss.Color("#000000")),
+		},
+		SelectedItem:        lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
+		Highlight:           lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
+		HighlightIfSelected: lipgloss.NewStyle(),
+		Footer:              lipgloss.NewStyle(),
+
+		MatchFocused:           lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
+		MatchFocusedIfSelected: lipgloss.NewStyle(),
+		MatchUnfocused:         lipgloss.NewStyle().Foreground(lipgloss.Color("#141414")).Background(lipgloss.Color("#cbcbcb")),
+
+		TopBar:              lipgloss.NewStyle().Background(lilac).Foreground(lipgloss.Color("#000000")),
+		TopBarAccent:        lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
+		FilterPrefixFocused: lipgloss.NewStyle().Background(lipgloss.Color("6")).Foreground(lipgloss.Color("#000000")),
+		TimestampPrefix:     lipgloss.NewStyle().Background(lipgloss.Color("46")).Foreground(lipgloss.Color("#000000")),
+		HelpKeyColumn:       lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
+		EntityPaneBorder:    lipgloss.NewStyle().Border(lipgloss.ThickBorder(), false, true, false, false).BorderForeground(lilac),
+		PromptSelected:      lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
+		Error:               lipgloss.NewStyle().Foreground(lipgloss.Red),
+	}
+}
+
+// DefaultTheme returns the default theme using only the most accessible ANSI colors and reverse video.
+// Maximum compatibility across terminal themes (light, dark, Solarized, etc.).
 // See https://blog.xoria.org/terminal-colors/ and https://jvns.ca/blog/2024/10/01/terminal-colours/
 func DefaultTheme() Theme {
 	return Theme{
@@ -123,10 +165,18 @@ func NoColorTheme() Theme {
 	}
 }
 
-// PickTheme returns the appropriate theme based on NO_COLOR environment variable.
-func PickTheme() Theme {
+// PickTheme returns the appropriate theme based on the theme name and NO_COLOR env var.
+// Valid theme names: "" (default/ansi), "vivid", "none".
+func PickTheme(themeName string) Theme {
 	if _, ok := os.LookupEnv("NO_COLOR"); ok {
 		return NoColorTheme()
 	}
-	return DefaultTheme()
+	switch themeName {
+	case "vivid":
+		return VividTheme()
+	case "none":
+		return NoColorTheme()
+	default:
+		return DefaultTheme()
+	}
 }

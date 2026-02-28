@@ -64,7 +64,7 @@ func initializePages(m Model) Model {
 
 	m.pages = make(map[page.Type]page.GenericPage)
 
-	theme := style.PickTheme()
+	theme := style.PickTheme(m.config.ThemeName)
 	m.data.theme = theme
 
 	m.data.topBarHeight = lipgloss.Height(m.topBar())

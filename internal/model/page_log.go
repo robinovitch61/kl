@@ -101,16 +101,21 @@ func (l PageLog) Equals(other interface{}) bool {
 
 // RenderName renders a container name for display in log lines.
 // When includeStyle is true, applies two deterministic foreground colors:
-// one for the prefix (hashed from the full path excluding container name)
-// and one for the container name (hashed from just the name, so e.g. "mycontainer"
-// is always the same color).
+// one for the prefix (hashed from the full prefix for consistency across
+// short and full display modes) and one for the container name (hashed from
+// just the name, so e.g. "mycontainer" is always the same color).
 func (l PageLog) RenderName(name k8s_model.ContainerNameAndPrefix, includeStyle bool) string {
 	if includeStyle && l.Theme != nil {
 		renderedName := l.Theme.ContainerColorStyle(name.ContainerName).Render(name.ContainerName)
 		if lipgloss.Width(name.Prefix) == 0 {
 			return renderedName
 		}
-		renderedPrefix := l.Theme.ContainerColorStyle(name.Prefix).Render(name.Prefix)
+		// always hash from the full prefix so short and full display modes get the same color
+		colorKey := name.Prefix
+		if l.ContainerNames != nil && l.ContainerNames.Full.Prefix != "" {
+			colorKey = l.ContainerNames.Full.Prefix
+		}
+		renderedPrefix := l.Theme.ContainerColorStyle(colorKey).Render(name.Prefix)
 		return renderedPrefix + "/" + renderedName
 	}
 	if lipgloss.Width(name.Prefix) == 0 {

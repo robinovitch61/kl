@@ -137,6 +137,10 @@ var (
 			cfgFileEnvVar: "since",
 			description:   `Show logs since startup time minus this duration. E.g. 5s, 2m, 1.5h, 2h45m. Default 1m`,
 		},
+		"theme": {
+			cfgFileEnvVar: "theme",
+			description:   `Color theme. Defaults to accessible ansi colors. Other options: 'vivid', 'none'`,
+		},
 	}
 
 	description = fmt.Sprintf(`kl %s
@@ -194,6 +198,7 @@ func init() {
 		"namespace",
 		"selector",
 		"since",
+		"theme",
 	} {
 		c := rootNameToArg[cliLong]
 		if c.isBool {
@@ -401,6 +406,15 @@ func getSince(cmd *cobra.Command) model.SinceTime {
 	return model.NewSinceTime(t, int(d.Minutes()))
 }
 
+func getThemeName(cmd *cobra.Command) string {
+	theme := cmd.Flags().Lookup("theme").Value.String()
+	if theme != "" && theme != "vivid" && theme != "none" {
+		fmt.Printf("error: invalid theme %q (valid options: 'vivid', 'none')\n", theme)
+		os.Exit(1)
+	}
+	return theme
+}
+
 func getAutoSelectMatchers(cmd *cobra.Command) model.Matcher {
 	autoSelectMatchers, err := model.NewMatcher(
 		model.NewMatcherArgs{
@@ -435,6 +449,7 @@ func getConfig(cmd *cobra.Command) internal.Config {
 		Namespaces: getNamespaces(cmd),
 		Selector:   getSelector(cmd),
 		SinceTime:  getSince(cmd),
+		ThemeName:  getThemeName(cmd),
 		Version:    getVersion(),
 	}
 }
