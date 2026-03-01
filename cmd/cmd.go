@@ -10,6 +10,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/carlmjohnson/versioninfo"
+	"github.com/charmbracelet/colorprofile"
 	"github.com/robinovitch61/kl/internal"
 	"github.com/robinovitch61/kl/internal/constants"
 	"github.com/robinovitch61/kl/internal/model"
@@ -244,7 +245,16 @@ func bindFlags(cmd *cobra.Command, nameToArg map[string]arg) {
 
 func mainEntrypoint(cmd *cobra.Command, _ []string) {
 	initialModel := setup(cmd)
-	program := tea.NewProgram(initialModel)
+
+	// colorprofile.Detect skips the COLORTERM=truecolor upgrade for screen/tmux
+	// terminals. Override when COLORTERM explicitly indicates truecolor support,
+	// so that 24-bit colors from tools like delta aren't downsampled to 256-color.
+	var opts []tea.ProgramOption
+	colorTerm := strings.ToLower(os.Getenv("COLORTERM"))
+	if colorTerm == "truecolor" || colorTerm == "24bit" {
+		opts = append(opts, tea.WithColorProfile(colorprofile.TrueColor))
+	}
+	program := tea.NewProgram(initialModel, opts...)
 
 	if _, err := program.Run(); err != nil {
 		fmt.Printf("error on kl startup: %v", err)

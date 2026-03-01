@@ -58,6 +58,44 @@ func (t Theme) ContainerColorStyle(name string) lipgloss.Style {
 	return t.ContainerColors[hashValue%int64(len(t.ContainerColors))]
 }
 
+// DefaultTheme returns the default theme using only the most accessible ANSI colors and reverse video.
+// Maximum compatibility across terminal themes (light, dark, Solarized, etc.).
+// See https://blog.xoria.org/terminal-colors/ and https://jvns.ca/blog/2024/10/01/terminal-colours/
+func DefaultTheme() Theme {
+	return Theme{
+		SelectionPrefix: "",
+
+		ContainerColors: []lipgloss.Style{
+			lipgloss.NewStyle().Foreground(lipgloss.Red),
+			lipgloss.NewStyle().Foreground(lipgloss.Green),
+			lipgloss.NewStyle().Foreground(lipgloss.Yellow),
+			lipgloss.NewStyle().Foreground(lipgloss.Magenta),
+			lipgloss.NewStyle().Foreground(lipgloss.Cyan),
+			lipgloss.NewStyle().Foreground(lipgloss.BrightRed),
+			lipgloss.NewStyle().Foreground(lipgloss.BrightGreen),
+			lipgloss.NewStyle().Foreground(lipgloss.BrightMagenta),
+			lipgloss.NewStyle().Foreground(lipgloss.BrightCyan),
+		},
+		SelectedItem:        lipgloss.NewStyle().Reverse(true),
+		Highlight:           lipgloss.NewStyle().Reverse(true),
+		HighlightIfSelected: lipgloss.NewStyle(),
+		Footer:              lipgloss.NewStyle(),
+
+		MatchFocused:           lipgloss.NewStyle().Reverse(true).Foreground(lipgloss.Cyan),
+		MatchFocusedIfSelected: lipgloss.NewStyle().Foreground(lipgloss.Cyan),
+		MatchUnfocused:         lipgloss.NewStyle().Foreground(lipgloss.BrightRed),
+
+		TopBar:              lipgloss.NewStyle().Reverse(true),
+		TopBarAccent:        lipgloss.NewStyle().Foreground(lipgloss.Red),
+		FilterPrefixFocused: lipgloss.NewStyle().Reverse(true),
+		TimestampPrefix:     lipgloss.NewStyle().Foreground(lipgloss.Green),
+		HelpKeyColumn:       lipgloss.NewStyle().Reverse(true),
+		EntityPaneBorder:    lipgloss.NewStyle().Border(lipgloss.ThickBorder(), false, true, false, false),
+		PromptSelected:      lipgloss.NewStyle().Reverse(true),
+		Error:               lipgloss.NewStyle().Foreground(lipgloss.Red),
+	}
+}
+
 // VividTheme uses 256-color and true-color values for maximum visual richness.
 func VividTheme() Theme {
 	lilac := lipgloss.Color("189")
@@ -85,7 +123,7 @@ func VividTheme() Theme {
 		Footer:              lipgloss.NewStyle(),
 
 		MatchFocused:           lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
-		MatchFocusedIfSelected: lipgloss.NewStyle(),
+		MatchFocusedIfSelected: lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
 		MatchUnfocused:         lipgloss.NewStyle().Foreground(lipgloss.Color("#141414")).Background(lipgloss.Color("#cbcbcb")),
 
 		TopBar:              lipgloss.NewStyle().Background(lilac).Foreground(lipgloss.Color("#000000")),
@@ -95,44 +133,6 @@ func VividTheme() Theme {
 		HelpKeyColumn:       lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
 		EntityPaneBorder:    lipgloss.NewStyle().Border(lipgloss.ThickBorder(), false, true, false, false).BorderForeground(lilac),
 		PromptSelected:      lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
-		Error:               lipgloss.NewStyle().Foreground(lipgloss.Red),
-	}
-}
-
-// DefaultTheme returns the default theme using only the most accessible ANSI colors and reverse video.
-// Maximum compatibility across terminal themes (light, dark, Solarized, etc.).
-// See https://blog.xoria.org/terminal-colors/ and https://jvns.ca/blog/2024/10/01/terminal-colours/
-func DefaultTheme() Theme {
-	return Theme{
-		SelectionPrefix: "",
-
-		ContainerColors: []lipgloss.Style{
-			lipgloss.NewStyle().Foreground(lipgloss.Red),
-			lipgloss.NewStyle().Foreground(lipgloss.Green),
-			lipgloss.NewStyle().Foreground(lipgloss.Yellow),
-			lipgloss.NewStyle().Foreground(lipgloss.Magenta),
-			lipgloss.NewStyle().Foreground(lipgloss.Cyan),
-			lipgloss.NewStyle().Foreground(lipgloss.BrightRed),
-			lipgloss.NewStyle().Foreground(lipgloss.BrightGreen),
-			lipgloss.NewStyle().Foreground(lipgloss.BrightMagenta),
-			lipgloss.NewStyle().Foreground(lipgloss.BrightCyan),
-		},
-		SelectedItem:        lipgloss.NewStyle().Reverse(true),
-		Highlight:           lipgloss.NewStyle().Reverse(true),
-		HighlightIfSelected: lipgloss.NewStyle(),
-		Footer:              lipgloss.NewStyle(),
-
-		MatchFocused:           lipgloss.NewStyle().Reverse(true).Foreground(lipgloss.Cyan),
-		MatchFocusedIfSelected: lipgloss.NewStyle(),
-		MatchUnfocused:         lipgloss.NewStyle().Foreground(lipgloss.BrightRed),
-
-		TopBar:              lipgloss.NewStyle().Reverse(true),
-		TopBarAccent:        lipgloss.NewStyle().Foreground(lipgloss.Red),
-		FilterPrefixFocused: lipgloss.NewStyle().Reverse(true),
-		TimestampPrefix:     lipgloss.NewStyle().Foreground(lipgloss.Green),
-		HelpKeyColumn:       lipgloss.NewStyle().Reverse(true),
-		EntityPaneBorder:    lipgloss.NewStyle().Border(lipgloss.ThickBorder(), false, true, false, false),
-		PromptSelected:      lipgloss.NewStyle().Reverse(true),
 		Error:               lipgloss.NewStyle().Foreground(lipgloss.Red),
 	}
 }

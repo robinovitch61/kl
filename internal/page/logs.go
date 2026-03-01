@@ -81,8 +81,9 @@ func NewLogsPage(
 		filterableviewport.WithFilterLinePrefix[model.PageLog](fmt.Sprintf("(L)ogs, %s", getOrder(!descending))),
 		filterableviewport.WithStyles[model.PageLog](filterableviewport.Styles{
 			Match: filterableviewport.MatchStyles{
-				Focused:   theme.MatchFocused,
-				Unfocused: theme.MatchUnfocused,
+				Focused:           theme.MatchFocused,
+				FocusedIfSelected: theme.MatchFocusedIfSelected,
+				Unfocused:         theme.MatchUnfocused,
 			},
 		}),
 	)

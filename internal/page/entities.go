@@ -82,8 +82,9 @@ func NewEntitiesPage(
 		filterableviewport.WithFilterLinePrefix[entity.Entity]("(S)election"),
 		filterableviewport.WithStyles[entity.Entity](filterableviewport.Styles{
 			Match: filterableviewport.MatchStyles{
-				Focused:   theme.MatchFocused,
-				Unfocused: theme.MatchUnfocused,
+				Focused:           theme.MatchFocused,
+				FocusedIfSelected: theme.MatchFocusedIfSelected,
+				Unfocused:         theme.MatchUnfocused,
 			},
 		}),
 		filterableviewport.WithAdjustObjectsForFilter(func(filterText string, isRegex bool) []entity.Entity {

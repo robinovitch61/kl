@@ -96,8 +96,9 @@ func NewSingleLogPage(
 		filterableviewport.WithFilterLinePrefix[SingleLogLine]("Single Log"),
 		filterableviewport.WithStyles[SingleLogLine](filterableviewport.Styles{
 			Match: filterableviewport.MatchStyles{
-				Focused:   theme.MatchFocused,
-				Unfocused: theme.MatchUnfocused,
+				Focused:           theme.MatchFocused,
+				FocusedIfSelected: theme.MatchFocusedIfSelected,
+				Unfocused:         theme.MatchUnfocused,
 			},
 		}),
 	)
