@@ -15,15 +15,17 @@ An interactive Kubernetes log viewer for your terminal.
 * See cluster changes in real time
 * Navigate logs from multiple containers interleaved by timestamp
 * Search logs by exact string or regex pattern. Show or hide surrounding context
-* Zoom in and flip through single formatted logs one by one
+* Pretty-print structured logs inline
+* Zoom in and flip through single pretty-printed logs one by one
+* Color themes with accessible ANSI colors by default
 * Archive and share: save logs to a local file or copy a log to your clipboard
 
 Comparable to:
 
 * [kubectl logs](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_logs/) supercharged
 * [k9s](https://k9scli.io/) but specializing in logs
-* [stern](https://github.com/stern/stern) & [kail](https://github.com/boz/kail) but multi-cluster and with an interactive
-  interface
+* [stern](https://github.com/stern/stern) & [kail](https://github.com/boz/kail) but multi-cluster and with an
+  interactive interface
 
 ## Usage
 
@@ -55,47 +57,57 @@ kl --ic "^my-sidecar$"
 
 # Start focused on logs, ordered by timestamp descending, showing logs from 10 minutes ago onwards
 kl --mc "^my-container$" -d --logs-view --since 10m
+
+# Use the vivid color theme (256-color/true-color)
+kl --theme vivid
+
+# Disable colors entirely
+kl --theme none
+NO_COLOR=1 kl
 ```
 
 Press `?` in any view to see keyboard shortcuts specific to the current view and across the application.
 
-| Key            | Action                                          |
-|----------------|-------------------------------------------------|
-| enter          | in container selection view, toggle logs        |
-| R              | deselect all containers and clear logs          |
-| ↓/j            | down one line                                   |
-| ↑/k            | up one line                                     |
-| d              | down half page                                  |
-| u              | up half page                                    |
-| f              | down full page                                  |
-| b              | up full page                                    |
-| g              | go to top (will follow logs if descending)      |
-| G              | go to bottom (will follow logs if ascending)    |
-| l              | focus on logs view                              |
-| L              | focus on logs view in fullscreen                |
-| enter          | zoom in to single log view for selected log     |
-| shift+<motion> | scroll on single log view                       |
-| esc            | back to all logs view when viewing single log   |
-| s              | focus on container selection view               |
-| S              | focus on container selection view in fullscreen |
-| F              | toggle fullscreen                               |
-| /              | edit exact match filter                         |
-| r              | edit regex filter                               |
-| enter          | when filtering, apply filter                    |
-| esc            | discard applied filter                          |
-| n              | next filter match                               |
-| N              | previous filter match                           |
-| x              | toggle showing only the logs matching filter    |
-| w              | toggle line wrap                                |
-| ←/→/h/l        | pan left/right when not wrapped                 |
-| o              | reverse timestamp ordering                      |
-| p              | pause/resume log stream                         |
-| t              | change timestamp format                         |
-| c              | change container name format                    |
-| 0-9            | change time from which logs begin               |
-| ctrl+s         | save focused view to local file                 |
-| ctrl+y         | in single log view, copy to clipboard           |
-| ?              | show/hide help                                  |
+| Key            | Action                         |
+|----------------|--------------------------------|
+| enter          | select/deselect containers     |
+| R              | deselect all containers        |
+| ↓/j            | down                           |
+| ↑/k            | up                             |
+| d              | half page down                 |
+| u              | half page up                   |
+| f              | page down                      |
+| b              | page up                        |
+| g              | top                            |
+| G              | bottom                         |
+| l              | focus logs view                |
+| L              | logs view fullscreen           |
+| enter          | zoom on log                    |
+| shift+<motion> | scroll within single log view  |
+| esc            | back to all logs               |
+| s              | focus container selection view |
+| S              | selection view fullscreen      |
+| F              | toggle fullscreen              |
+| /              | edit filter                    |
+| r              | regex filter                   |
+| i              | case insensitive regex filter  |
+| enter          | apply filter                   |
+| esc            | discard filter                 |
+| n              | next filter match              |
+| N              | prev filter match              |
+| x              | show matching logs only        |
+| w              | toggle line wrap               |
+| p              | pretty-print logs              |
+| ←/→            | pan left/right when unwrapped  |
+| o              | reverse timestamp order        |
+| P              | pause/resume logs              |
+| t              | show short/full/no timestamps  |
+| c              | show short/full/no identifiers |
+| 0-9            | change log start time          |
+| ctrl+s         | save focused view to file      |
+| ctrl+y         | copy zoomed log                |
+| ctrl+c         | quit                           |
+| ?              | show/hide help                 |
 
 ## Installation
 

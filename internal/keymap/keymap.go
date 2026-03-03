@@ -154,7 +154,7 @@ func DefaultKeyMap() KeyMap {
 		),
 		PrettyPrint: key.NewBinding(
 			key.WithKeys("p"),
-			key.WithHelp("p", "pretty-print JSON"),
+			key.WithHelp("p", "pretty-print logs"),
 		),
 		PageDown: key.NewBinding(
 			key.WithKeys("pgdown", "f", "ctrl+f"),

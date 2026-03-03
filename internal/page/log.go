@@ -232,5 +232,5 @@ func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
 
 func veryNicelyFormatThisLog(log model.PageLog, styleHeader bool) (string, []string) {
 	header := fmt.Sprintf("%s | %s", log.Log.Timestamps.Full, log.RenderName(log.ContainerNames.Full, styleHeader))
-	return header, k8s_log.FormatJSON(log.Log.ContentItem.Content())
+	return header, k8s_log.PrettyPrintJSON(log.Log.ContentItem.Content())
 }

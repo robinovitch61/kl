@@ -29,8 +29,8 @@ type Log struct {
 	PrettyItems []item.SingleItem // pretty-printed JSON lines, nil if not valid JSON or single item
 }
 
-// FormatJSON attempts to pretty-print JSON input. Returns the input as-is if not valid JSON.
-func FormatJSON(input string) []string {
+// PrettyPrintJSON attempts to pretty-print JSON input. Returns the input as-is if not valid JSON.
+func PrettyPrintJSON(input string) []string {
 	var raw map[string]interface{}
 
 	err := json.Unmarshal([]byte(input), &raw)
@@ -118,7 +118,7 @@ func (ls LogScanner) StartReadingLogs() {
 			// precompute LogData here as logs come in as logs are immutable and instantiating new items is expensive
 			contentItem := item.NewItem(logContent)
 			var prettyItems []item.SingleItem
-			if lines := FormatJSON(logContent); len(lines) > 1 {
+			if lines := PrettyPrintJSON(logContent); len(lines) > 1 {
 				prettyItems = make([]item.SingleItem, len(lines))
 				for i, line := range lines {
 					prettyItems[i] = item.NewItem(line)
