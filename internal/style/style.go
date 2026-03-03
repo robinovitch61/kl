@@ -66,6 +66,7 @@ func DefaultTheme() Theme {
 		SelectionPrefix: "",
 
 		ContainerColors: []lipgloss.Style{
+			// these are the most accessible colors as per https://blog.xoria.org/terminal-colors/
 			lipgloss.NewStyle().Foreground(lipgloss.Red),
 			lipgloss.NewStyle().Foreground(lipgloss.Green),
 			lipgloss.NewStyle().Foreground(lipgloss.Yellow),
@@ -85,9 +86,9 @@ func DefaultTheme() Theme {
 		MatchFocusedIfSelected: lipgloss.NewStyle().Foreground(lipgloss.Cyan),
 		MatchUnfocused:         lipgloss.NewStyle().Foreground(lipgloss.BrightRed),
 
-		TopBar:              lipgloss.NewStyle().Reverse(true),
+		TopBar:              lipgloss.NewStyle().Foreground(lipgloss.Cyan).Reverse(true),
 		TopBarAccent:        lipgloss.NewStyle().Foreground(lipgloss.Red),
-		FilterPrefixFocused: lipgloss.NewStyle().Reverse(true),
+		FilterPrefixFocused: lipgloss.NewStyle().Foreground(lipgloss.Yellow),
 		TimestampPrefix:     lipgloss.NewStyle().Foreground(lipgloss.Green),
 		HelpKeyColumn:       lipgloss.NewStyle().Reverse(true),
 		EntityPaneBorder:    lipgloss.NewStyle().Border(lipgloss.ThickBorder(), false, true, false, false),
