@@ -34,16 +34,18 @@ type KeyMap struct {
 	PrettyPrint           key.Binding
 
 	// viewport
-	PageDown     key.Binding
-	PageUp       key.Binding
-	HalfPageUp   key.Binding
-	HalfPageDown key.Binding
-	Up           key.Binding
-	Down         key.Binding
-	Left         key.Binding
-	Right        key.Binding
-	Top          key.Binding
-	Bottom       key.Binding
+	PageDown          key.Binding
+	PageUp            key.Binding
+	HalfPageUp        key.Binding
+	HalfPageDown      key.Binding
+	Up                key.Binding
+	Down              key.Binding
+	Left              key.Binding
+	Right             key.Binding
+	Top               key.Binding
+	Bottom            key.Binding
+	SearchHistoryPrev key.Binding
+	SearchHistoryNext key.Binding
 }
 
 func DefaultKeyMap() KeyMap {
@@ -196,6 +198,14 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("G"),
 			key.WithHelp("G", "bottom"),
 		),
+		SearchHistoryPrev: key.NewBinding(
+			key.WithKeys("up"),
+			key.WithHelp("↑", "previous filter"),
+		),
+		SearchHistoryNext: key.NewBinding(
+			key.WithKeys("down"),
+			key.WithHelp("↓", "next filter"),
+		),
 	}
 }
 
@@ -236,6 +246,8 @@ func DescriptiveKeyBindings(km KeyMap) []key.Binding {
 		km.FilterNextRow,
 		km.FilterPrevRow,
 		km.Context,
+		km.SearchHistoryPrev,
+		km.SearchHistoryNext,
 		km.Up,
 		km.Down,
 		km.PageUp,

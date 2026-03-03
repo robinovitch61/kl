@@ -74,6 +74,8 @@ func NewEntitiesPage(
 			ToggleMatchingItemsOnlyKey: keyMap.Context,
 			NextMatchKey:               keyMap.FilterNextRow,
 			PrevMatchKey:               keyMap.FilterPrevRow,
+			SearchHistoryPrevKey:       keyMap.SearchHistoryPrev,
+			SearchHistoryNextKey:       keyMap.SearchHistoryNext,
 		}),
 		filterableviewport.WithMatchingItemsOnly[entity.Entity](false),
 		filterableviewport.WithCanToggleMatchingItemsOnly[entity.Entity](false),
