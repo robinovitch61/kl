@@ -20,7 +20,7 @@ type EntityPage struct {
 	filterableViewport *filterableviewport.Model[entity.Entity]
 	entityTree         entity.Tree
 	keyMap             keymap.KeyMap
-	styles             style.Styles
+	theme              style.Theme
 	focused            bool
 	viewWhenEmpty      string
 }
@@ -32,7 +32,7 @@ func NewEntitiesPage(
 	keyMap keymap.KeyMap,
 	width, height int,
 	entityTree entity.Tree,
-	styles style.Styles,
+	theme style.Theme,
 ) EntityPage {
 	viewWhenEmptyLines := []string{"Subscribing to updates for:"}
 	for _, cns := range entityTree.GetClusterNamespaces() {
@@ -82,8 +82,9 @@ func NewEntitiesPage(
 		filterableviewport.WithFilterLinePrefix[entity.Entity]("(S)election"),
 		filterableviewport.WithStyles[entity.Entity](filterableviewport.Styles{
 			Match: filterableviewport.MatchStyles{
-				Focused:   styles.Inverse,
-				Unfocused: styles.AltInverse,
+				Focused:           theme.MatchFocused,
+				FocusedIfSelected: theme.MatchFocusedIfSelected,
+				Unfocused:         theme.MatchUnfocused,
 			},
 		}),
 		filterableviewport.WithAdjustObjectsForFilter(func(filterText string, isRegex bool) []entity.Entity {
@@ -99,7 +100,7 @@ func NewEntitiesPage(
 		filterableViewport: fvp,
 		entityTree:         entityTree,
 		keyMap:             keyMap,
-		styles:             styles,
+		theme:              theme,
 		viewWhenEmpty:      viewWhenEmpty,
 	}
 	p.updateStyles()
@@ -128,11 +129,10 @@ func (p EntityPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
 
 func (p EntityPage) View() string {
 	if len(p.entityTree.GetEntities()) == 0 {
-		viewWhenEmpty := p.viewWhenEmpty
 		if p.focused {
-			viewWhenEmpty = p.styles.Blue.Render(viewWhenEmpty)
+			return p.theme.FilterPrefixFocused.Render(p.viewWhenEmpty)
 		}
-		return viewWhenEmpty
+		return p.viewWhenEmpty
 	}
 	return p.filterableViewport.View()
 }
@@ -176,21 +176,21 @@ func (p EntityPage) WithBlur() GenericPage {
 	return p
 }
 
-func (p EntityPage) WithStyles(styles style.Styles) GenericPage {
-	p.styles = styles
+func (p EntityPage) WithTheme(theme style.Theme) GenericPage {
+	p.theme = theme
 	p.updateStyles()
-	// Update filterableviewport match styles
 	p.filterableViewport.SetFilterableViewportStyles(filterableviewport.Styles{
 		Match: filterableviewport.MatchStyles{
-			Focused:   styles.Inverse,
-			Unfocused: styles.AltInverse,
+			Focused:           theme.MatchFocused,
+			FocusedIfSelected: theme.MatchFocusedIfSelected,
+			Unfocused:         theme.MatchUnfocused,
 		},
 	})
 	return p
 }
 
 func (p EntityPage) Help() string {
-	return help.MakeHelp(p.keyMap, p.styles.InverseUnderline)
+	return help.MakeHelp(p.keyMap, p.theme.HelpKeyColumn)
 }
 
 func (p EntityPage) WithEntityTree(entityTree entity.Tree) EntityPage {
@@ -237,11 +237,11 @@ func (p EntityPage) getCurrentFilter() filter.Model {
 }
 
 func (p *EntityPage) updateStyles() {
-	p.filterableViewport.SetViewportStyles(viewportStylesForFocus(p.focused, p.styles))
+	p.filterableViewport.SetViewportStyles(viewportStylesForFocus(p.focused, p.theme))
 
 	prefix := "(S)election"
 	if p.focused {
-		prefix = p.styles.Blue.Render(prefix)
+		prefix = p.theme.FilterPrefixFocused.Render(prefix)
 	}
 	p.filterableViewport.SetFilterLinePrefix(prefix)
 }

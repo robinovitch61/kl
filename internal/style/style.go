@@ -1,140 +1,183 @@
 package style
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
-	"image/color"
+	"os"
 
-	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/robinovitch61/kl/internal/dev"
 )
 
-var (
-	blue  = lipgloss.Color("6")
-	lilac = lipgloss.Color("189")
-	green = lipgloss.Color("46")
-)
+// Theme contains every visual choice for the application.
+// All styling must come from here — no ad-hoc styles anywhere else.
+type Theme struct {
+	// visual indicators
+	SelectionPrefix string
 
-type TermStyleData struct {
-	ForegroundDetected bool
-	Foreground         color.Color
-	ForegroundIsDark   bool
-	BackgroundDetected bool
-	Background         color.Color
-	BackgroundIsDark   bool
+	// viewport styles
+	SelectedItem        lipgloss.Style
+	Highlight           lipgloss.Style
+	HighlightIfSelected lipgloss.Style
+	Footer              lipgloss.Style
+
+	// filterable viewport match styles
+	MatchFocused           lipgloss.Style
+	MatchFocusedIfSelected lipgloss.Style
+	MatchUnfocused         lipgloss.Style
+
+	// container name coloring — deterministic foreground styles assigned via hash.
+	// nil or empty disables container coloring.
+	ContainerColors []lipgloss.Style
+
+	// kl-specific styles
+	TopBar              lipgloss.Style
+	TopBarAccent        lipgloss.Style // e.g. [PAUSED]
+	FilterPrefixFocused lipgloss.Style
+	TimestampPrefix     lipgloss.Style
+	HelpKeyColumn       lipgloss.Style
+	EntityPaneBorder    lipgloss.Style
+	PromptSelected      lipgloss.Style
+	Error               lipgloss.Style
 }
 
-func NewTermStyleData() TermStyleData {
-	return TermStyleData{}
-}
-
-func (tsd *TermStyleData) SetBackground(msg tea.BackgroundColorMsg) {
-	tsd.BackgroundDetected = true
-	tsd.Background = msg.Color
-	tsd.BackgroundIsDark = msg.IsDark()
-}
-
-func (tsd *TermStyleData) SetForeground(msg tea.ForegroundColorMsg) {
-	tsd.ForegroundDetected = true
-	tsd.Foreground = msg.Color
-	tsd.ForegroundIsDark = msg.IsDark()
-}
-
-func (tsd TermStyleData) IsComplete() bool {
-	return tsd.ForegroundDetected && tsd.BackgroundDetected
-}
-
-type Styles struct {
-	Unset            lipgloss.Style
-	Alt              lipgloss.Style
-	Bold             lipgloss.Style
-	Inverse          lipgloss.Style
-	BoldUnderline    lipgloss.Style
-	InverseUnderline lipgloss.Style
-	AltInverse       lipgloss.Style
-	Underline        lipgloss.Style
-	Blue             lipgloss.Style
-	Lilac            lipgloss.Style
-	Green            lipgloss.Style
-	RightBorder      lipgloss.Style
-}
-
-var DefaultStyles = Styles{
-	Unset:            lipgloss.NewStyle(),
-	Alt:              lipgloss.NewStyle().Foreground(lipgloss.Color("#ffffff")),
-	Bold:             lipgloss.NewStyle().Bold(true),
-	Inverse:          lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
-	BoldUnderline:    lipgloss.NewStyle().Bold(true).Underline(true),
-	InverseUnderline: lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")).Underline(true),
-	AltInverse:       lipgloss.NewStyle().Foreground(lipgloss.Color("#141414")).Background(lipgloss.Color("#cbcbcb")),
-	Underline:        lipgloss.NewStyle().Underline(true),
-	Blue:             lipgloss.NewStyle().Background(blue).Foreground(lipgloss.Color("#000000")),
-	Lilac:            lipgloss.NewStyle().Background(lilac).Foreground(lipgloss.Color("#000000")),
-	Green:            lipgloss.NewStyle().Background(green).Foreground(lipgloss.Color("#000000")),
-	RightBorder:      lipgloss.NewStyle().Border(lipgloss.ThickBorder(), false, true, false, false).BorderForeground(lilac),
-}
-
-func NewStyles(data TermStyleData) Styles {
-	if !data.IsComplete() {
-		panic(fmt.Errorf("NewStyles called with incomplete TermStyleData"))
+// ContainerColorStyle returns a foreground style for the given name,
+// deterministically assigned via hash. Returns an empty style if the theme
+// has no container colors.
+func (t Theme) ContainerColorStyle(name string) lipgloss.Style {
+	if len(t.ContainerColors) == 0 {
+		return lipgloss.NewStyle()
 	}
-	adjustment := uint32(30)
-	lighterForeground := lipgloss.Color(lightenColor(data.Foreground, adjustment))
-	darkerForeground := lipgloss.Color(lightenColor(data.Foreground, -adjustment))
-	dev.Debug(fmt.Sprintf("foreground: %v, lighterForeground: %v, darkerForeground: %v", data.Foreground, lighterForeground, darkerForeground))
+	hash := md5.Sum([]byte(name))
+	hashStr := hex.EncodeToString(hash[:])
+	var hashValue int64
+	_, err := fmt.Sscanf(hashStr[:8], "%x", &hashValue)
+	if err != nil {
+		return t.ContainerColors[0]
+	}
+	return t.ContainerColors[hashValue%int64(len(t.ContainerColors))]
+}
 
-	fgLightDark := lipgloss.LightDark(data.ForegroundIsDark)
-	bgLightDark := lipgloss.LightDark(data.BackgroundIsDark)
+// DefaultTheme returns the default theme using only the most accessible ANSI colors and reverse video.
+// Maximum compatibility across terminal themes (light, dark, Solarized, etc.).
+// See https://blog.xoria.org/terminal-colors/ and https://jvns.ca/blog/2024/10/01/terminal-colours/
+func DefaultTheme() Theme {
+	return Theme{
+		SelectionPrefix: "",
 
-	return Styles{
-		Unset: lipgloss.NewStyle().Foreground(data.Foreground).Background(data.Background),
+		ContainerColors: []lipgloss.Style{
+			// these are the most accessible colors as per https://blog.xoria.org/terminal-colors/
+			lipgloss.NewStyle().Foreground(lipgloss.Red),
+			lipgloss.NewStyle().Foreground(lipgloss.Green),
+			lipgloss.NewStyle().Foreground(lipgloss.Yellow),
+			lipgloss.NewStyle().Foreground(lipgloss.Magenta),
+			lipgloss.NewStyle().Foreground(lipgloss.Cyan),
+			lipgloss.NewStyle().Foreground(lipgloss.BrightRed),
+			lipgloss.NewStyle().Foreground(lipgloss.BrightGreen),
+			lipgloss.NewStyle().Foreground(lipgloss.BrightMagenta),
+			lipgloss.NewStyle().Foreground(lipgloss.BrightCyan),
+		},
+		SelectedItem:        lipgloss.NewStyle().Reverse(true),
+		Highlight:           lipgloss.NewStyle().Reverse(true),
+		HighlightIfSelected: lipgloss.NewStyle(),
+		Footer:              lipgloss.NewStyle(),
 
-		Alt: lipgloss.NewStyle().Foreground(fgLightDark(lighterForeground, darkerForeground)),
+		MatchFocused:           lipgloss.NewStyle().Reverse(true).Foreground(lipgloss.Cyan),
+		MatchFocusedIfSelected: lipgloss.NewStyle().Foreground(lipgloss.Cyan),
+		MatchUnfocused:         lipgloss.NewStyle().Foreground(lipgloss.BrightRed),
 
-		// need to specifically set the foreground color otherwise changes color on some terminals
-		Bold: lipgloss.NewStyle().Bold(true).Foreground(data.Foreground),
-
-		Inverse: lipgloss.NewStyle().Foreground(data.Background).Background(data.Foreground),
-
-		// need to specifically set the foreground color otherwise changes color on some terminals
-		BoldUnderline: lipgloss.NewStyle().Bold(true).Underline(true).Foreground(data.Foreground),
-
-		InverseUnderline: lipgloss.NewStyle().Foreground(data.Background).Background(data.Foreground).Underline(true),
-
-		AltInverse: lipgloss.NewStyle().Foreground(data.Background).Background(bgLightDark(lighterForeground, darkerForeground)),
-
-		Underline: lipgloss.NewStyle().Underline(true),
-
-		Blue: lipgloss.NewStyle().Background(blue).Foreground(lipgloss.Color("#000000")),
-
-		Lilac: lipgloss.NewStyle().Background(lilac).Foreground(lipgloss.Color("#000000")),
-
-		Green: lipgloss.NewStyle().Background(green).Foreground(lipgloss.Color("#000000")),
-
-		RightBorder: lipgloss.NewStyle().Border(lipgloss.ThickBorder(), false, true, false, false).BorderForeground(lilac),
+		TopBar:              lipgloss.NewStyle().Foreground(lipgloss.Cyan).Reverse(true),
+		TopBarAccent:        lipgloss.NewStyle().Foreground(lipgloss.Red),
+		FilterPrefixFocused: lipgloss.NewStyle().Foreground(lipgloss.Yellow),
+		TimestampPrefix:     lipgloss.NewStyle().Foreground(lipgloss.Green),
+		HelpKeyColumn:       lipgloss.NewStyle().Reverse(true),
+		EntityPaneBorder:    lipgloss.NewStyle().Border(lipgloss.ThickBorder(), false, true, false, false),
+		PromptSelected:      lipgloss.NewStyle().Reverse(true),
+		Error:               lipgloss.NewStyle().Foreground(lipgloss.Red),
 	}
 }
 
-func lightenColor(c color.Color, offset uint32) string {
-	r, g, b, _ := c.RGBA()
-	// Convert from 0-65535 range to 0-255
-	r = r >> 8
-	g = g >> 8
-	b = b >> 8
+// VividTheme uses 256-color and true-color values for maximum visual richness.
+func VividTheme() Theme {
+	lilac := lipgloss.Color("189")
+	return Theme{
+		SelectionPrefix: "",
 
-	r = clamp(r+offset, 0, 255)
-	g = clamp(g+offset, 0, 255)
-	b = clamp(b+offset, 0, 255)
+		ContainerColors: []lipgloss.Style{
+			lipgloss.NewStyle().Background(lipgloss.Color("#58A2EE")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#3FE34B")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#7c60d7")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#FD2C4C")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#FE7A00")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#FAF81C")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#56EBD3")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#42952E")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#FFACE6")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#FE16F4")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#D6A112")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#FFDAB9")).Foreground(lipgloss.Color("#000000")),
+			lipgloss.NewStyle().Background(lipgloss.Color("#FF7E6A")).Foreground(lipgloss.Color("#000000")),
+		},
+		SelectedItem:        lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
+		Highlight:           lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
+		HighlightIfSelected: lipgloss.NewStyle(),
+		Footer:              lipgloss.NewStyle(),
 
-	return fmt.Sprintf("#%02x%02x%02x", r, g, b)
+		MatchFocused:           lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
+		MatchFocusedIfSelected: lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
+		MatchUnfocused:         lipgloss.NewStyle().Foreground(lipgloss.Color("#141414")).Background(lipgloss.Color("#cbcbcb")),
+
+		TopBar:              lipgloss.NewStyle().Background(lilac).Foreground(lipgloss.Color("#000000")),
+		TopBarAccent:        lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
+		FilterPrefixFocused: lipgloss.NewStyle().Background(lipgloss.Color("6")).Foreground(lipgloss.Color("#000000")),
+		TimestampPrefix:     lipgloss.NewStyle().Background(lipgloss.Color("46")).Foreground(lipgloss.Color("#000000")),
+		HelpKeyColumn:       lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
+		EntityPaneBorder:    lipgloss.NewStyle().Border(lipgloss.ThickBorder(), false, true, false, false).BorderForeground(lilac),
+		PromptSelected:      lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
+		Error:               lipgloss.NewStyle().Foreground(lipgloss.Red),
+	}
 }
 
-func clamp(value, lo, hi uint32) uint32 {
-	if value < lo {
-		return lo
+// NoColorTheme returns a theme with all styles empty.
+func NoColorTheme() Theme {
+	s := lipgloss.NewStyle()
+	return Theme{
+		// provide visual differentiation without color
+		SelectionPrefix: "> ",
+
+		ContainerColors:     nil,
+		SelectedItem:        s,
+		Highlight:           s,
+		HighlightIfSelected: s,
+		Footer:              s,
+
+		MatchFocused:           s,
+		MatchFocusedIfSelected: s,
+		MatchUnfocused:         s,
+
+		TopBar:              s,
+		TopBarAccent:        s,
+		FilterPrefixFocused: s,
+		TimestampPrefix:     s,
+		HelpKeyColumn:       s,
+		EntityPaneBorder:    lipgloss.NewStyle().Border(lipgloss.ThickBorder(), false, true, false, false),
+		PromptSelected:      s,
+		Error:               s,
 	}
-	if value > hi {
-		return hi
+}
+
+// PickTheme returns the appropriate theme based on the theme name and NO_COLOR env var.
+// Valid theme names: "" (default/ansi), "vivid", "none".
+func PickTheme(themeName string) Theme {
+	if _, ok := os.LookupEnv("NO_COLOR"); ok {
+		return NoColorTheme()
 	}
-	return value
+	switch themeName {
+	case "vivid":
+		return VividTheme()
+	case "none":
+		return NoColorTheme()
+	default:
+		return DefaultTheme()
+	}
 }

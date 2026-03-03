@@ -18,5 +18,6 @@ type Config struct {
 	Namespaces       []string
 	Selector         labels.Selector
 	SinceTime        model.SinceTime
+	ThemeName        string
 	Version          string
 }

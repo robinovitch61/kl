@@ -10,6 +10,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/carlmjohnson/versioninfo"
+	"github.com/charmbracelet/colorprofile"
 	"github.com/robinovitch61/kl/internal"
 	"github.com/robinovitch61/kl/internal/constants"
 	"github.com/robinovitch61/kl/internal/model"
@@ -137,6 +138,10 @@ var (
 			cfgFileEnvVar: "since",
 			description:   `Show logs since startup time minus this duration. E.g. 5s, 2m, 1.5h, 2h45m. Default 1m`,
 		},
+		"theme": {
+			cfgFileEnvVar: "theme",
+			description:   `Color theme. Defaults to accessible ansi colors. Other options: 'vivid', 'none'`,
+		},
 	}
 
 	description = fmt.Sprintf(`kl %s
@@ -194,6 +199,7 @@ func init() {
 		"namespace",
 		"selector",
 		"since",
+		"theme",
 	} {
 		c := rootNameToArg[cliLong]
 		if c.isBool {
@@ -239,7 +245,16 @@ func bindFlags(cmd *cobra.Command, nameToArg map[string]arg) {
 
 func mainEntrypoint(cmd *cobra.Command, _ []string) {
 	initialModel := setup(cmd)
-	program := tea.NewProgram(initialModel)
+
+	// colorprofile.Detect skips the COLORTERM=truecolor upgrade for screen/tmux
+	// terminals. Override when COLORTERM explicitly indicates truecolor support,
+	// so that 24-bit colors from tools like delta aren't downsampled to 256-color.
+	var opts []tea.ProgramOption
+	colorTerm := strings.ToLower(os.Getenv("COLORTERM"))
+	if colorTerm == "truecolor" || colorTerm == "24bit" {
+		opts = append(opts, tea.WithColorProfile(colorprofile.TrueColor))
+	}
+	program := tea.NewProgram(initialModel, opts...)
 
 	if _, err := program.Run(); err != nil {
 		fmt.Printf("error on kl startup: %v", err)
@@ -401,6 +416,15 @@ func getSince(cmd *cobra.Command) model.SinceTime {
 	return model.NewSinceTime(t, int(d.Minutes()))
 }
 
+func getThemeName(cmd *cobra.Command) string {
+	theme := cmd.Flags().Lookup("theme").Value.String()
+	if theme != "" && theme != "vivid" && theme != "none" {
+		fmt.Printf("error: invalid theme %q (valid options: 'vivid', 'none')\n", theme)
+		os.Exit(1)
+	}
+	return theme
+}
+
 func getAutoSelectMatchers(cmd *cobra.Command) model.Matcher {
 	autoSelectMatchers, err := model.NewMatcher(
 		model.NewMatcherArgs{
@@ -435,6 +459,7 @@ func getConfig(cmd *cobra.Command) internal.Config {
 		Namespaces: getNamespaces(cmd),
 		Selector:   getSelector(cmd),
 		SinceTime:  getSince(cmd),
+		ThemeName:  getThemeName(cmd),
 		Version:    getVersion(),
 	}
 }

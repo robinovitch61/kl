@@ -10,7 +10,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/keymap"
-	"github.com/robinovitch61/kl/internal/style"
 	"github.com/robinovitch61/kl/internal/textinput"
 )
 
@@ -24,7 +23,6 @@ type Model struct {
 	indexesMatchingFilter []int
 	textinput             textinput.Model
 	suffix                string
-	styles                style.Styles
 }
 
 func New(km keymap.KeyMap) Model {
@@ -73,8 +71,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m Model) View() string {
 	if m.textinput.Focused() {
-		m.textinput.PromptStyle = m.styles.Inverse
-		m.textinput.TextStyle = m.styles.Inverse
+		m.textinput.PromptStyle = lipgloss.NewStyle()
+		m.textinput.TextStyle = lipgloss.NewStyle()
 		m.textinput.Cursor.Style = lipgloss.NewStyle()
 		m.textinput.Cursor.TextStyle = lipgloss.NewStyle()
 		if !m.textinput.IsEmpty() {
@@ -109,10 +107,10 @@ func (m Model) View() string {
 			} else {
 				m.textinput.Prompt = "filter: "
 			}
-			m.textinput.PromptStyle = m.styles.AltInverse
-			m.textinput.TextStyle = m.styles.AltInverse
-			m.textinput.Cursor.Style = m.styles.AltInverse
-			m.textinput.Cursor.TextStyle = m.styles.AltInverse
+			m.textinput.PromptStyle = lipgloss.NewStyle()
+			m.textinput.TextStyle = lipgloss.NewStyle()
+			m.textinput.Cursor.Style = lipgloss.NewStyle()
+			m.textinput.Cursor.TextStyle = lipgloss.NewStyle()
 		} else {
 			// no filter, not editing
 			m.textinput.Prompt = ""
@@ -184,10 +182,6 @@ func (m *Model) SetValue(value string) {
 
 func (m *Model) SetSuffix(suffix string) {
 	m.suffix = suffix
-}
-
-func (m *Model) SetStyles(styles style.Styles) {
-	m.styles = styles
 }
 
 func (m *Model) SetShowContext(showContext bool, canToggleShowContext bool) {

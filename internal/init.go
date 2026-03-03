@@ -46,8 +46,6 @@ func initializedModel(m Model) (Model, tea.Cmd, error) {
 
 	m.entityTree = entity.NewEntityTree(m.k8sClient.AllClusterNamespaces())
 
-	m.data.termStyleData = style.NewTermStyleData()
-
 	m = initializePages(m)
 
 	cmds := createInitialCommands(m)
@@ -66,12 +64,15 @@ func initializePages(m Model) Model {
 
 	m.pages = make(map[page.Type]page.GenericPage)
 
+	theme := style.PickTheme(m.config.ThemeName)
+	m.data.theme = theme
+
 	m.data.topBarHeight = lipgloss.Height(m.topBar())
 	contentHeight := m.state.height - m.data.topBarHeight
 	// keep all pages unfocused here since first page focus happens when first containers received
-	m.pages[page.EntitiesPageType] = page.NewEntitiesPage(m.keyMap, m.state.width, contentHeight, m.entityTree, style.Styles{})
-	m.pages[page.LogsPageType] = page.NewLogsPage(m.keyMap, m.state.width, contentHeight, m.config.Descending, style.Styles{})
-	m.pages[page.SingleLogPageType] = page.NewSingleLogPage(m.keyMap, m.state.width, contentHeight, style.Styles{})
+	m.pages[page.EntitiesPageType] = page.NewEntitiesPage(m.keyMap, m.state.width, contentHeight, m.entityTree, theme)
+	m.pages[page.LogsPageType] = page.NewLogsPage(m.keyMap, m.state.width, contentHeight, m.config.Descending, theme)
+	m.pages[page.SingleLogPageType] = page.NewSingleLogPage(m.keyMap, m.state.width, contentHeight, theme)
 
 	if m.config.LogFilter.Value != "" {
 		m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithLogFilter(m.config.LogFilter)

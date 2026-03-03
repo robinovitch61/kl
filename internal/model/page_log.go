@@ -6,7 +6,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/emirpasic/gods/trees/redblacktree"
 	"github.com/robinovitch61/kl/internal/dev"
-	"github.com/robinovitch61/kl/internal/k8s/container"
 	"github.com/robinovitch61/kl/internal/k8s/k8s_log"
 	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
 	"github.com/robinovitch61/kl/internal/style"
@@ -21,12 +20,11 @@ type PageLogContainerNames struct {
 // PageLog is a Log with metadata. It has mostly pointer fields for efficient copying
 type PageLog struct {
 	Log              *k8s_log.Log
-	ContainerColors  *container.ContainerColors
 	ContainerNames   *PageLogContainerNames
 	CurrentName      *k8s_model.ContainerNameAndPrefix
 	CurrentTimestamp string
 	Terminated       bool
-	Styles           *style.Styles
+	Theme            *style.Theme
 	PrettyPrinted    bool
 	prettyItem       item.Item // cached MultiLineItem
 }
@@ -66,14 +64,14 @@ func (l *PageLog) BuildPrettyItemWithPrefix() {
 func (l PageLog) renderPrefix(includeStyle bool) string {
 	ts := ""
 	if l.CurrentTimestamp != "" {
-		if includeStyle {
-			ts = l.Styles.Green.Render(l.CurrentTimestamp)
+		if includeStyle && l.Theme != nil {
+			ts = l.Theme.TimestampPrefix.Render(l.CurrentTimestamp)
 		} else {
 			ts = l.CurrentTimestamp
 		}
 	}
 	label := ""
-	if l.CurrentName.ContainerName != "" {
+	if l.CurrentName != nil && l.CurrentName.ContainerName != "" {
 		if ts != "" {
 			label += " "
 		}
@@ -101,19 +99,29 @@ func (l PageLog) Equals(other interface{}) bool {
 	return l.Log.ContentItem.Content() == otherLog.Log.ContentItem.Content() && l.Log.Timestamps.Full == otherLog.Log.Timestamps.Full
 }
 
+// RenderName renders a container name for display in log lines.
+// When includeStyle is true, applies two deterministic foreground colors:
+// one for the prefix (hashed from the full prefix for consistency across
+// short and full display modes) and one for the container name (hashed from
+// just the name, so e.g. "mycontainer" is always the same color).
 func (l PageLog) RenderName(name k8s_model.ContainerNameAndPrefix, includeStyle bool) string {
-	var renderedPrefix, renderedName string
-	if includeStyle {
-		renderedPrefix = lipgloss.NewStyle().Background(l.ContainerColors.ID).Foreground(lipgloss.Color("#000000")).Render(name.Prefix)
-		renderedName = lipgloss.NewStyle().Background(l.ContainerColors.Name).Foreground(lipgloss.Color("#000000")).Render(name.ContainerName)
-	} else {
-		renderedPrefix = name.Prefix
-		renderedName = name.ContainerName
+	if includeStyle && l.Theme != nil {
+		renderedName := l.Theme.ContainerColorStyle(name.ContainerName).Render(name.ContainerName)
+		if lipgloss.Width(name.Prefix) == 0 {
+			return renderedName
+		}
+		// always hash from the full prefix so short and full display modes get the same color
+		colorKey := name.Prefix
+		if l.ContainerNames != nil && l.ContainerNames.Full.Prefix != "" {
+			colorKey = l.ContainerNames.Full.Prefix
+		}
+		renderedPrefix := l.Theme.ContainerColorStyle(colorKey).Render(name.Prefix)
+		return renderedPrefix + "/" + renderedName
 	}
-	if lipgloss.Width(renderedPrefix) == 0 {
-		return renderedName
+	if lipgloss.Width(name.Prefix) == 0 {
+		return name.ContainerName
 	}
-	return renderedPrefix + "/" + renderedName
+	return name.Prefix + "/" + name.ContainerName
 }
 
 type PageLogContainer struct {

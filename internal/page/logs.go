@@ -29,7 +29,7 @@ type LogsPage struct {
 	timestampFormatIdx int
 	nameFormatIdx      int
 	prettyPrint        bool
-	styles             style.Styles
+	theme              style.Theme
 	focused            bool
 	viewWhenEmpty      string
 }
@@ -41,7 +41,7 @@ func NewLogsPage(
 	keyMap keymap.KeyMap,
 	width, height int,
 	descending bool,
-	styles style.Styles,
+	theme style.Theme,
 ) LogsPage {
 	lc := model.NewPageLogContainer(!descending)
 
@@ -81,8 +81,9 @@ func NewLogsPage(
 		filterableviewport.WithFilterLinePrefix[model.PageLog](fmt.Sprintf("(L)ogs, %s", getOrder(!descending))),
 		filterableviewport.WithStyles[model.PageLog](filterableviewport.Styles{
 			Match: filterableviewport.MatchStyles{
-				Focused:   styles.Inverse,
-				Unfocused: styles.AltInverse,
+				Focused:           theme.MatchFocused,
+				FocusedIfSelected: theme.MatchFocusedIfSelected,
+				Unfocused:         theme.MatchUnfocused,
 			},
 		}),
 	)
@@ -101,7 +102,7 @@ func NewLogsPage(
 		logContainer:       lc,
 		timestampFormatIdx: 0,
 		nameFormatIdx:      0,
-		styles:             styles,
+		theme:              theme,
 		viewWhenEmpty:      "No logs yet",
 	}
 	page.setStickynessBasedOnOrder()
@@ -149,11 +150,10 @@ func (p LogsPage) Update(msg tea.Msg) (GenericPage, tea.Cmd) {
 
 func (p LogsPage) View() string {
 	if len(p.logContainer.GetOrderedLogs()) == 0 {
-		viewWhenEmpty := p.viewWhenEmpty
 		if p.focused {
-			viewWhenEmpty = p.styles.Blue.Render(viewWhenEmpty)
+			return p.theme.FilterPrefixFocused.Render(p.viewWhenEmpty)
 		}
-		return viewWhenEmpty
+		return p.viewWhenEmpty
 	}
 	return p.filterableViewport.View()
 }
@@ -210,20 +210,21 @@ func (p LogsPage) WithBlur() GenericPage {
 	return p
 }
 
-func (p LogsPage) WithStyles(styles style.Styles) GenericPage {
-	p.styles = styles
+func (p LogsPage) WithTheme(theme style.Theme) GenericPage {
+	p.theme = theme
 	p.updateStyles()
 	p.filterableViewport.SetFilterableViewportStyles(filterableviewport.Styles{
 		Match: filterableviewport.MatchStyles{
-			Focused:   styles.Inverse,
-			Unfocused: styles.AltInverse,
+			Focused:           theme.MatchFocused,
+			FocusedIfSelected: theme.MatchFocusedIfSelected,
+			Unfocused:         theme.MatchUnfocused,
 		},
 	})
 	return p
 }
 
 func (p LogsPage) Help() string {
-	return help.MakeHelp(p.keyMap, p.styles.InverseUnderline)
+	return help.MakeHelp(p.keyMap, p.theme.HelpKeyColumn)
 }
 
 func (p LogsPage) WithLogFilter(lf model.LogFilter) LogsPage {
@@ -284,18 +285,6 @@ func (p LogsPage) WithAppendedLogs(logs []model.PageLog) LogsPage {
 		p.filterableViewport.SetObjects(orderedLogs)
 	}
 
-	return p
-}
-
-func (p LogsPage) WithContainerColors(containerIDToColor map[string]container.ContainerColors) LogsPage {
-	allLogs := p.logContainer.GetOrderedLogs()
-	for i := range allLogs {
-		color, ok := containerIDToColor[allLogs[i].Log.Container.ID()]
-		if ok {
-			allLogs[i].ContainerColors = &color
-		}
-	}
-	p.setLogs(allLogs)
 	return p
 }
 
@@ -401,7 +390,7 @@ func (p *LogsPage) setStickynessBasedOnOrder() {
 func (p *LogsPage) updateFilterLabel() {
 	prefix := fmt.Sprintf("(L)ogs, %s", getOrder(p.logContainer.Ascending()))
 	if p.focused {
-		prefix = p.styles.Blue.Render(prefix)
+		prefix = p.theme.FilterPrefixFocused.Render(prefix)
 	}
 	p.filterableViewport.SetFilterLinePrefix(prefix)
 }
@@ -415,7 +404,7 @@ func (p *LogsPage) updatePrettyPrintOnLogs() {
 }
 
 func (p *LogsPage) updateStyles() {
-	p.filterableViewport.SetViewportStyles(viewportStylesForFocus(p.focused, p.styles))
+	p.filterableViewport.SetViewportStyles(viewportStylesForFocus(p.focused, p.theme))
 	p.updateFilterLabel()
 }
 
