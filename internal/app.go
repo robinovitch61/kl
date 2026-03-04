@@ -50,6 +50,7 @@ type state struct {
 	rightPageType      page.Type
 	helpText           string
 	err                error
+	errTime            time.Time
 }
 
 type components struct {
@@ -89,6 +90,11 @@ func InitialModel(c Config) Model {
 	}
 }
 
+func (m *Model) setErr(err error) {
+	m.state.err = err
+	m.state.errTime = time.Now()
+}
+
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		tea.Tick(constants.BatchUpdateLogsInterval, func(t time.Time) tea.Msg { return message.BatchUpdateLogsMsg{} }),
@@ -120,7 +126,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// only handle these if m.state.err is nil
 	switch msg := msg.(type) {
 	case message.ErrMsg:
-		m.state.err = msg.Err
+		m.setErr(msg.Err)
 		return m, nil
 
 	// WindowSizeMsg arrives once on startup, then again every time the window is resized
@@ -130,7 +136,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			var err error
 			m, cmd, err = initializedModel(m)
 			if err != nil {
-				m.state.err = err
+				m.setErr(err)
 				return m, nil
 			}
 			cmds = append(cmds, cmd)
@@ -240,7 +246,7 @@ func (m Model) View() tea.View {
 		errString := wrap.String(m.state.err.Error(), m.state.width)
 		content = lipgloss.JoinVertical(
 			lipgloss.Left,
-			"Error - if this seems wrong, consider opening an issue",
+			fmt.Sprintf("Error at %s - if this seems wrong, consider opening an issue", m.state.errTime.Local().Format("2006-01-02 15:04:05")),
 			"https://github.com/robinovitch61/kl/issues/new",
 			"",
 			"ctrl+c to quit",
@@ -378,7 +384,7 @@ func (m Model) changeFocusedPage(newPage page.Type) (Model, tea.Cmd) {
 
 		m.state.focusedPageType = page.SingleLogPageType
 	default:
-		m.state.err = fmt.Errorf("unknown page type %d", newPage)
+		m.setErr(fmt.Errorf("unknown page type %d", newPage))
 	}
 	m.pages[m.state.focusedPageType] = m.pages[m.state.focusedPageType].WithFocus()
 	m.syncDimensions()
@@ -628,7 +634,7 @@ func (m Model) getStartLogScannerCmd(client client.K8sClient, ent entity.Entity,
 	// ensure the entity is a container
 	err := ent.AssertIsContainer()
 	if err != nil {
-		m.state.err = err
+		m.setErr(err)
 		return m, nil
 	}
 
@@ -772,14 +778,14 @@ func (m Model) handleContainerListenerMsg(msg command.GetContainerListenerMsg) (
 	var cmds []tea.Cmd
 
 	if msg.Err != nil {
-		m.state.err = msg.Err
+		m.setErr(msg.Err)
 		return m, nil
 	}
 
 	// if a container listener already exists for the cluster and namespace, something has gone wrong
 	for _, cl := range m.containerListeners {
 		if cl.Cluster == msg.Listener.Cluster && cl.Namespace == msg.Listener.Namespace {
-			m.state.err = fmt.Errorf("container listener already exists for cluster %s and namespace %s", msg.Listener.Cluster, msg.Listener.Namespace)
+			m.setErr(fmt.Errorf("container listener already exists for cluster %s and namespace %s", msg.Listener.Cluster, msg.Listener.Namespace))
 			return m, nil
 		}
 	}
@@ -796,7 +802,7 @@ func (m Model) handleContainerDeltasMsg(msg command.GetContainerDeltasMsg) (Mode
 	var cmds []tea.Cmd
 
 	if msg.Err != nil {
-		m.state.err = msg.Err
+		m.setErr(msg.Err)
 		return m, nil
 	}
 
@@ -911,7 +917,7 @@ func (m Model) handleStoppedLogScannersMsg(msg command.StoppedLogScannersMsg) (M
 
 func (m Model) handleNewLogsMsg(msg command.GetNewLogsMsg) (Model, tea.Cmd) {
 	if msg.Err != nil {
-		m.state.err = msg.Err
+		m.setErr(msg.Err)
 		return m, nil
 	}
 
@@ -933,7 +939,7 @@ func (m Model) handleNewLogsMsg(msg command.GetNewLogsMsg) (Model, tea.Cmd) {
 		if m.containerToShortName != nil {
 			shortName, err = m.containerToShortName(msg.NewLogs[i].Container)
 			if err != nil {
-				m.state.err = err
+				m.setErr(err)
 				return m, nil
 			}
 		}
@@ -1042,13 +1048,13 @@ func (m Model) withUpdatedContainerShortNames() Model {
 	m.containerToShortName = m.entityTree.ContainerToShortName(constants.MinCharsEachSideShortNames)
 	newLogsPage, err := m.pages[page.LogsPageType].(page.LogsPage).WithUpdatedShortNames(m.containerToShortName)
 	if err != nil {
-		m.state.err = err
+		m.setErr(err)
 		return m
 	}
 
 	err = m.updateShortNamesInBuffer()
 	if err != nil {
-		m.state.err = err
+		m.setErr(err)
 		return m
 	}
 
