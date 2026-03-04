@@ -917,8 +917,35 @@ func (m Model) handleStoppedLogScannersMsg(msg command.StoppedLogScannersMsg) (M
 
 func (m Model) handleNewLogsMsg(msg command.GetNewLogsMsg) (Model, tea.Cmd) {
 	if msg.Err != nil {
-		m.setErr(msg.Err)
-		return m, nil
+		dev.Debug(fmt.Sprintf("log scanner error for %s: %v", msg.LogScanner.Container.HumanReadable(), msg.Err))
+
+		ent := m.entityTree.GetEntity(msg.LogScanner.Container)
+		if ent == nil || ent.LogScanner == nil || !ent.LogScanner.Equals(msg.LogScanner) {
+			return m, nil
+		}
+
+		// only attempt restart if the entity is actively scanning
+		if ent.State != entity.Scanning {
+			return m, nil
+		}
+
+		// the scanner has already stopped itself (k8s_log.go StartReadingLogs calls Cancel and closes channels)
+		// transition entity to Inactive to allow restart
+		var cmd tea.Cmd
+		var cmds []tea.Cmd
+
+		ent.LogScanner = nil
+		ent.State = entity.Inactive
+		m.entityTree.AddOrReplace(*ent)
+
+		// re-activate to restart the scanner (doActions will use LastLogTime to avoid duplicate logs)
+		newEnt, newTree, actions := ent.Activate(m.entityTree)
+		m.entityTree = newTree
+		m, cmd = m.doActions(newEnt, actions)
+		cmds = append(cmds, cmd)
+
+		m.pages[page.EntitiesPageType] = m.pages[page.EntitiesPageType].(page.EntityPage).WithEntityTree(m.entityTree)
+		return m, tea.Batch(cmds...)
 	}
 
 	// ignore logs if logScanner has already been closed
@@ -960,6 +987,14 @@ func (m Model) handleNewLogsMsg(msg command.GetNewLogsMsg) (Model, tea.Cmd) {
 	}
 
 	m.pageLogBuffer = append(m.pageLogBuffer, newLogs...)
+
+	// track the last log timestamp for this entity so scanner restarts resume from the right point
+	if len(msg.NewLogs) > 0 {
+		lastTimestamp := msg.NewLogs[len(msg.NewLogs)-1].Timestamp
+		if lastTimestamp.After(ent.LastLogTime) {
+			ent.LastLogTime = lastTimestamp
+		}
+	}
 
 	if msg.DoneScanning {
 		return m, nil
@@ -1023,7 +1058,11 @@ func (m Model) doActions(ent entity.Entity, actions []entity.EntityAction) (Mode
 	for action := range actionSet {
 		switch action {
 		case entity.StartScanner:
-			m, cmd = m.getStartLogScannerCmd(m.k8sClient, ent, m.state.sinceTime.Time)
+			sinceTime := m.state.sinceTime.Time
+			if !ent.LastLogTime.IsZero() {
+				sinceTime = ent.LastLogTime.Add(time.Nanosecond)
+			}
+			m, cmd = m.getStartLogScannerCmd(m.k8sClient, ent, sinceTime)
 			cmds = append(cmds, cmd)
 		case entity.StopScanner:
 			cmds = append(cmds, command.StopLogScannerCmd(ent, false))
@@ -1076,9 +1115,12 @@ func (m *Model) updateShortNamesInBuffer() error {
 	return nil
 }
 
-func (m *Model) removeLogsForContainer(container container.Container) {
-	m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithLogsRemovedForContainer(container)
-	m.removeContainerLogsFromBuffer(container)
+func (m *Model) removeLogsForContainer(ct container.Container) {
+	m.pages[page.LogsPageType] = m.pages[page.LogsPageType].(page.LogsPage).WithLogsRemovedForContainer(ct)
+	m.removeContainerLogsFromBuffer(ct)
+	if ent := m.entityTree.GetEntity(ct); ent != nil {
+		ent.LastLogTime = time.Time{}
+	}
 }
 
 func (m *Model) removeContainerLogsFromBuffer(container container.Container) {

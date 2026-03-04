@@ -19,6 +19,7 @@ type Entity struct {
 	LogScanner                                *k8s_log.LogScanner
 	Prefix                                    string
 	State                                     EntityState
+	LastLogTime                               time.Time
 }
 
 func (e Entity) GetItem() item.Item {
