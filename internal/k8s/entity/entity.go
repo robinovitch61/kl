@@ -196,7 +196,9 @@ func (e Entity) Delete(tree Tree, delta container.ContainerDelta) (Entity, Tree,
 		tree.Remove(e)
 		return e, tree, []EntityAction{}
 	case WantScanning:
-		tree.Remove(e)
+		e.State = Deleted
+		e.Container.Status = delta.Container.Status
+		tree.AddOrReplace(e)
 		return e, tree, []EntityAction{}
 	case ScannerStarting:
 		tree.Remove(e)
@@ -294,6 +296,11 @@ func (e Entity) ScannerStarted(tree Tree, startErr error, scanner k8s_log.LogSca
 		}
 
 		tree.AddOrReplace(e)
+		return e, tree, []EntityAction{}
+	case Deleted:
+		// can happen when a same-batch Update(WantScanning→ScannerStarting) dispatches StartScanner,
+		// then a Delete(WantScanning→Deleted) overwrites the state before the scanner starts
+		scanner.Cancel()
 		return e, tree, []EntityAction{}
 	default:
 		panic(fmt.Sprintf("ScannerStarted called for entity in %v state", e.State))
