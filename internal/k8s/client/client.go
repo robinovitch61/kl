@@ -58,6 +58,16 @@ type ContainerListener struct {
 	ctx                context.Context
 }
 
+func NewContainerListener(ctx context.Context, cluster, namespace string, deltaChan chan container.ContainerDelta, stop context.CancelFunc) ContainerListener {
+	return ContainerListener{
+		Cluster:            cluster,
+		Namespace:          namespace,
+		containerDeltaChan: deltaChan,
+		ctx:                ctx,
+		Stop:               stop,
+	}
+}
+
 func (c clientImpl) GetContainerListener(
 	cluster,
 	namespace string,
@@ -144,13 +154,7 @@ func (c clientImpl) GetContainerListener(
 		return ContainerListener{}, fmt.Errorf("timed out waiting for caches to sync")
 	}
 
-	return ContainerListener{
-		Cluster:            cluster,
-		Namespace:          namespace,
-		containerDeltaChan: deltaChan,
-		ctx:                ctx,
-		Stop:               cancel,
-	}, nil
+	return NewContainerListener(ctx, cluster, namespace, deltaChan, cancel), nil
 }
 
 func (c clientImpl) GetContainerStatus(

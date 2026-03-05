@@ -1,20 +1,22 @@
-package container
+package container_test
 
 import (
 	"testing"
 	"time"
+
+	"github.com/robinovitch61/kl/internal/k8s/container"
 )
 
 func TestContainerDeltaSet(t *testing.T) {
 	t.Run("Add and Size", func(t *testing.T) {
-		cds := &ContainerDeltaSet{}
+		cds := &container.ContainerDeltaSet{}
 		if cds.Size() != 0 {
 			t.Errorf("Expected initial size to be 0, got %d", cds.Size())
 		}
 
-		delta1 := ContainerDelta{
+		delta1 := container.ContainerDelta{
 			Time: time.Now(),
-			Container: Container{
+			Container: container.Container{
 				Cluster: "cluster1",
 				Name:    "container1",
 			},
@@ -24,9 +26,9 @@ func TestContainerDeltaSet(t *testing.T) {
 			t.Errorf("Expected size to be 1 after adding one delta, got %d", cds.Size())
 		}
 
-		delta2 := ContainerDelta{
+		delta2 := container.ContainerDelta{
 			Time: time.Now().Add(time.Hour),
-			Container: Container{
+			Container: container.Container{
 				Cluster: "cluster1",
 				Name:    "container2",
 			},
@@ -38,33 +40,33 @@ func TestContainerDeltaSet(t *testing.T) {
 	})
 
 	t.Run("OrderedDeltas", func(t *testing.T) {
-		cds := &ContainerDeltaSet{}
+		cds := &container.ContainerDeltaSet{}
 		now := time.Now()
 
-		delta1 := ContainerDelta{
+		delta1 := container.ContainerDelta{
 			Time: now,
-			Container: Container{
+			Container: container.Container{
 				Cluster: "cluster1",
 				Name:    "container1",
 			},
 		}
-		delta2 := ContainerDelta{
+		delta2 := container.ContainerDelta{
 			Time: now.Add(time.Hour),
-			Container: Container{
+			Container: container.Container{
 				Cluster: "cluster1",
 				Name:    "container2",
 			},
 		}
-		delta3 := ContainerDelta{
+		delta3 := container.ContainerDelta{
 			Time: now.Add(30 * time.Minute),
-			Container: Container{
+			Container: container.Container{
 				Cluster: "cluster1",
 				Name:    "container3",
 			},
 		}
-		delta4 := ContainerDelta{
+		delta4 := container.ContainerDelta{
 			Time: now.Add(30 * time.Minute),
-			Container: Container{
+			Container: container.Container{
 				Cluster: "cluster1",
 				Name:    "container4",
 			},
@@ -95,7 +97,7 @@ func TestContainerDeltaSet(t *testing.T) {
 	})
 
 	t.Run("Empty ContainerDeltaSet", func(t *testing.T) {
-		cds := &ContainerDeltaSet{}
+		cds := &container.ContainerDeltaSet{}
 		if cds.Size() != 0 {
 			t.Errorf("Expected size of empty set to be 0, got %d", cds.Size())
 		}
@@ -105,7 +107,7 @@ func TestContainerDeltaSet(t *testing.T) {
 	})
 }
 
-func deltasEqual(a, b ContainerDelta) bool {
+func deltasEqual(a, b container.ContainerDelta) bool {
 	return a.Time.Equal(b.Time) &&
 		a.Container.Equals(b.Container) &&
 		a.ToDelete == b.ToDelete

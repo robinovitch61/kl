@@ -1,24 +1,19 @@
-package client
+package client_test
 
 import (
 	"context"
-	"sync"
 	"testing"
 	"time"
 
+	"github.com/robinovitch61/kl/internal/k8s/client"
 	"github.com/robinovitch61/kl/internal/k8s/container"
 )
 
-func newTestListener() ContainerListener {
+func newTestListener() (client.ContainerListener, chan container.ContainerDelta) {
 	ctx, cancel := context.WithCancel(context.Background())
 	deltaChan := make(chan container.ContainerDelta, 100)
-	return ContainerListener{
-		Cluster:            "test-cluster",
-		Namespace:          "test-namespace",
-		containerDeltaChan: deltaChan,
-		ctx:                ctx,
-		Stop:               cancel,
-	}
+	listener := client.NewContainerListener(ctx, "test-cluster", "test-namespace", deltaChan, cancel)
+	return listener, deltaChan
 }
 
 func newTestDelta(name string) container.ContainerDelta {
@@ -35,11 +30,11 @@ func newTestDelta(name string) container.ContainerDelta {
 }
 
 func TestNextDeltaSet_BlocksUntilFirstDelta(t *testing.T) {
-	listener := newTestListener()
+	listener, deltaChan := newTestListener()
 	defer listener.Stop()
 
 	go func() {
-		listener.containerDeltaChan <- newTestDelta("container-1")
+		deltaChan <- newTestDelta("container-1")
 	}()
 
 	deltaSet, err := listener.NextDeltaSet(time.Millisecond)
@@ -52,12 +47,12 @@ func TestNextDeltaSet_BlocksUntilFirstDelta(t *testing.T) {
 }
 
 func TestNextDeltaSet_BatchesDeltas(t *testing.T) {
-	listener := newTestListener()
+	listener, deltaChan := newTestListener()
 	defer listener.Stop()
 
-	listener.containerDeltaChan <- newTestDelta("container-1")
-	listener.containerDeltaChan <- newTestDelta("container-2")
-	listener.containerDeltaChan <- newTestDelta("container-3")
+	deltaChan <- newTestDelta("container-1")
+	deltaChan <- newTestDelta("container-2")
+	deltaChan <- newTestDelta("container-3")
 
 	deltaSet, err := listener.NextDeltaSet(time.Millisecond)
 	if err != nil {
@@ -69,7 +64,7 @@ func TestNextDeltaSet_BatchesDeltas(t *testing.T) {
 }
 
 func TestNextDeltaSet_ReturnsErrorOnStop(t *testing.T) {
-	listener := newTestListener()
+	listener, _ := newTestListener()
 
 	go func() {
 		listener.Stop()
@@ -81,30 +76,8 @@ func TestNextDeltaSet_ReturnsErrorOnStop(t *testing.T) {
 	}
 }
 
-func TestSendOnStoppedListenerDoesNotPanic(t *testing.T) {
-	listener := newTestListener()
-	listener.Stop()
-
-	// Simulate what the informer event handlers do: try to send on deltaChan
-	// after context is cancelled. This should not panic.
-	var wg sync.WaitGroup
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			delta := newTestDelta("container")
-			select {
-			case listener.containerDeltaChan <- delta:
-			case <-listener.ctx.Done():
-				return
-			}
-		}()
-	}
-	wg.Wait()
-}
-
 func TestStopIsIdempotent(t *testing.T) {
-	listener := newTestListener()
+	listener, _ := newTestListener()
 	// calling Stop multiple times should not panic (unlike close(chan))
 	listener.Stop()
 	listener.Stop()

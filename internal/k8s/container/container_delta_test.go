@@ -1,12 +1,14 @@
-package container
+package container_test
 
 import (
 	"testing"
 	"time"
+
+	"github.com/robinovitch61/kl/internal/k8s/container"
 )
 
 func TestContainerDeltaSetAdd(t *testing.T) {
-	cds := ContainerDeltaSet{}
+	cds := container.ContainerDeltaSet{}
 
 	if cds.Size() != 0 {
 		t.Errorf("Expected size 0 for empty set, got %d", cds.Size())
@@ -14,12 +16,12 @@ func TestContainerDeltaSetAdd(t *testing.T) {
 
 	now := time.Now()
 
-	delta1 := ContainerDelta{
+	delta1 := container.ContainerDelta{
 		Time: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-		Container: Container{
+		Container: container.Container{
 			Cluster: "cluster1", Namespace: "ns1", PodOwner: "dep1", Pod: "pod1", Name: "container1",
-			Status: ContainerStatus{
-				State:     ContainerRunning,
+			Status: container.ContainerStatus{
+				State:     container.ContainerRunning,
 				StartedAt: now,
 			},
 		},
@@ -31,13 +33,13 @@ func TestContainerDeltaSetAdd(t *testing.T) {
 		t.Errorf("Expected size 1, got %d", cds.Size())
 	}
 
-	delta2 := ContainerDelta{
+	delta2 := container.ContainerDelta{
 		Time: time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
-		Container: Container{
+		Container: container.Container{
 			Cluster: "cluster1", Namespace: "ns1", PodOwner: "dep1", Pod: "pod1", Name: "container2",
-			Status: ContainerStatus{
-				State:     ContainerTerminated,
-				StartedAt: now.Add(-1 * time.Hour), // Terminated 1 hour ago
+			Status: container.ContainerStatus{
+				State:     container.ContainerTerminated,
+				StartedAt: now.Add(-1 * time.Hour),
 			},
 		},
 		ToDelete: true,
@@ -50,40 +52,38 @@ func TestContainerDeltaSetAdd(t *testing.T) {
 }
 
 func TestContainerDeltaSetOrderedDeltas(t *testing.T) {
-	cds := ContainerDeltaSet{}
+	cds := container.ContainerDeltaSet{}
 
 	now := time.Now()
 
-	// Sorting is by time, then container ID asc. Delta1 happens after delta2 and delta3, so is last
-	delta1 := ContainerDelta{
+	delta1 := container.ContainerDelta{
 		Time: time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
-		Container: Container{
+		Container: container.Container{
 			Cluster: "cluster1", Namespace: "ns1", PodOwner: "dep1", Pod: "pod1", Name: "container1",
-			Status: ContainerStatus{
-				State:     ContainerRunning,
+			Status: container.ContainerStatus{
+				State:     container.ContainerRunning,
 				StartedAt: now,
 			},
 		},
 		ToDelete: false,
 	}
-	// Delta2 and delta3 happen at same time, but delta2 should be first because of container ID
-	delta2 := ContainerDelta{
+	delta2 := container.ContainerDelta{
 		Time: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-		Container: Container{
+		Container: container.Container{
 			Cluster: "cluster1", Namespace: "ns1", PodOwner: "dep1", Pod: "pod1", Name: "container1",
-			Status: ContainerStatus{
-				State:     ContainerUnknown,
+			Status: container.ContainerStatus{
+				State:     container.ContainerUnknown,
 				StartedAt: time.Time{},
 			},
 		},
 		ToDelete: false,
 	}
-	delta3 := ContainerDelta{
+	delta3 := container.ContainerDelta{
 		Time: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-		Container: Container{
+		Container: container.Container{
 			Cluster: "cluster1", Namespace: "ns1", PodOwner: "dep1", Pod: "pod1", Name: "container2",
-			Status: ContainerStatus{
-				State:     ContainerWaiting,
+			Status: container.ContainerStatus{
+				State:     container.ContainerWaiting,
 				StartedAt: time.Time{},
 			},
 		},
@@ -112,7 +112,7 @@ func TestContainerDeltaSetOrderedDeltas(t *testing.T) {
 }
 
 func TestContainerDeltaSetEmptyOrderedDeltas(t *testing.T) {
-	cds := ContainerDeltaSet{}
+	cds := container.ContainerDeltaSet{}
 
 	orderedDeltas := cds.OrderedDeltas()
 

@@ -155,6 +155,103 @@ func StyleStyledString(s string, st lipgloss.Style) string {
 	return finalResult
 }
 
+// SanitizeTerminalSequences removes terminal control sequences that could affect
+// the terminal (cursor movement, screen clearing, etc.) while preserving ANSI
+// styling sequences (SGR: colors, bold, underline, etc.).
+func SanitizeTerminalSequences(s string) string {
+	var buf strings.Builder
+	buf.Grow(len(s))
+	i := 0
+	for i < len(s) {
+		b := s[i]
+
+		if b == '\x1b' {
+			if i+1 >= len(s) {
+				// lone ESC at end
+				i++
+				continue
+			}
+			next := s[i+1]
+
+			// CSI sequence: ESC [
+			if next == '[' {
+				j := i + 2
+				// skip parameter bytes (0x30-0x3F)
+				for j < len(s) && s[j] >= 0x30 && s[j] <= 0x3F {
+					j++
+				}
+				// skip intermediate bytes (0x20-0x2F)
+				for j < len(s) && s[j] >= 0x20 && s[j] <= 0x2F {
+					j++
+				}
+				// final byte (0x40-0x7E)
+				if j < len(s) && s[j] >= 0x40 && s[j] <= 0x7E {
+					if s[j] == 'm' {
+						// SGR sequence - keep styling
+						buf.WriteString(s[i : j+1])
+					}
+					i = j + 1
+					continue
+				}
+				// incomplete CSI - skip ESC
+				i++
+				continue
+			}
+
+			// OSC sequence: ESC ] ... (BEL or ST)
+			if next == ']' {
+				j := i + 2
+				for j < len(s) {
+					if s[j] == '\x07' {
+						j++
+						break
+					}
+					if s[j] == '\x1b' && j+1 < len(s) && s[j+1] == '\\' {
+						j += 2
+						break
+					}
+					j++
+				}
+				i = j
+				continue
+			}
+
+			// DCS, PM, APC sequences: ESC P, ESC ^, ESC _
+			if next == 'P' || next == '^' || next == '_' {
+				j := i + 2
+				for j < len(s) {
+					if s[j] == '\x1b' && j+1 < len(s) && s[j+1] == '\\' {
+						j += 2
+						break
+					}
+					j++
+				}
+				i = j
+				continue
+			}
+
+			// other single-char escape sequences (e.g. ESC c = reset) - skip
+			i += 2
+			continue
+		}
+
+		// remove C0 control chars except tab (already converted to spaces above)
+		if b < 0x20 && b != '\t' {
+			i++
+			continue
+		}
+		// remove DEL
+		if b == 0x7F {
+			i++
+			continue
+		}
+
+		buf.WriteByte(b)
+		i++
+	}
+	return buf.String()
+}
+
 // CmpStr compares two strings and fails the test if they are not equal
 func CmpStr(t *testing.T, expected, actual string) {
 	_, file, line, _ := runtime.Caller(1)
