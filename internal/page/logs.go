@@ -275,7 +275,6 @@ func (p LogsPage) WithAppendedLogs(logs []model.PageLog) LogsPage {
 		logs[i].CurrentTimestamp = getLogTimestamp(logs[i], timestampFormats[p.timestampFormatIdx])
 		logs[i].CurrentName = getContainerName(logs[i], nameFormats[p.nameFormatIdx])
 		logs[i].PrettyPrinted = p.prettyPrint
-		logs[i].BuildPrettyItemWithPrefix()
 		p.logContainer.AppendLog(logs[i], nil)
 	}
 
@@ -372,7 +371,6 @@ func (p LogsPage) WithNoStickyness() LogsPage {
 func (p *LogsPage) setLogs(newLogs []model.PageLog) {
 	p.logContainer.RemoveAllLogs()
 	for i := range newLogs {
-		newLogs[i].BuildPrettyItemWithPrefix()
 		p.logContainer.AppendLog(newLogs[i], nil)
 	}
 	p.filterableViewport.SetObjects(p.logContainer.GetOrderedLogs())

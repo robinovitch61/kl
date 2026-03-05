@@ -23,11 +23,28 @@ type LogTimestamps struct {
 }
 
 type Log struct {
-	Timestamp   time.Time
-	Timestamps  LogTimestamps
-	Container   container.Container
-	ContentItem item.SingleItem
-	PrettyItems []item.SingleItem // pretty-printed JSON lines, nil if not valid JSON or single item
+	Timestamp      time.Time
+	Timestamps     LogTimestamps
+	Container      container.Container
+	ContentItem    item.SingleItem
+	prettyItems    []item.SingleItem // pretty-printed JSON lines, nil if not valid JSON or single item
+	prettyComputed bool
+}
+
+// GetPrettyItems returns the pretty-printed JSON lines for this log, computing
+// and caching the result on first access. Returns nil if the content is not
+// multi-line JSON.
+func (l *Log) GetPrettyItems() []item.SingleItem {
+	if !l.prettyComputed {
+		if lines := PrettyPrintJSON(l.ContentItem.Content()); len(lines) > 1 {
+			l.prettyItems = make([]item.SingleItem, len(lines))
+			for i, line := range lines {
+				l.prettyItems[i] = item.NewItem(line)
+			}
+		}
+		l.prettyComputed = true
+	}
+	return l.prettyItems
 }
 
 // PrettyPrintJSON attempts to pretty-print JSON input. Returns the input as-is if not valid JSON.
@@ -116,15 +133,7 @@ func (ls LogScanner) StartReadingLogs() {
 
 			localTime := parsedTime.Local()
 
-			// precompute LogData here as logs come in as logs are immutable and instantiating new items is expensive
 			contentItem := item.NewItem(logContent)
-			var prettyItems []item.SingleItem
-			if lines := PrettyPrintJSON(logContent); len(lines) > 1 {
-				prettyItems = make([]item.SingleItem, len(lines))
-				for i, line := range lines {
-					prettyItems[i] = item.NewItem(line)
-				}
-			}
 
 			ls.LogChan <- Log{
 				Timestamp: parsedTime,
@@ -134,7 +143,6 @@ func (ls LogScanner) StartReadingLogs() {
 				},
 				Container:   ls.Container,
 				ContentItem: contentItem,
-				PrettyItems: prettyItems,
 			}
 		}
 

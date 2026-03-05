@@ -26,38 +26,27 @@ type PageLog struct {
 	Terminated       bool
 	Theme            *style.Theme
 	PrettyPrinted    bool
-	prettyItem       item.Item // cached MultiLineItem
 }
 
 func (l PageLog) GetItem() item.Item {
-	if l.PrettyPrinted && l.prettyItem != nil {
-		return l.prettyItem
+	if l.PrettyPrinted {
+		if cached := l.Log.GetPrettyItems(); cached != nil {
+			prefix := l.renderPrefix(true)
+			segments := make([]item.SingleItem, len(cached))
+			if prefix != "" {
+				segments[0] = item.NewItem(prefix + cached[0].Content())
+			} else {
+				segments[0] = cached[0]
+			}
+			copy(segments[1:], cached[1:])
+			return item.NewMultiLineItem(segments...)
+		}
 	}
 	prefix := l.renderPrefix(true)
 	if prefix == "" {
 		return l.Log.ContentItem
 	}
 	return item.NewConcat(item.NewItem(prefix), l.Log.ContentItem)
-}
-
-// BuildPrettyItemWithPrefix assembles the pretty-printed MultiLineItem for this log.
-func (l *PageLog) BuildPrettyItemWithPrefix() {
-	cached := l.Log.PrettyItems
-	if cached == nil {
-		l.prettyItem = nil
-		return
-	}
-
-	// only segment 0 depends on the prefix — the rest are reused from the Log cache
-	prefix := l.renderPrefix(true)
-	segments := make([]item.SingleItem, len(cached))
-	if prefix != "" {
-		segments[0] = item.NewItem(prefix + cached[0].Content())
-	} else {
-		segments[0] = cached[0]
-	}
-	copy(segments[1:], cached[1:])
-	l.prettyItem = item.NewMultiLineItem(segments...)
 }
 
 // renderPrefix returns the styled prefix (timestamp + container name + trailing space if needed)
