@@ -895,6 +895,9 @@ func (m Model) handleStoppedLogScannersMsg(msg command.StoppedLogScannersMsg) (M
 				m, cmd = m.doActions(ent, actions)
 				cmds = append(cmds, cmd)
 				if msg.Restart {
+					// clear LastLogTime so the scanner restarts with the new
+					// since time instead of resuming from the old position
+					ent.LastLogTime = time.Time{}
 					ent, newTree, actions = ent.Activate(m.entityTree)
 					m.entityTree = newTree
 					m, cmd = m.doActions(ent, actions)
