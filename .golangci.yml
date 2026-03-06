@@ -20,6 +20,7 @@ linters:
         - G108 # pprof endpoint
         - G114 # http serve without timeouts (debug only)
         - G115 # integer overflow conversion (linebuffer math)
+        - G118 # cancel func stored in model, called on shutdown
         - G301 # directory permissions
         - G304 # file path variable (CLI tool, not a server)
         - G401 # weak crypto (md5 used for color hashing, not security)
