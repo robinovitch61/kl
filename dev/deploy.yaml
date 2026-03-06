@@ -103,8 +103,6 @@ spec:
               value: "30"
             - name: PERIODIC_LOGGING
               value: "true"
-            - name: PERIODIC_LOGGING_BYTES_PER_LOG
-              value: "10000"
             - name: PERIODIC_LOGGING_LOGS_PER_SECOND
               value: "5"
             - name: PERIODIC_BIG_LOGGING
@@ -140,8 +138,6 @@ spec:
               value: "30"
             - name: PERIODIC_LOGGING
               value: "true"
-            - name: PERIODIC_LOGGING_BYTES_PER_LOG
-              value: "10000"
             - name: PERIODIC_LOGGING_LOGS_PER_SECOND
               value: "5"
             - name: PERIODIC_BIG_LOGGING
@@ -177,8 +173,6 @@ spec:
               value: "30"
             - name: PERIODIC_LOGGING
               value: "true"
-            - name: PERIODIC_LOGGING_BYTES_PER_LOG
-              value: "10000"
             - name: PERIODIC_LOGGING_LOGS_PER_SECOND
               value: "5"
             - name: PERIODIC_BIG_LOGGING
