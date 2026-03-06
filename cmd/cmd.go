@@ -140,7 +140,7 @@ var (
 		},
 		"theme": {
 			cfgFileEnvVar: "theme",
-			description:   `Color theme. Defaults to accessible ansi colors. Other options: 'vivid', 'none'`,
+			description:   `Color theme. Defaults to accessible ansi colors. Other options: 'classic', 'none'`,
 		},
 	}
 
@@ -418,8 +418,8 @@ func getSince(cmd *cobra.Command) model.SinceTime {
 
 func getThemeName(cmd *cobra.Command) string {
 	theme := cmd.Flags().Lookup("theme").Value.String()
-	if theme != "" && theme != "vivid" && theme != "none" {
-		fmt.Printf("error: invalid theme %q (valid options: 'vivid', 'none')\n", theme)
+	if theme != "" && theme != "classic" && theme != "none" {
+		fmt.Printf("error: invalid theme %q (valid options: 'classic', 'none')\n", theme)
 		os.Exit(1)
 	}
 	return theme

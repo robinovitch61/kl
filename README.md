@@ -58,8 +58,8 @@ kl --ic "^my-sidecar$"
 # Start focused on logs, ordered by timestamp descending, showing logs from 10 minutes ago onwards
 kl --mc "^my-container$" -d --logs-view --since 10m
 
-# Use the vivid color theme (256-color/true-color)
-kl --theme vivid
+# Use the classic color theme (256-color/true-color)
+kl --theme classic
 
 # Disable colors entirely
 kl --theme none
