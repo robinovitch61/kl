@@ -32,15 +32,11 @@ const (
 func viewportStylesForFocus(focused bool, theme style.Theme) viewport.Styles {
 	if focused {
 		return viewport.Styles{
-			SelectionPrefix:          theme.SelectionPrefix,
-			SelectedItemStyle:        theme.SelectedItem,
-			HighlightStyle:           theme.Highlight,
-			HighlightStyleIfSelected: theme.HighlightIfSelected,
+			SelectionPrefix:   theme.SelectionPrefix,
+			SelectedItemStyle: theme.SelectedItem,
 		}
 	}
 	return viewport.Styles{
-		FooterStyle:              theme.Footer,
-		HighlightStyle:           theme.Highlight,
-		HighlightStyleIfSelected: theme.Highlight,
+		FooterStyle: theme.Footer,
 	}
 }

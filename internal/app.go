@@ -658,7 +658,16 @@ func (m Model) getStartLogScannerCmd(client client.K8sClient, ent entity.Entity,
 		return m, tea.Tick(time.Second*5, func(t time.Time) tea.Msg { return toast.TimeoutMsg{ID: newToast.ID} })
 	}
 
-	return m, command.StartLogScannerCmd(client, ent.Container, sinceTime)
+	colorize := func(s string) string {
+		return util.ColorizeJSON(s, util.JSONColorStyles{
+			Key:    m.data.theme.JSONKey,
+			String: m.data.theme.JSONString,
+			Number: m.data.theme.JSONNumber,
+			Bool:   m.data.theme.JSONBool,
+			Null:   m.data.theme.JSONNull,
+		})
+	}
+	return m, command.StartLogScannerCmd(client, ent.Container, sinceTime, colorize)
 }
 
 func (m Model) handleLogsPageKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {

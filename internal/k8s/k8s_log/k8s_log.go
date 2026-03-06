@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -27,8 +26,14 @@ type Log struct {
 	Timestamps     LogTimestamps
 	Container      container.Container
 	ContentItem    item.SingleItem
-	prettyItems    []item.SingleItem // pretty-printed JSON lines, nil if not valid JSON or single item
+	colorize       func(string) string // optional JSON colorizer
+	prettyItems    []item.SingleItem   // pretty-printed JSON lines, nil if not valid JSON or single item
 	prettyComputed bool
+}
+
+// Colorize returns the colorize function, or nil if no colorization is configured.
+func (l *Log) Colorize() func(string) string {
+	return l.colorize
 }
 
 // GetPrettyItems returns the pretty-printed JSON lines for this log, computing
@@ -36,7 +41,7 @@ type Log struct {
 // multi-line JSON.
 func (l *Log) GetPrettyItems() []item.SingleItem {
 	if !l.prettyComputed {
-		if lines := PrettyPrintJSON(l.ContentItem.Content()); len(lines) > 1 {
+		if lines := util.PrettyPrintJSON(l.ContentItem.ContentNoAnsi(), l.colorize); len(lines) > 1 {
 			l.prettyItems = make([]item.SingleItem, len(lines))
 			for i, line := range lines {
 				l.prettyItems[i] = item.NewItem(line)
@@ -47,44 +52,6 @@ func (l *Log) GetPrettyItems() []item.SingleItem {
 	return l.prettyItems
 }
 
-// PrettyPrintJSON attempts to pretty-print JSON input. Returns the input as-is if not valid JSON.
-func PrettyPrintJSON(input string) []string {
-	var raw map[string]interface{}
-
-	err := json.Unmarshal([]byte(input), &raw)
-	if err != nil {
-		return []string{input}
-	}
-
-	var prettyJSON bytes.Buffer
-	encoder := json.NewEncoder(&prettyJSON)
-	encoder.SetEscapeHTML(false)
-	encoder.SetIndent("", "    ")
-	err = encoder.Encode(raw)
-	if err != nil {
-		return []string{input}
-	}
-
-	lines := strings.Split(prettyJSON.String(), "\n")
-
-	// remove trailing empty line if exists
-	if len(lines) > 1 && strings.TrimSpace(lines[len(lines)-1]) == "" {
-		lines = lines[:len(lines)-1]
-	}
-
-	var result []string
-	for i := range lines {
-		if strings.Contains(lines[i], "\\n") || strings.Contains(lines[i], "\\t") {
-			lines[i] = strings.ReplaceAll(lines[i], "\\t", "    ")
-			parts := strings.Split(lines[i], "\\n")
-			result = append(result, parts...)
-		} else {
-			result = append(result, lines[i])
-		}
-	}
-	return result
-}
-
 type LogScanner struct {
 	Container      container.Container
 	LogChan        chan Log
@@ -92,9 +59,10 @@ type LogScanner struct {
 	cancel         context.CancelFunc
 	uuid           string
 	logLineScanner *bufio.Scanner
+	colorize       func(string) string
 }
 
-func NewLogScanner(ct container.Container, scanner *bufio.Scanner, cancelK8sStream context.CancelFunc) LogScanner {
+func NewLogScanner(ct container.Container, scanner *bufio.Scanner, cancelK8sStream context.CancelFunc, colorize func(string) string) LogScanner {
 	return LogScanner{
 		Container:      ct,
 		LogChan:        make(chan Log, 1), // this value doesn't seem to affect performance much
@@ -102,6 +70,7 @@ func NewLogScanner(ct container.Container, scanner *bufio.Scanner, cancelK8sStre
 		cancel:         cancelK8sStream,
 		uuid:           uuid.New().String(),
 		logLineScanner: scanner,
+		colorize:       colorize,
 	}
 }
 
@@ -131,6 +100,10 @@ func (ls LogScanner) StartReadingLogs() {
 			logContent = strings.ReplaceAll(logContent, "\t", "    ")
 			logContent = util.SanitizeTerminalSequences(logContent)
 
+			if ls.colorize != nil {
+				logContent = ls.colorize(logContent)
+			}
+
 			localTime := parsedTime.Local()
 
 			contentItem := item.NewItem(logContent)
@@ -143,6 +116,7 @@ func (ls LogScanner) StartReadingLogs() {
 				},
 				Container:   ls.Container,
 				ContentItem: contentItem,
+				colorize:    ls.colorize,
 			}
 		}
 

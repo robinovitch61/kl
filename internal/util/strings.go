@@ -252,6 +252,34 @@ func SanitizeTerminalSequences(s string) string {
 	return buf.String()
 }
 
+// lastActiveANSI scans s for ANSI SGR sequences and returns the last non-reset
+// sequence found, or "" if the last sequence is a reset or none exist.
+func lastActiveANSI(s string) string {
+	var last string
+	for i := 0; i < len(s); i++ {
+		if s[i] != '\x1b' || i+1 >= len(s) || s[i+1] != '[' {
+			continue
+		}
+		j := i + 2
+		for j < len(s) && s[j] >= '0' && s[j] <= '?' {
+			j++
+		}
+		for j < len(s) && s[j] >= ' ' && s[j] <= '/' {
+			j++
+		}
+		if j < len(s) && s[j] == 'm' {
+			seq := s[i : j+1]
+			if seq == "\x1b[0m" || seq == "\x1b[m" {
+				last = ""
+			} else {
+				last = seq
+			}
+			i = j
+		}
+	}
+	return last
+}
+
 // CmpStr compares two strings and fails the test if they are not equal
 func CmpStr(t *testing.T, expected, actual string) {
 	_, file, line, _ := runtime.Caller(1)

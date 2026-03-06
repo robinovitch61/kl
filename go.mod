@@ -17,7 +17,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.20
 	github.com/muesli/reflow v0.3.0
 	github.com/rivo/uniseg v0.4.7
-	github.com/robinovitch61/viewport v0.10.1
+	github.com/robinovitch61/viewport v0.11.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.18.2

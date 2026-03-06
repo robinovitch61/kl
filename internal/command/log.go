@@ -21,6 +21,7 @@ func StartLogScannerCmd(
 	client client.K8sClient,
 	container container.Container,
 	sinceTime time.Time,
+	colorize func(string) string,
 ) tea.Cmd {
 	return func() tea.Msg {
 		dev.Debug(fmt.Sprintf("cmd running to start log scanner for container %v", container.HumanReadable()))
@@ -42,7 +43,7 @@ func StartLogScannerCmd(
 				Err:        fmt.Errorf("error getting log stream: %v", err),
 			}
 		}
-		ls := k8s_log.NewLogScanner(container, scanner, cancel)
+		ls := k8s_log.NewLogScanner(container, scanner, cancel, colorize)
 		ls.StartReadingLogs()
 		return StartedLogScannerMsg{LogScanner: ls}
 	}

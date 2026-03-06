@@ -45,6 +45,7 @@ func newTestScanner() k8s_log.LogScanner {
 		},
 		nil,
 		cancel,
+		nil,
 	)
 }
 

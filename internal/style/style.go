@@ -16,10 +16,8 @@ type Theme struct {
 	SelectionPrefix string
 
 	// viewport styles
-	SelectedItem        lipgloss.Style
-	Highlight           lipgloss.Style
-	HighlightIfSelected lipgloss.Style
-	Footer              lipgloss.Style
+	SelectedItem lipgloss.Style
+	Footer       lipgloss.Style
 
 	// filterable viewport match styles
 	MatchFocused           lipgloss.Style
@@ -29,6 +27,13 @@ type Theme struct {
 	// container name coloring — deterministic foreground styles assigned via hash.
 	// nil or empty disables container coloring.
 	ContainerColors []lipgloss.Style
+
+	// JSON syntax colorization
+	JSONKey    lipgloss.Style
+	JSONString lipgloss.Style
+	JSONNumber lipgloss.Style
+	JSONBool   lipgloss.Style
+	JSONNull   lipgloss.Style
 
 	// kl-specific styles
 	TopBar              lipgloss.Style
@@ -63,7 +68,7 @@ func (t Theme) ContainerColorStyle(name string) lipgloss.Style {
 // See https://blog.xoria.org/terminal-colors/ and https://jvns.ca/blog/2024/10/01/terminal-colours/
 func DefaultTheme() Theme {
 	return Theme{
-		SelectionPrefix: "",
+		SelectionPrefix: "▍",
 
 		ContainerColors: []lipgloss.Style{
 			// these are the most accessible colors as per https://blog.xoria.org/terminal-colors/
@@ -77,14 +82,18 @@ func DefaultTheme() Theme {
 			lipgloss.NewStyle().Foreground(lipgloss.BrightMagenta),
 			lipgloss.NewStyle().Foreground(lipgloss.BrightCyan),
 		},
-		SelectedItem:        lipgloss.NewStyle().Reverse(true),
-		Highlight:           lipgloss.NewStyle().Reverse(true),
-		HighlightIfSelected: lipgloss.NewStyle(),
-		Footer:              lipgloss.NewStyle(),
+		SelectedItem: lipgloss.NewStyle(), // rely on SelectionPrefix
+		Footer:       lipgloss.NewStyle(),
 
 		MatchFocused:           lipgloss.NewStyle().Reverse(true).Foreground(lipgloss.Cyan),
-		MatchFocusedIfSelected: lipgloss.NewStyle().Foreground(lipgloss.Cyan),
-		MatchUnfocused:         lipgloss.NewStyle().Foreground(lipgloss.BrightRed),
+		MatchFocusedIfSelected: lipgloss.NewStyle().Reverse(true).Foreground(lipgloss.Cyan),
+		MatchUnfocused:         lipgloss.NewStyle().Reverse(true).Foreground(lipgloss.BrightRed),
+
+		JSONKey:    lipgloss.NewStyle().Foreground(lipgloss.Cyan),
+		JSONString: lipgloss.NewStyle(), //.Foreground(lipgloss.Green),
+		JSONNumber: lipgloss.NewStyle().Foreground(lipgloss.Yellow),
+		JSONBool:   lipgloss.NewStyle().Foreground(lipgloss.Magenta),
+		JSONNull:   lipgloss.NewStyle().Foreground(lipgloss.Red),
 
 		TopBar:              lipgloss.NewStyle().Foreground(lipgloss.Cyan).Reverse(true),
 		TopBarAccent:        lipgloss.NewStyle().Foreground(lipgloss.Red),
@@ -101,7 +110,7 @@ func DefaultTheme() Theme {
 func VividTheme() Theme {
 	lilac := lipgloss.Color("189")
 	return Theme{
-		SelectionPrefix: "",
+		SelectionPrefix: "▍",
 
 		ContainerColors: []lipgloss.Style{
 			lipgloss.NewStyle().Background(lipgloss.Color("#58A2EE")).Foreground(lipgloss.Color("#000000")),
@@ -118,14 +127,18 @@ func VividTheme() Theme {
 			lipgloss.NewStyle().Background(lipgloss.Color("#FFDAB9")).Foreground(lipgloss.Color("#000000")),
 			lipgloss.NewStyle().Background(lipgloss.Color("#FF7E6A")).Foreground(lipgloss.Color("#000000")),
 		},
-		SelectedItem:        lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
-		Highlight:           lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
-		HighlightIfSelected: lipgloss.NewStyle(),
-		Footer:              lipgloss.NewStyle(),
+		SelectedItem: lipgloss.NewStyle(), // rely on SelectionPrefix
+		Footer:       lipgloss.NewStyle(),
 
 		MatchFocused:           lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
 		MatchFocusedIfSelected: lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
 		MatchUnfocused:         lipgloss.NewStyle().Foreground(lipgloss.Color("#141414")).Background(lipgloss.Color("#cbcbcb")),
+
+		JSONKey:    lipgloss.NewStyle().Foreground(lipgloss.Color("#88C0D0")),
+		JSONString: lipgloss.NewStyle().Foreground(lipgloss.Color("#A3BE8C")),
+		JSONNumber: lipgloss.NewStyle().Foreground(lipgloss.Color("#B48EAD")),
+		JSONBool:   lipgloss.NewStyle().Foreground(lipgloss.Color("#D08770")),
+		JSONNull:   lipgloss.NewStyle().Foreground(lipgloss.Color("#BF616A")),
 
 		TopBar:              lipgloss.NewStyle().Background(lilac).Foreground(lipgloss.Color("#000000")),
 		TopBarAccent:        lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#ffffff")),
@@ -140,29 +153,33 @@ func VividTheme() Theme {
 
 // NoColorTheme returns a theme with all styles empty.
 func NoColorTheme() Theme {
-	s := lipgloss.NewStyle()
+	noStyle := lipgloss.NewStyle()
 	return Theme{
 		// provide visual differentiation without color
-		SelectionPrefix: "> ",
+		SelectionPrefix: "▍",
 
-		ContainerColors:     nil,
-		SelectedItem:        s,
-		Highlight:           s,
-		HighlightIfSelected: s,
-		Footer:              s,
+		ContainerColors: nil,
+		SelectedItem:    noStyle,
+		Footer:          noStyle,
 
-		MatchFocused:           s,
-		MatchFocusedIfSelected: s,
-		MatchUnfocused:         s,
+		MatchFocused:           noStyle,
+		MatchFocusedIfSelected: noStyle,
+		MatchUnfocused:         noStyle,
 
-		TopBar:              s,
-		TopBarAccent:        s,
-		FilterPrefixFocused: s,
-		TimestampPrefix:     s,
-		HelpKeyColumn:       s,
+		JSONKey:    noStyle,
+		JSONString: noStyle,
+		JSONNumber: noStyle,
+		JSONBool:   noStyle,
+		JSONNull:   noStyle,
+
+		TopBar:              noStyle,
+		TopBarAccent:        noStyle,
+		FilterPrefixFocused: noStyle,
+		TimestampPrefix:     noStyle,
+		HelpKeyColumn:       noStyle,
 		EntityPaneBorder:    lipgloss.NewStyle().Border(lipgloss.ThickBorder(), false, true, false, false),
-		PromptSelected:      s,
-		Error:               s,
+		PromptSelected:      noStyle,
+		Error:               noStyle,
 	}
 }
 

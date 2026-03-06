@@ -8,10 +8,10 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/robinovitch61/kl/internal/dev"
 	"github.com/robinovitch61/kl/internal/help"
-	"github.com/robinovitch61/kl/internal/k8s/k8s_log"
 	"github.com/robinovitch61/kl/internal/keymap"
 	"github.com/robinovitch61/kl/internal/model"
 	"github.com/robinovitch61/kl/internal/style"
+	"github.com/robinovitch61/kl/internal/util"
 	"github.com/robinovitch61/viewport/filterableviewport"
 	"github.com/robinovitch61/viewport/viewport"
 	"github.com/robinovitch61/viewport/viewport/item"
@@ -232,7 +232,11 @@ func (p SingleLogPage) WithLog(log model.PageLog) SingleLogPage {
 	return p
 }
 
-func veryNicelyFormatThisLog(log model.PageLog, styleHeader bool) (string, []string) {
-	header := fmt.Sprintf("%s | %s", log.Log.Timestamps.Full, log.RenderName(log.ContainerNames.Full, styleHeader))
-	return header, k8s_log.PrettyPrintJSON(log.Log.ContentItem.Content())
+func veryNicelyFormatThisLog(log model.PageLog, includeStyle bool) (string, []string) {
+	header := fmt.Sprintf("%s | %s", log.Log.Timestamps.Full, log.RenderName(log.ContainerNames.Full, includeStyle))
+	var colorize func(string) string
+	if includeStyle {
+		colorize = log.Log.Colorize()
+	}
+	return header, util.PrettyPrintJSON(log.Log.ContentItem.ContentNoAnsi(), colorize)
 }

@@ -124,7 +124,7 @@ func TestScannerError_RestartsWithoutErrorScreen(t *testing.T) {
 
 	// simulate scanner started successfully
 	_, cancel := context.WithCancel(context.Background())
-	scanner := k8s_log.NewLogScanner(ct, nil, cancel)
+	scanner := k8s_log.NewLogScanner(ct, nil, cancel, nil)
 	m = updateModel(t, m, command.StartedLogScannerMsg{LogScanner: scanner})
 
 	// entity should now be Scanning
@@ -174,7 +174,7 @@ func TestContainerSelection_LogsAppearInView(t *testing.T) {
 
 	// simulate scanner started successfully
 	_, cancel := context.WithCancel(context.Background())
-	scanner := k8s_log.NewLogScanner(ct, nil, cancel)
+	scanner := k8s_log.NewLogScanner(ct, nil, cancel, nil)
 	m = updateModel(t, m, command.StartedLogScannerMsg{LogScanner: scanner})
 
 	// send logs with recognizable content
