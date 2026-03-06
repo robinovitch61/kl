@@ -241,6 +241,7 @@ func DescriptiveKeyBindings(km KeyMap) []key.Binding {
 		km.ReverseOrder,
 		km.Filter,
 		km.FilterRegex,
+		km.FilterCaseInsensitive,
 		km.Clear,
 		WithDesc(km.Enter, "apply filter"),
 		km.FilterNextRow,
