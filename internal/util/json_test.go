@@ -27,6 +27,8 @@ func TestColorizeJSON_NonJSON(t *testing.T) {
 		{"empty string", ""},
 		{"number", "42"},
 		{"starts with letter", "abc{def}"},
+		{"bracket log line", "[INF] testing '$G > data'"},
+		{"bracket with spaces", "  [8] starting up"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

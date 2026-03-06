@@ -69,7 +69,7 @@ type JSONColorStyles struct {
 }
 
 // ColorizeJSON applies ANSI color codes to JSON tokens in the input string.
-// Returns the input unchanged if it doesn't start with '{' or '['.
+// Returns the input unchanged if it's not valid JSON.
 func ColorizeJSON(input string, colors JSONColorStyles) string {
 	if len(input) == 0 {
 		return input
@@ -84,6 +84,12 @@ func ColorizeJSON(input string, colors JSONColorStyles) string {
 		return input
 	}
 	if input[firstNonSpace] != '{' && input[firstNonSpace] != '[' {
+		return input
+	}
+
+	// validate that the input is actually valid JSON before colorizing,
+	// otherwise text like "[INF] some log message" would be partially colorized
+	if !json.Valid([]byte(input)) {
 		return input
 	}
 
