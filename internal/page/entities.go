@@ -200,9 +200,6 @@ func (p EntityPage) WithEntityTree(entityTree entity.Tree) EntityPage {
 	f := p.getCurrentFilter()
 	p.entityTree.UpdatePrettyPrintPrefixes(f)
 	p.filterableViewport.SetObjects(p.entityTree.GetVisibleEntities(f))
-	p.filterableViewport.SetSelectionComparator(func(a, b entity.Entity) bool {
-		return a.EqualTo(b)
-	})
 	p.filterableViewport.SetAdjustObjectsForFilter(func(filterText string, isRegex bool) []entity.Entity {
 		f := makeFilterFromText(filterText, isRegex, p.keyMap)
 		entityTree.UpdatePrettyPrintPrefixes(f)

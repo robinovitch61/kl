@@ -819,7 +819,7 @@ func (m Model) handleContainerDeltasMsg(msg command.GetContainerDeltasMsg) (Mode
 
 	if len(existingContainerEntities) == 0 && !m.state.seenFirstContainer {
 		m.pages[m.state.focusedPageType] = m.pages[m.state.focusedPageType].WithFocus()
-		cmds = append(cmds, tea.Tick(constants.AttemptMaintainEntitySelectionAfterFirstContainer, func(t time.Time) tea.Msg { return message.StartMaintainEntitySelectionMsg{} }))
+		cmds = append(cmds, tea.Tick(constants.MaintainEntitySelectionAfterFirstContainer, func(t time.Time) tea.Msg { return message.StartMaintainEntitySelectionMsg{} }))
 		m.state.seenFirstContainer = true
 	}
 
