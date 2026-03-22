@@ -59,9 +59,9 @@ func NewLogsPage(
 			Bottom:       keyMap.Bottom,
 		}),
 		viewport.WithSelectionStyleOverridesItemStyle[model.PageLog](false),
+		viewport.WithSelectionEnabled[model.PageLog](true),
+		viewport.WithWrapText[model.PageLog](false),
 	)
-	vp.SetSelectionEnabled(true)
-	vp.SetWrapText(true)
 
 	fvp := filterableviewport.New(vp,
 		filterableviewport.WithKeyMap[model.PageLog](filterableviewport.KeyMap{
@@ -391,6 +391,7 @@ func (p *LogsPage) setStickynessBasedOnOrder() {
 func (p *LogsPage) updateFilterLabel() {
 	prefix := fmt.Sprintf("(L)ogs, %s", getOrder(p.logContainer.Ascending()))
 	if p.focused {
+		prefix += " [(w)rap, (p)rettify]"
 		prefix = p.theme.FilterPrefixFocused.Render(prefix)
 	}
 	p.filterableViewport.SetFilterLinePrefix(prefix)

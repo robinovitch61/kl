@@ -60,9 +60,9 @@ func NewEntitiesPage(
 			Top:          keyMap.Top,
 			Bottom:       keyMap.Bottom,
 		}),
+		viewport.WithSelectionEnabled[entity.Entity](true),
+		viewport.WithWrapText[entity.Entity](false),
 	)
-	vp.SetSelectionEnabled(true)
-	vp.SetWrapText(false)
 
 	fvp := filterableviewport.New(vp,
 		filterableviewport.WithKeyMap[entity.Entity](filterableviewport.KeyMap{

@@ -74,9 +74,9 @@ func NewSingleLogPage(
 			Bottom:       keyMap.Bottom,
 		}),
 		viewport.WithSelectionStyleOverridesItemStyle[SingleLogLine](false),
+		viewport.WithSelectionEnabled[SingleLogLine](false),
+		viewport.WithWrapText[SingleLogLine](true),
 	)
-	vp.SetSelectionEnabled(false)
-	vp.SetWrapText(true)
 
 	fvp := filterableviewport.New(vp,
 		filterableviewport.WithKeyMap[SingleLogLine](filterableviewport.KeyMap{
