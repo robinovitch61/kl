@@ -96,6 +96,7 @@ func NewSingleLogPage(
 		filterableviewport.WithEmptyText[SingleLogLine]("'/', 'r', or 'i' to filter"),
 		filterableviewport.WithFilterLinePosition[SingleLogLine](filterableviewport.FilterLineTop),
 		filterableviewport.WithFilterLinePrefix[SingleLogLine]("Single Log"),
+		filterableviewport.WithHorizontalPad[SingleLogLine](100000), // effectively center matches when text is unwrapped
 		filterableviewport.WithStyles[SingleLogLine](filterableviewport.Styles{
 			Match: filterableviewport.MatchStyles{
 				Focused:           theme.MatchFocused,

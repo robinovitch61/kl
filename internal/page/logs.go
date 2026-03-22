@@ -81,6 +81,7 @@ func NewLogsPage(
 		filterableviewport.WithEmptyText[model.PageLog]("'/', 'r', or 'i' to filter"),
 		filterableviewport.WithFilterLinePosition[model.PageLog](filterableviewport.FilterLineTop),
 		filterableviewport.WithFilterLinePrefix[model.PageLog](fmt.Sprintf("(L)ogs, %s", getOrder(!descending))),
+		filterableviewport.WithHorizontalPad[model.PageLog](100000), // effectively center matches when text is unwrapped
 		filterableviewport.WithStyles[model.PageLog](filterableviewport.Styles{
 			Match: filterableviewport.MatchStyles{
 				Focused:           theme.MatchFocused,
