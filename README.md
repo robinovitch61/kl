@@ -169,24 +169,27 @@ go build  # outputs ./kl executable
 Run an example flask + postgres + nginx setup in a local [k3d](https://k3d.io/) cluster for testing locally:
 
 ```sh
-k3d cluster create test
-k3d cluster create test2
-kubectl --context k3d-test apply -f ./dev/deploy.yaml
-kubectl --context k3d-test2 create namespace otherns
-kubectl --context k3d-test2 apply -f ./dev/deploy.yaml -n otherns
+k3d cluster create mycluster
+k3d cluster create myothercluster
+kubectl --context k3d-mycluster apply -f ./dev/deploy.yaml
+kubectl --context k3d-myothercluster create namespace otherns
+kubectl --context k3d-myothercluster apply -f ./dev/deploy.yaml -n otherns
 
-# view both clusters and all namespaces in kl
-kl --context k3d-test,k3d-test2 -A
+# view both clusters and both namespaces in kl
+kl --context k3d-mycluster,k3d-myothercluster -n default,otherns
+
+# use -A to include all namespaces (e.g. kube-system) in each cluster
+kl --context k3d-mycluster,k3d-myothercluster -A
 
 # access the application's webpage
-kubectl --context k3d-test2 -n otherns port-forward services/frontend-service 8080:80
+kubectl --context k3d-myothercluster -n otherns port-forward services/frontend-service 8080:80
 open http://localhost:8080
 
 # browser console one-liner to click button every second to generate logs
 setInterval(() => { document.getElementsByTagName("button")[0].click(); }, 1000);
 
 # or make requests directly to flask from the terminal
-kubectl --context k3d-test2 port-forward services/flask-service 5000:5000
+kubectl --context k3d-myothercluster port-forward services/flask-service 5000:5000
 curl http://localhost:5000/status
 ```
 
