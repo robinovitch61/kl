@@ -226,3 +226,71 @@ func TestContainerArrival_ShowsInEntityView(t *testing.T) {
 		t.Errorf("expected view to contain cluster name 'test-cluster', got:\n%s", view)
 	}
 }
+
+func TestDuplicateDeltas_NoDoubleStartScanner(t *testing.T) {
+	m := newTestModel()
+
+	// create a container in WantScanning state (waiting + activated)
+	ct := newAppTestContainer()
+	ct.Status.State = container.ContainerWaiting
+	var createSet container.ContainerDeltaSet
+	createSet.Add(newAppTestDelta(ct, true))
+	m = updateModel(t, m, command.GetContainerDeltasMsg{DeltaSet: createSet})
+
+	ent := m.entityTree.GetEntity(ct)
+	if ent == nil {
+		t.Fatal("expected entity to exist")
+	}
+	if ent.State != entity.WantScanning {
+		t.Fatalf("expected WantScanning, got %v", ent.State)
+	}
+
+	// send two update deltas for the same container transitioning to Running in the same batch
+	runningCt := ct
+	runningCt.Status.State = container.ContainerRunning
+	var updateSet container.ContainerDeltaSet
+	updateSet.Add(container.ContainerDelta{
+		Time:      time.Now(),
+		Container: runningCt,
+	})
+	updateSet.Add(container.ContainerDelta{
+		Time:      time.Now().Add(time.Millisecond),
+		Container: runningCt,
+	})
+	m = updateModel(t, m, command.GetContainerDeltasMsg{DeltaSet: updateSet})
+
+	ent = m.entityTree.GetEntity(runningCt)
+	if ent == nil {
+		t.Fatal("expected entity to exist")
+	}
+	if ent.State != entity.ScannerStarting {
+		t.Fatalf("expected ScannerStarting, got %v", ent.State)
+	}
+
+	// simulate first scanner starting successfully
+	_, cancel1 := context.WithCancel(context.Background())
+	scanner1 := k8s_log.NewLogScanner(runningCt, nil, cancel1, nil)
+	m = updateModel(t, m, command.StartedLogScannerMsg{LogScanner: scanner1})
+
+	ent = m.entityTree.GetEntity(runningCt)
+	if ent == nil {
+		t.Fatal("expected entity to exist")
+	}
+	if ent.State != entity.Scanning {
+		t.Fatalf("expected Scanning, got %v", ent.State)
+	}
+
+	// if a duplicate StartScanner was dispatched, a second ScannerStarted would arrive
+	// for an entity already in Scanning state, which must not panic
+	_, cancel2 := context.WithCancel(context.Background())
+	scanner2 := k8s_log.NewLogScanner(runningCt, nil, cancel2, nil)
+	m = updateModel(t, m, command.StartedLogScannerMsg{LogScanner: scanner2})
+
+	ent = m.entityTree.GetEntity(runningCt)
+	if ent == nil {
+		t.Fatal("expected entity to exist")
+	}
+	if ent.State != entity.Scanning {
+		t.Fatalf("expected Scanning, got %v", ent.State)
+	}
+}

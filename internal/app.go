@@ -824,14 +824,9 @@ func (m Model) handleContainerDeltasMsg(msg command.GetContainerDeltasMsg) (Mode
 	}
 
 	for _, delta := range msg.DeltaSet.OrderedDeltas() {
-		// get the existing entity for the container, if it exists
-		var existingContainerEntity *entity.Entity
-		for _, containerEntity := range existingContainerEntities {
-			if containerEntity.Container.Equals(delta.Container) {
-				existingContainerEntity = &containerEntity
-				break
-			}
-		}
+		// get the existing entity for the container from the current tree, not a stale snapshot,
+		// as prior iterations may have changed the entity's state
+		existingContainerEntity := m.entityTree.GetEntity(delta.Container)
 
 		if delta.ToDelete {
 			if existingContainerEntity != nil {
@@ -866,14 +861,7 @@ func (m Model) handleContainerDeltasMsg(msg command.GetContainerDeltasMsg) (Mode
 func (m Model) handleStartedLogScannerMsg(msg command.StartedLogScannerMsg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
-	existingContainerEntities := m.entityTree.GetContainerEntities()
-	var startedContainerEntity *entity.Entity
-	for _, containerEntity := range existingContainerEntities {
-		if msg.LogScanner.Container.Equals(containerEntity.Container) {
-			startedContainerEntity = &containerEntity
-			break
-		}
-	}
+	startedContainerEntity := m.entityTree.GetEntity(msg.LogScanner.Container)
 	if startedContainerEntity == nil {
 		msg.LogScanner.Cancel()
 		return m, nil

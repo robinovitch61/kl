@@ -298,6 +298,10 @@ func (e Entity) ScannerStarted(tree Tree, startErr error, scanner k8s_log.LogSca
 
 		tree.AddOrReplace(e)
 		return e, tree, []EntityAction{}
+	case Scanning:
+		// can happen when duplicate StartScanner actions are dispatched from a single delta batch
+		scanner.Cancel()
+		return e, tree, []EntityAction{}
 	case Deleted:
 		// can happen when a same-batch Update(WantScanning→ScannerStarting) dispatches StartScanner,
 		// then a Delete(WantScanning→Deleted) overwrites the state before the scanner starts

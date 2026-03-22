@@ -520,8 +520,21 @@ func TestScannerStarted_DeletedEntity(t *testing.T) {
 	assertActions(t, actions, []entity.EntityAction{})
 }
 
+func TestScannerStarted_AlreadyScanning(t *testing.T) {
+	tree := newTestTree()
+	ent := newTestEntity(entity.Scanning, container.ContainerRunning)
+	tree.AddOrReplace(ent)
+
+	scanner := newTestScanner()
+	result, _, actions := ent.ScannerStarted(tree, nil, scanner)
+
+	// should stay Scanning and cancel the duplicate scanner
+	assertState(t, result, entity.Scanning)
+	assertActions(t, actions, []entity.EntityAction{})
+}
+
 func TestScannerStarted_FromInvalidState_Panics(t *testing.T) {
-	for _, state := range []entity.EntityState{entity.Inactive, entity.WantScanning, entity.Scanning, entity.ScannerStopping} {
+	for _, state := range []entity.EntityState{entity.Inactive, entity.WantScanning, entity.ScannerStopping} {
 		t.Run(state.String(), func(t *testing.T) {
 			tree := newTestTree()
 			ent := newTestEntity(state, container.ContainerRunning)
