@@ -176,10 +176,11 @@ func (p LogsPage) ContentForFile() []string {
 	}
 
 	for _, l := range p.logContainer.GetOrderedLogs() {
+		line := l.ContentForFile()
 		if !matchingOnly || filterText == "" {
-			content = append(content, l.GetItem().Content())
-		} else if f.Matches(l.GetItem().ContentNoAnsi()) {
-			content = append(content, l.GetItem().Content())
+			content = append(content, line)
+		} else if f.Matches(line) {
+			content = append(content, line)
 		}
 	}
 	return content

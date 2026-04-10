@@ -29,9 +29,18 @@ type PageLog struct {
 }
 
 func (l PageLog) GetItem() item.Item {
+	return l.getItem(true)
+}
+
+// ContentForFile returns the log content without any ANSI escape codes, suitable for saving to a file.
+func (l PageLog) ContentForFile() string {
+	return l.getItem(false).ContentNoAnsi()
+}
+
+func (l PageLog) getItem(includeStyle bool) item.Item {
 	if l.PrettyPrinted {
 		if cached := l.Log.GetPrettyItems(); cached != nil {
-			prefix := l.renderPrefix(true)
+			prefix := l.renderPrefix(includeStyle)
 			segments := make([]item.SingleItem, len(cached))
 			if prefix != "" {
 				segments[0] = item.NewItem(prefix + cached[0].Content())
@@ -42,7 +51,7 @@ func (l PageLog) GetItem() item.Item {
 			return item.NewMultiLineItem(segments...)
 		}
 	}
-	prefix := l.renderPrefix(true)
+	prefix := l.renderPrefix(includeStyle)
 	if prefix == "" {
 		return l.Log.ContentItem
 	}
