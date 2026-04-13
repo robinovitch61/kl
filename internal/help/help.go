@@ -8,7 +8,7 @@ import (
 
 func MakeHelp(keyMap keymap.KeyMap, keyColStyle lipgloss.Style) string {
 	title := lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1).Render("Help (press any key to hide)")
-	rowsPerCol := 11
+	rowsPerCol := 12
 
 	generalHelp := lipgloss.JoinVertical(
 		lipgloss.Center,

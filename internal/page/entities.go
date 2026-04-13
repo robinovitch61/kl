@@ -64,11 +64,16 @@ func NewEntitiesPage(
 		viewport.WithWrapText[entity.Entity](false),
 	)
 
+	exactMode := filterableviewport.ExactFilterMode(keyMap.Filter)
+	fuzzyMode := filterableviewport.FuzzyFilterMode(keyMap.FilterFuzzy)
+	filterModes := []filterableviewport.FilterMode{exactMode, fuzzyMode}
+	filterModesByName := map[filterableviewport.FilterModeName]filterableviewport.FilterMode{
+		exactMode.Name: exactMode,
+		fuzzyMode.Name: fuzzyMode,
+	}
+
 	fvp := filterableviewport.New(vp,
 		filterableviewport.WithKeyMap[entity.Entity](filterableviewport.KeyMap{
-			FilterKey:                  keyMap.Filter,
-			RegexFilterKey:             keyMap.FilterRegex,
-			CaseInsensitiveFilterKey:   keyMap.FilterCaseInsensitive,
 			ApplyFilterKey:             keyMap.Enter,
 			CancelFilterKey:            keyMap.Clear,
 			ToggleMatchingItemsOnlyKey: keyMap.Context,
@@ -77,9 +82,10 @@ func NewEntitiesPage(
 			SearchHistoryPrevKey:       keyMap.SearchHistoryPrev,
 			SearchHistoryNextKey:       keyMap.SearchHistoryNext,
 		}),
+		filterableviewport.WithFilterModes[entity.Entity](filterModes),
 		filterableviewport.WithMatchingItemsOnly[entity.Entity](false),
 		filterableviewport.WithCanToggleMatchingItemsOnly[entity.Entity](false),
-		filterableviewport.WithEmptyText[entity.Entity]("'/', 'r', or 'i' to filter"),
+		filterableviewport.WithEmptyText[entity.Entity]("'/' or 'z' to filter"),
 		filterableviewport.WithFilterLinePosition[entity.Entity](filterableviewport.FilterLineTop),
 		filterableviewport.WithFilterLinePrefix[entity.Entity]("(S)election"),
 		filterableviewport.WithStyles[entity.Entity](filterableviewport.Styles{
@@ -89,8 +95,12 @@ func NewEntitiesPage(
 				Unfocused:         theme.MatchUnfocused,
 			},
 		}),
-		filterableviewport.WithAdjustObjectsForFilter(func(filterText string, isRegex bool) []entity.Entity {
-			f := makeFilterFromText(filterText, isRegex, keyMap)
+		filterableviewport.WithAdjustObjectsForFilter(func(filterText string, modeName filterableviewport.FilterModeName) []entity.Entity {
+			mode, ok := filterModesByName[modeName]
+			if !ok {
+				mode = exactMode
+			}
+			f := filter.New(filterText, mode)
 			entityTree.UpdatePrettyPrintPrefixes(f)
 			return entityTree.GetVisibleEntities(f)
 		}),
@@ -200,8 +210,17 @@ func (p EntityPage) WithEntityTree(entityTree entity.Tree) EntityPage {
 	f := p.getCurrentFilter()
 	p.entityTree.UpdatePrettyPrintPrefixes(f)
 	p.filterableViewport.SetObjects(p.entityTree.GetVisibleEntities(f))
-	p.filterableViewport.SetAdjustObjectsForFilter(func(filterText string, isRegex bool) []entity.Entity {
-		f := makeFilterFromText(filterText, isRegex, p.keyMap)
+	filterModesByName := make(map[filterableviewport.FilterModeName]filterableviewport.FilterMode)
+	for _, mode := range p.filterableViewport.FilterModes() {
+		filterModesByName[mode.Name] = mode
+	}
+	defaultMode := p.filterableViewport.FilterModes()[0]
+	p.filterableViewport.SetAdjustObjectsForFilter(func(filterText string, modeName filterableviewport.FilterModeName) []entity.Entity {
+		mode, ok := filterModesByName[modeName]
+		if !ok {
+			mode = defaultMode
+		}
+		f := filter.New(filterText, mode)
 		entityTree.UpdatePrettyPrintPrefixes(f)
 		return entityTree.GetVisibleEntities(f)
 	})
@@ -232,7 +251,12 @@ func (p EntityPage) getVisibleEntities() []entity.Entity {
 }
 
 func (p EntityPage) getCurrentFilter() filter.Model {
-	return makeFilterFromText(p.filterableViewport.GetFilterText(), p.filterableViewport.IsRegexMode(), p.keyMap)
+	activeMode := p.filterableViewport.GetActiveFilterMode()
+	if activeMode == nil {
+		// no active filter mode — return a filter that matches everything
+		return filter.New("", p.filterableViewport.FilterModes()[0])
+	}
+	return filter.New(p.filterableViewport.GetFilterText(), *activeMode)
 }
 
 func (p *EntityPage) updateStyles() {
@@ -243,9 +267,4 @@ func (p *EntityPage) updateStyles() {
 		prefix = p.theme.FilterPrefixFocused.Render(prefix)
 	}
 	p.filterableViewport.SetFilterLinePrefix(prefix)
-}
-
-// makeFilterFromText creates a filter.Model from filter text and regex mode
-func makeFilterFromText(filterText string, isRegex bool, keyMap keymap.KeyMap) filter.Model {
-	return filter.NewFromText(filterText, isRegex, keyMap)
 }

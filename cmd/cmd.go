@@ -14,6 +14,7 @@ import (
 	"github.com/robinovitch61/kl/internal"
 	"github.com/robinovitch61/kl/internal/constants"
 	"github.com/robinovitch61/kl/internal/model"
+	"github.com/robinovitch61/viewport/filterableviewport"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -357,8 +358,8 @@ func getLogFilter(cmd *cobra.Command) model.LogFilter {
 	}
 	if filter != "" {
 		return model.LogFilter{
-			Value:   filter,
-			IsRegex: false,
+			Value: filter,
+			Mode:  filterableviewport.FilterExact,
 		}
 	}
 	if regex != "" {
@@ -368,8 +369,8 @@ func getLogFilter(cmd *cobra.Command) model.LogFilter {
 			os.Exit(1)
 		}
 		return model.LogFilter{
-			Value:   regex,
-			IsRegex: true,
+			Value: regex,
+			Mode:  filterableviewport.FilterRegex,
 		}
 	}
 	return model.LogFilter{}

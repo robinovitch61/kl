@@ -11,6 +11,7 @@ type KeyMap struct {
 	Enter                 key.Binding
 	DeselectAll           key.Binding
 	Filter                key.Binding
+	FilterFuzzy           key.Binding
 	FilterRegex           key.Binding
 	FilterCaseInsensitive key.Binding
 	FilterNextRow         key.Binding
@@ -73,6 +74,10 @@ func DefaultKeyMap() KeyMap {
 		Filter: key.NewBinding(
 			key.WithKeys("/"),
 			key.WithHelp("/", "edit filter"),
+		),
+		FilterFuzzy: key.NewBinding(
+			key.WithKeys("z"),
+			key.WithHelp("z", "fuzzy filter"),
 		),
 		FilterRegex: key.NewBinding(
 			key.WithKeys("r"),
@@ -240,6 +245,7 @@ func DescriptiveKeyBindings(km KeyMap) []key.Binding {
 		km.Name,
 		km.ReverseOrder,
 		km.Filter,
+		km.FilterFuzzy,
 		km.FilterRegex,
 		km.FilterCaseInsensitive,
 		km.Clear,

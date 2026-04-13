@@ -5,11 +5,12 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/bubbles/v2/key"
 	"github.com/robinovitch61/kl/internal/filter"
 	"github.com/robinovitch61/kl/internal/k8s/container"
 	"github.com/robinovitch61/kl/internal/k8s/entity"
 	"github.com/robinovitch61/kl/internal/k8s/k8s_model"
-	"github.com/robinovitch61/kl/internal/keymap"
+	"github.com/robinovitch61/viewport/filterableviewport"
 )
 
 var (
@@ -679,8 +680,12 @@ func formatEntity(e entity.Entity) string {
 }
 
 func newFilter(s string, isRegex bool) filter.Model {
-	f := filter.New(keymap.KeyMap{})
-	f.SetValue(s)
-	f.SetIsRegex(isRegex)
-	return f
+	k := key.NewBinding(key.WithKeys("/"))
+	var mode filterableviewport.FilterMode
+	if isRegex {
+		mode = filterableviewport.RegexFilterMode(k)
+	} else {
+		mode = filterableviewport.ExactFilterMode(k)
+	}
+	return filter.New(s, mode)
 }

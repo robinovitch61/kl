@@ -65,9 +65,6 @@ func NewLogsPage(
 
 	fvp := filterableviewport.New(vp,
 		filterableviewport.WithKeyMap[model.PageLog](filterableviewport.KeyMap{
-			FilterKey:                  keyMap.Filter,
-			RegexFilterKey:             keyMap.FilterRegex,
-			CaseInsensitiveFilterKey:   keyMap.FilterCaseInsensitive,
 			ApplyFilterKey:             keyMap.Enter,
 			CancelFilterKey:            keyMap.Clear,
 			ToggleMatchingItemsOnlyKey: keyMap.Context,
@@ -76,10 +73,16 @@ func NewLogsPage(
 			SearchHistoryPrevKey:       keyMap.SearchHistoryPrev,
 			SearchHistoryNextKey:       keyMap.SearchHistoryNext,
 		}),
+		filterableviewport.WithFilterModes[model.PageLog]([]filterableviewport.FilterMode{
+			filterableviewport.ExactFilterMode(keyMap.Filter),
+			filterableviewport.RegexFilterMode(keyMap.FilterRegex),
+			filterableviewport.CaseInsensitiveFilterMode(keyMap.FilterCaseInsensitive),
+		}),
 		filterableviewport.WithMatchingItemsOnly[model.PageLog](false), // ShowContext=true equivalent
 		filterableviewport.WithCanToggleMatchingItemsOnly[model.PageLog](true),
 		filterableviewport.WithEmptyText[model.PageLog]("'/', 'r', or 'i' to filter"),
 		filterableviewport.WithFilterLinePosition[model.PageLog](filterableviewport.FilterLineTop),
+		filterableviewport.WithItemDescriptor[model.PageLog]("logs"),
 		filterableviewport.WithFilterLinePrefix[model.PageLog](fmt.Sprintf("(L)ogs, %s", getOrder(!descending))),
 		filterableviewport.WithHorizontalPad[model.PageLog](100000), // effectively center matches when text is unwrapped
 		filterableviewport.WithStyles[model.PageLog](filterableviewport.Styles{
@@ -172,7 +175,10 @@ func (p LogsPage) ContentForFile() []string {
 
 	var f filter.Model
 	if matchingOnly && filterText != "" {
-		f = filter.NewFromText(filterText, p.filterableViewport.IsRegexMode(), p.keyMap)
+		activeMode := p.filterableViewport.GetActiveFilterMode()
+		if activeMode != nil {
+			f = filter.New(filterText, *activeMode)
+		}
 	}
 
 	for _, l := range p.logContainer.GetOrderedLogs() {
@@ -232,7 +238,7 @@ func (p LogsPage) Help() string {
 }
 
 func (p LogsPage) WithLogFilter(lf model.LogFilter) LogsPage {
-	p.filterableViewport.SetFilter(lf.Value, lf.IsRegex)
+	p.filterableViewport.SetFilter(lf.Value, lf.Mode)
 	return p
 }
 

@@ -80,9 +80,6 @@ func NewSingleLogPage(
 
 	fvp := filterableviewport.New(vp,
 		filterableviewport.WithKeyMap[SingleLogLine](filterableviewport.KeyMap{
-			FilterKey:                  keyMap.Filter,
-			RegexFilterKey:             keyMap.FilterRegex,
-			CaseInsensitiveFilterKey:   keyMap.FilterCaseInsensitive,
 			ApplyFilterKey:             keyMap.Enter,
 			CancelFilterKey:            keyMap.Clear,
 			ToggleMatchingItemsOnlyKey: keyMap.Context,
@@ -91,10 +88,16 @@ func NewSingleLogPage(
 			SearchHistoryPrevKey:       keyMap.SearchHistoryPrev,
 			SearchHistoryNextKey:       keyMap.SearchHistoryNext,
 		}),
+		filterableviewport.WithFilterModes[SingleLogLine]([]filterableviewport.FilterMode{
+			filterableviewport.ExactFilterMode(keyMap.Filter),
+			filterableviewport.RegexFilterMode(keyMap.FilterRegex),
+			filterableviewport.CaseInsensitiveFilterMode(keyMap.FilterCaseInsensitive),
+		}),
 		filterableviewport.WithMatchingItemsOnly[SingleLogLine](false),
 		filterableviewport.WithCanToggleMatchingItemsOnly[SingleLogLine](false),
 		filterableviewport.WithEmptyText[SingleLogLine]("'/', 'r', or 'i' to filter"),
 		filterableviewport.WithFilterLinePosition[SingleLogLine](filterableviewport.FilterLineTop),
+		filterableviewport.WithItemDescriptor[SingleLogLine]("log lines"),
 		filterableviewport.WithFilterLinePrefix[SingleLogLine]("Single Log"),
 		filterableviewport.WithHorizontalPad[SingleLogLine](100000), // effectively center matches when text is unwrapped
 		filterableviewport.WithStyles[SingleLogLine](filterableviewport.Styles{
