@@ -958,8 +958,8 @@ func (m Model) handleNewLogsMsg(msg command.GetNewLogsMsg) (Model, tea.Cmd) {
 		return m, nil
 	}
 
-	var err error
 	var newLogs []model.PageLog
+	var err error
 	for i := range msg.NewLogs {
 		shortName := k8s_model.ContainerNameAndPrefix{}
 		if m.containerToShortName != nil {
@@ -1068,6 +1068,7 @@ func (m Model) doActions(ent entity.Entity, actions []entity.EntityAction) (Mode
 		case entity.StopScannerKeepLogs:
 			cmds = append(cmds, command.StopLogScannerCmd(ent, true))
 		case entity.RemoveEntity:
+			m = m.removeLogsForContainer(ent.Container)
 			m.entityTree.Remove(ent)
 		case entity.RemoveLogs:
 			m = m.removeLogsForContainer(ent.Container)
@@ -1101,16 +1102,13 @@ func (m Model) withUpdatedContainerShortNames() Model {
 }
 
 func (m Model) updateShortNamesInBuffer() (Model, error) {
-	bufferedLogs := m.pageLogBuffer
-	m.pageLogBuffer = nil
-	for i := range bufferedLogs {
-		short, err := m.containerToShortName(bufferedLogs[i].Log.Container)
+	for i := range m.pageLogBuffer {
+		shortName, err := m.containerToShortName(m.pageLogBuffer[i].Log.Container)
 		if err != nil {
 			return m, err
 		}
-		bufferedLogs[i].ContainerNames.Short = short
+		m.pageLogBuffer[i].ContainerNames.Short = shortName
 	}
-	m.pageLogBuffer = bufferedLogs
 	return m, nil
 }
 

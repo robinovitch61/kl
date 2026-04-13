@@ -653,10 +653,9 @@ func (et entityTreeImpl) ContainerToShortName(minCharsEachSide int) func(contain
 				toJoin = append(toJoin, v)
 			}
 		}
-		name := k8s_model.ContainerNameAndPrefix{
+		return k8s_model.ContainerNameAndPrefix{
 			Prefix:        strings.Join(toJoin, "/"),
 			ContainerName: container.Name,
-		}
-		return name, nil
+		}, nil
 	}
 }

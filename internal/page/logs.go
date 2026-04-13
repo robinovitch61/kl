@@ -301,11 +301,11 @@ func (p LogsPage) WithAppendedLogs(logs []model.PageLog) LogsPage {
 func (p LogsPage) WithUpdatedShortNames(f func(container.Container) (k8s_model.ContainerNameAndPrefix, error)) (LogsPage, error) {
 	allLogs := p.logContainer.GetOrderedLogs()
 	for i := range allLogs {
-		short, err := f(allLogs[i].Log.Container)
+		shortName, err := f(allLogs[i].Log.Container)
 		if err != nil {
 			return p, err
 		}
-		allLogs[i].ContainerNames.Short = short
+		allLogs[i].ContainerNames.Short = shortName
 		allLogs[i].CurrentName = getContainerName(allLogs[i], nameFormats[p.nameFormatIdx])
 	}
 	p.setLogs(allLogs)

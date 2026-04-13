@@ -165,7 +165,7 @@ func (e Entity) Deactivate(tree Tree) (Entity, Tree, []EntityAction) {
 		tree.AddOrReplace(e)
 		return e, tree, []EntityAction{StopScanner}
 	case Deleted:
-		return e, tree, []EntityAction{RemoveLogs, RemoveEntity}
+		return e, tree, []EntityAction{RemoveEntity}
 	default:
 		panic(fmt.Sprintf("Deactivate called for entity in %v state", e.State))
 	}
@@ -194,24 +194,25 @@ func (e Entity) Delete(tree Tree, delta container.ContainerDelta) (Entity, Tree,
 	}()
 	switch e.State {
 	case Inactive:
-		tree.Remove(e)
-		return e, tree, []EntityAction{}
+		return e, tree, []EntityAction{RemoveEntity}
 	case WantScanning:
 		e.State = Deleted
 		e.Container.Status = delta.Container.Status
 		tree.AddOrReplace(e)
 		return e, tree, []EntityAction{}
 	case ScannerStarting:
-		tree.Remove(e)
-		return e, tree, []EntityAction{StopScanner}
+		return e, tree, []EntityAction{RemoveEntity, StopScanner}
 	case Scanning:
 		e.State = Deleted
 		e.Container.Status = delta.Container.Status
 		tree.AddOrReplace(e)
 		return e, tree, []EntityAction{StopScannerKeepLogs, MarkLogsTerminated}
 	case ScannerStopping:
-		tree.Remove(e)
-		return e, tree, []EntityAction{StopScanner}
+		return e, tree, []EntityAction{RemoveEntity}
+	case Deleted:
+		e.Container.Status = delta.Container.Status
+		tree.AddOrReplace(e)
+		return e, tree, []EntityAction{}
 	default:
 		panic(fmt.Sprintf("Delete called for entity in %v state", e.State))
 	}
@@ -268,9 +269,16 @@ func (e Entity) Update(tree Tree, delta container.ContainerDelta) (Entity, Tree,
 		return e, tree, actions
 	case Scanning:
 		if e.Container.Status.State == container.ContainerTerminated {
-			e.State = WantScanning
+			e.State = Deleted
 			tree.AddOrReplace(e)
 			actions = append(actions, StopScannerKeepLogs)
+		}
+		return e, tree, actions
+	case Deleted:
+		if e.Container.Status.State == container.ContainerRunning {
+			e.State = ScannerStarting
+			tree.AddOrReplace(e)
+			actions = append(actions, StartScanner)
 		}
 		return e, tree, actions
 	default:
@@ -326,6 +334,11 @@ func (e Entity) ScannerStopped(tree Tree) (Entity, Tree, []EntityAction) {
 	case Deleted, WantScanning:
 		e.LogScanner = nil
 		tree.AddOrReplace(e)
+		return e, tree, []EntityAction{}
+	case ScannerStarting, Scanning:
+		// Old scanner stopped after entity was reactivated with a new scanner
+		// (e.g. Deleted → ScannerStarting via Update). Don't modify state or
+		// LogScanner as they pertain to the new scanner.
 		return e, tree, []EntityAction{}
 	default:
 		panic(fmt.Sprintf("ScannerStopped called for entity in %v state", e.State))

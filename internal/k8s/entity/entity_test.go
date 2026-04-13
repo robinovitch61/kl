@@ -174,22 +174,7 @@ func TestDeactivate_FromDeleted(t *testing.T) {
 
 	_, _, actions := ent.Deactivate(tree)
 
-	if len(actions) != 2 {
-		t.Fatalf("expected 2 actions, got %d: %v", len(actions), actions)
-	}
-	hasRemoveLogs := false
-	hasRemoveEntity := false
-	for _, a := range actions {
-		if a == entity.RemoveLogs {
-			hasRemoveLogs = true
-		}
-		if a == entity.RemoveEntity {
-			hasRemoveEntity = true
-		}
-	}
-	if !hasRemoveLogs || !hasRemoveEntity {
-		t.Errorf("expected RemoveLogs and RemoveEntity, got %v", actions)
-	}
+	assertActions(t, actions, []entity.EntityAction{entity.RemoveEntity})
 }
 
 func TestDeactivate_FromInvalidState_Panics(t *testing.T) {
@@ -240,10 +225,9 @@ func TestDelete_FromInactive(t *testing.T) {
 
 	_, _, actions := ent.Delete(tree, newTestDelta(container.ContainerTerminated, true, false))
 
-	assertActions(t, actions, []entity.EntityAction{})
-	// entity should be removed from tree
-	if tree.GetEntity(ent.Container) != nil {
-		t.Error("entity should have been removed from tree")
+	assertActions(t, actions, []entity.EntityAction{entity.RemoveEntity})
+	if tree.GetEntity(ent.Container) == nil {
+		t.Error("entity should still be in tree")
 	}
 }
 
@@ -269,9 +253,24 @@ func TestDelete_FromScannerStarting(t *testing.T) {
 
 	_, _, actions := ent.Delete(tree, newTestDelta(container.ContainerTerminated, true, false))
 
-	assertActions(t, actions, []entity.EntityAction{entity.StopScanner})
-	if tree.GetEntity(ent.Container) != nil {
-		t.Error("entity should have been removed from tree")
+	if len(actions) != 2 {
+		t.Fatalf("expected 2 actions, got %d: %v", len(actions), actions)
+	}
+	hasRemoveEntity := false
+	hasStopScanner := false
+	for _, a := range actions {
+		if a == entity.RemoveEntity {
+			hasRemoveEntity = true
+		}
+		if a == entity.StopScanner {
+			hasStopScanner = true
+		}
+	}
+	if !hasRemoveEntity || !hasStopScanner {
+		t.Errorf("expected RemoveEntity and StopScanner, got %v", actions)
+	}
+	if tree.GetEntity(ent.Container) == nil {
+		t.Error("entity should still be in tree")
 	}
 }
 
@@ -308,9 +307,9 @@ func TestDelete_FromScannerStopping(t *testing.T) {
 
 	_, _, actions := ent.Delete(tree, newTestDelta(container.ContainerTerminated, true, false))
 
-	assertActions(t, actions, []entity.EntityAction{entity.StopScanner})
-	if tree.GetEntity(ent.Container) != nil {
-		t.Error("entity should have been removed from tree")
+	assertActions(t, actions, []entity.EntityAction{entity.RemoveEntity})
+	if tree.GetEntity(ent.Container) == nil {
+		t.Error("entity should still be in tree")
 	}
 }
 
@@ -324,6 +323,20 @@ func TestDelete_UpdatesContainerStatus(t *testing.T) {
 
 	if result.Container.Status.State != container.ContainerTerminated {
 		t.Errorf("expected container status to be updated to Terminated, got %v", result.Container.Status.State)
+	}
+}
+
+func TestDelete_FromDeleted(t *testing.T) {
+	tree := newTestTree()
+	ent := newTestEntity(entity.Deleted, container.ContainerTerminated)
+	tree.AddOrReplace(ent)
+
+	result, _, actions := ent.Delete(tree, newTestDelta(container.ContainerTerminated, true, false))
+
+	assertState(t, result, entity.Deleted)
+	assertActions(t, actions, []entity.EntityAction{})
+	if tree.GetEntity(ent.Container) == nil {
+		t.Error("entity should still be in tree")
 	}
 }
 
@@ -421,7 +434,7 @@ func TestUpdate_Scanning_ContainerTerminates(t *testing.T) {
 
 	result, _, actions := ent.Update(tree, newTestDelta(container.ContainerTerminated, false, false))
 
-	assertState(t, result, entity.WantScanning)
+	assertState(t, result, entity.Deleted)
 	if len(actions) != 2 {
 		t.Fatalf("expected 2 actions, got %d: %v", len(actions), actions)
 	}
@@ -473,6 +486,42 @@ func TestUpdate_UpdatesContainer(t *testing.T) {
 	if result.Container.Status.State != container.ContainerRunning {
 		t.Errorf("expected container status to be updated to Running, got %v", result.Container.Status.State)
 	}
+}
+
+func TestUpdate_Deleted_ContainerRestarted(t *testing.T) {
+	tree := newTestTree()
+	ent := newTestEntity(entity.Deleted, container.ContainerTerminated)
+	tree.AddOrReplace(ent)
+
+	result, _, actions := ent.Update(tree, newTestDelta(container.ContainerRunning, false, false))
+
+	assertState(t, result, entity.ScannerStarting)
+	assertActions(t, actions, []entity.EntityAction{entity.StartScanner})
+}
+
+func TestUpdate_Deleted_ContainerStillTerminated(t *testing.T) {
+	tree := newTestTree()
+	ent := newTestEntity(entity.Deleted, container.ContainerTerminated)
+	tree.AddOrReplace(ent)
+
+	// Repeated terminated updates (common during rollout restarts) should NOT
+	// restart scanning — we already have the terminated logs.
+	result, _, actions := ent.Update(tree, newTestDelta(container.ContainerTerminated, false, false))
+
+	assertState(t, result, entity.Deleted)
+	// MarkLogsTerminated is expected (idempotent) because MayHaveLogs()=true for Deleted
+	assertActions(t, actions, []entity.EntityAction{entity.MarkLogsTerminated})
+}
+
+func TestUpdate_Deleted_ContainerStillWaiting(t *testing.T) {
+	tree := newTestTree()
+	ent := newTestEntity(entity.Deleted, container.ContainerTerminated)
+	tree.AddOrReplace(ent)
+
+	result, _, actions := ent.Update(tree, newTestDelta(container.ContainerWaiting, false, false))
+
+	assertState(t, result, entity.Deleted)
+	assertActions(t, actions, []entity.EntityAction{})
 }
 
 // --- ScannerStarted ---
@@ -597,8 +646,37 @@ func TestScannerStopped_FromWantScanning(t *testing.T) {
 	}
 }
 
+func TestScannerStopped_FromScannerStarting(t *testing.T) {
+	tree := newTestTree()
+	ent := newTestEntity(entity.ScannerStarting, container.ContainerRunning)
+	tree.AddOrReplace(ent)
+
+	result, _, actions := ent.ScannerStopped(tree)
+
+	// Old scanner stopped after entity was reactivated — no state change
+	assertState(t, result, entity.ScannerStarting)
+	assertActions(t, actions, []entity.EntityAction{})
+}
+
+func TestScannerStopped_FromScanning(t *testing.T) {
+	tree := newTestTree()
+	ent := newTestEntity(entity.Scanning, container.ContainerRunning)
+	scanner := newTestScanner()
+	ent.LogScanner = &scanner
+	tree.AddOrReplace(ent)
+
+	result, _, actions := ent.ScannerStopped(tree)
+
+	// Old scanner stopped after entity was reactivated — no state change, keep LogScanner
+	assertState(t, result, entity.Scanning)
+	assertActions(t, actions, []entity.EntityAction{})
+	if result.LogScanner == nil {
+		t.Error("expected LogScanner to be preserved (it belongs to the new scanner)")
+	}
+}
+
 func TestScannerStopped_FromInvalidState_Panics(t *testing.T) {
-	for _, state := range []entity.EntityState{entity.Inactive, entity.ScannerStarting, entity.Scanning} {
+	for _, state := range []entity.EntityState{entity.Inactive} {
 		t.Run(state.String(), func(t *testing.T) {
 			tree := newTestTree()
 			ent := newTestEntity(state, container.ContainerRunning)

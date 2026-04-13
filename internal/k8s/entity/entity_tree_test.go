@@ -588,7 +588,7 @@ func TestEntityTreeImpl_ContainerToShortName(t *testing.T) {
 		for c, short := range expected {
 			n, err := f(c)
 			if err != nil {
-				t.Errorf("Expected no error, got %v", err)
+				t.Fatalf("Unexpected error for container %s: %v", c.Name, err)
 			}
 			if n != short {
 				t.Errorf("Expected short name %s, got %s", short, n)
@@ -644,9 +644,11 @@ func TestEntityTreeImpl_ContainerToShortName(t *testing.T) {
 		},
 	}
 	compare(f, expected)
+
+	// looking up a container not in the tree should return an error
 	_, err := f(container.Container{Name: "doesntexist"})
 	if err == nil {
-		t.Errorf("Expected error, got nil")
+		t.Errorf("Expected error for nonexistent container, got nil")
 	}
 }
 
