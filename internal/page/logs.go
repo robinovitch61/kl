@@ -61,6 +61,7 @@ func NewLogsPage(
 		viewport.WithSelectionStyleOverridesItemStyle[model.PageLog](false),
 		viewport.WithSelectionEnabled[model.PageLog](true),
 		viewport.WithWrapText[model.PageLog](false),
+		viewport.WithProgressBarEnabled[model.PageLog](true),
 	)
 
 	fvp := filterableviewport.New(vp,
