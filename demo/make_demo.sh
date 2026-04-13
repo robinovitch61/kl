@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 
-if [ "$(kubectl --context k3d-test get po | wc -l)" -le 3 ]; then
-    echo "Error: doesn't seem like you are running the demo k3d cluster"
+if [ "$(kubectl --context k3d-mycluster get po | wc -l)" -le 3 ]; then
+    echo "Error: doesn't seem like you are running the k3d-mycluster cluster"
     exit 1
 fi
 

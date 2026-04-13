@@ -61,14 +61,14 @@ Output demo.gif
 
 Require kl
 
-Set TypingSpeed 160ms
+Set TypingSpeed 100ms
 Set FontSize 20
 Set Width 1500
 Set Height 700
 Set Padding 25
 
 Hide
-Type@1ms "kubectl config use-context k3d-test"
+Type@1ms "kubectl config use-context k3d-mycluster"
 Enter
 Type@1ms "clear"
 Enter
@@ -79,42 +79,48 @@ Enter
 # wait for startup
 Sleep 3s
 
-Type@200ms "jjjj"
+Type "/"
+Sleep 1.5s
+Type "flask"
 Enter
 Sleep 1.5s
 
-Type@200ms "jjj"
+Type "jjjj"
 Enter
+Sleep 1.5s
+
+Type "j"
+Enter
+Sleep 1.5s
+
+Type "L"
+Sleep 1.5s
+
+Type "k"
 Sleep 1.5s
 
 Type "t"
-Sleep 2s
+Sleep 1.5s
 
-Type "l"
-Sleep 3s
-
-Type "F"
-Sleep 3s
-
-Type "k"
-Sleep 2s
-
-Type@2s "uu"
-Type "g"
-Sleep 1s
+Type "p"
+Sleep 1.5s
 
 Type "/"
-Sleep 3s
-
+Sleep 1.5s
 Type "error"
 Enter
-Sleep 4s
+Sleep 1.5s
 
-Enter
+Type "n"
+Sleep 0.5s
+Type "n"
 Sleep 2s
 
-Type@1s "kkk"
-
-Escape
-
-Sleep 6s
+#Enter
+#Sleep 2s
+#
+#Type@1s "kkk"
+#
+#Escape
+#
+#Sleep 6s
